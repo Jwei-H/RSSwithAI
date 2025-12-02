@@ -26,18 +26,6 @@ import java.util.Locale;
 @Slf4j
 public final class RssUtils {
 
-    private RssUtils() {}
-
-    /**
-     * Feed格式枚举
-     */
-    public enum FeedFormat {
-        RSS_2_0,    // RSS 2.0 (rss/channel/item)
-        RSS_1_0,    // RSS 1.0 / RDF (rdf:RDF/item)
-        ATOM,       // Atom (feed/entry)
-        UNKNOWN
-    }
-
     private static final List<DateTimeFormatter> DATE_FORMATTERS = List.of(
             DateTimeFormatter.RFC_1123_DATE_TIME,
             DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH),
@@ -50,6 +38,9 @@ public final class RssUtils {
             DateTimeFormatter.ISO_DATE_TIME,
             DateTimeFormatter.ISO_OFFSET_DATE_TIME
     );
+
+    private RssUtils() {
+    }
 
     /**
      * 统一解析入口：解析XML字符串，返回Article列表
@@ -189,7 +180,10 @@ public final class RssUtils {
         // content: content:encoded -> content -> description
         String content = getElementTextNS(item, "http://purl.org/rss/1.0/modules/content/", "encoded");
         if (content == null) content = getElementText(item, "content");
-        if (content == null) content = description;
+        if (content == null) {
+            content = description;
+            description = null;
+        }
 
         // author: author -> dc:creator
         String author = getElementText(item, "author");
@@ -285,7 +279,6 @@ public final class RssUtils {
 
         // 清理HTML
         description = cleanHtml(description);
-        content = cleanHtml(content);
 
         return Article.builder()
                 .source(source)
@@ -445,5 +438,15 @@ public final class RssUtils {
 
     private static boolean isBlank(String str) {
         return str == null || str.isBlank();
+    }
+
+    /**
+     * Feed格式枚举
+     */
+    public enum FeedFormat {
+        RSS_2_0,    // RSS 2.0 (rss/channel/item)
+        RSS_1_0,    // RSS 1.0 / RDF (rdf:RDF/item)
+        ATOM,       // Atom (feed/entry)
+        UNKNOWN
     }
 }
