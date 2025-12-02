@@ -2,37 +2,381 @@ package com.jingwei.rsswithai.utils;
 
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.RssSource;
+import lombok.extern.slf4j.Slf4j;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.StringReader;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * RSS 解析工具类，封装常用的RSS条目处理逻辑和边界情况处理
+ * RSS/Atom 统一解析工具类
+ * 自动检测并解析 RSS 2.0、RSS 1.0、Atom 格式，调用者无需关心具体格式
  */
+@Slf4j
 public final class RssUtils {
 
     private RssUtils() {}
 
+    /**
+     * Feed格式枚举
+     */
+    public enum FeedFormat {
+        RSS_2_0,    // RSS 2.0 (rss/channel/item)
+        RSS_1_0,    // RSS 1.0 / RDF (rdf:RDF/item)
+        ATOM,       // Atom (feed/entry)
+        UNKNOWN
+    }
+
     private static final List<DateTimeFormatter> DATE_FORMATTERS = List.of(
             DateTimeFormatter.RFC_1123_DATE_TIME,
             DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH),
+            DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH),
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX"),
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"),
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
-            DateTimeFormatter.ISO_DATE_TIME
+            DateTimeFormatter.ISO_DATE_TIME,
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME
     );
 
     /**
-     * 从元素中安全读取文本内容（按标签名），返回trim后的字符串或null
+     * 统一解析入口：解析XML字符串，返回Article列表
+     * 自动检测RSS/Atom格式，调用者无需关心具体格式
+     *
+     * @param xmlContent XML内容字符串
+     * @param source     RSS源实体
+     * @return 解析出的文章列表
+     */
+    public static List<Article> parseContent(String xmlContent, RssSource source) {
+        List<Article> articles = new ArrayList<>();
+
+        if (xmlContent == null || xmlContent.isBlank() || source == null) {
+            return articles;
+        }
+
+        try {
+            Document doc = parseXmlDocument(xmlContent);
+            FeedFormat format = detectFeedFormat(doc);
+            log.debug("检测到Feed格式: {}, source={}", format, source.getName());
+
+            NodeList itemList = getItemNodes(doc, format);
+
+            for (int i = 0; i < itemList.getLength(); i++) {
+                Element item = (Element) itemList.item(i);
+                Article article = buildArticle(item, source, format);
+                if (article != null) {
+                    articles.add(article);
+                }
+            }
+
+            log.debug("解析完成: source={}, format={}, 文章数={}", source.getName(), format, articles.size());
+
+        } catch (Exception e) {
+            log.error("解析RSS/Atom内容失败: source={}, error={}", source.getName(), e.getMessage());
+        }
+
+        return articles;
+    }
+
+    /**
+     * 解析XML文档，配置安全设置防止XXE攻击
+     */
+    private static Document parseXmlDocument(String xmlContent) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        // 安全设置，防止XXE攻击
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new InputSource(new StringReader(xmlContent)));
+        doc.getDocumentElement().normalize();
+        return doc;
+    }
+
+    /**
+     * 自动检测Feed格式
+     */
+    private static FeedFormat detectFeedFormat(Document doc) {
+        Element root = doc.getDocumentElement();
+        String rootName = root.getTagName().toLowerCase();
+
+        // Atom格式: <feed>
+        if (rootName.equals("feed") || rootName.endsWith(":feed")) {
+            return FeedFormat.ATOM;
+        }
+
+        // RSS 2.0格式: <rss><channel><item>
+        if (rootName.equals("rss")) {
+            return FeedFormat.RSS_2_0;
+        }
+
+        // RSS 1.0 / RDF格式: <rdf:RDF>
+        if (rootName.contains("rdf")) {
+            return FeedFormat.RSS_1_0;
+        }
+
+        // 尝试通过子元素判断
+        if (doc.getElementsByTagName("entry").getLength() > 0) {
+            return FeedFormat.ATOM;
+        }
+        if (doc.getElementsByTagName("item").getLength() > 0) {
+            return FeedFormat.RSS_2_0;
+        }
+
+        return FeedFormat.UNKNOWN;
+    }
+
+    /**
+     * 根据格式获取条目节点列表
+     */
+    private static NodeList getItemNodes(Document doc, FeedFormat format) {
+        return switch (format) {
+            case ATOM -> doc.getElementsByTagName("entry");
+            case RSS_1_0, RSS_2_0 -> doc.getElementsByTagName("item");
+            case UNKNOWN -> {
+                // 尝试两种方式
+                NodeList items = doc.getElementsByTagName("item");
+                if (items.getLength() == 0) {
+                    items = doc.getElementsByTagName("entry");
+                }
+                yield items;
+            }
+        };
+    }
+
+    /**
+     * 根据格式构建Article实体
+     */
+    private static Article buildArticle(Element item, RssSource source, FeedFormat format) {
+        if (item == null || source == null) return null;
+
+        return switch (format) {
+            case ATOM -> buildFromAtom(item, source);
+            case RSS_1_0, RSS_2_0, UNKNOWN -> buildFromRss(item, source);
+        };
+    }
+
+    /**
+     * 从RSS格式条目构建Article
+     */
+    private static Article buildFromRss(Element item, RssSource source) {
+        // title
+        String title = getElementText(item, "title");
+
+        // link
+        String link = getElementText(item, "link");
+
+        // guid
+        String guid = getElementText(item, "guid");
+
+        // description
+        String description = getElementText(item, "description");
+
+        // content: content:encoded -> content -> description
+        String content = getElementTextNS(item, "http://purl.org/rss/1.0/modules/content/", "encoded");
+        if (content == null) content = getElementText(item, "content");
+        if (content == null) content = description;
+
+        // author: author -> dc:creator
+        String author = getElementText(item, "author");
+        if (author == null) {
+            author = getElementTextNS(item, "http://purl.org/dc/elements/1.1/", "creator");
+        }
+
+        // pubDate: pubDate -> dc:date
+        String pubDateStr = getElementText(item, "pubDate");
+        if (pubDateStr == null) {
+            pubDateStr = getElementTextNS(item, "http://purl.org/dc/elements/1.1/", "date");
+        }
+
+        // categories
+        String categories = extractCategories(item, "category");
+
+        return buildFinalArticle(source, title, link, guid, description, content, author, pubDateStr, categories);
+    }
+
+    /**
+     * 从Atom格式条目构建Article
+     */
+    private static Article buildFromAtom(Element entry, RssSource source) {
+        // title
+        String title = getElementText(entry, "title");
+
+        // link: 优先取rel="alternate"的href，否则取第一个link的href
+        String link = extractAtomLink(entry);
+
+        // id (作为guid)
+        String guid = getElementText(entry, "id");
+
+        // summary (作为description)
+        String description = getElementText(entry, "summary");
+
+        // content
+        String content = getElementText(entry, "content");
+        if (content == null) content = description;
+
+        // author: author/name
+        String author = extractAtomAuthor(entry);
+
+        // published -> updated
+        String pubDateStr = getElementText(entry, "published");
+        if (pubDateStr == null) {
+            pubDateStr = getElementText(entry, "updated");
+        }
+
+        // categories
+        String categories = extractAtomCategories(entry);
+
+        return buildFinalArticle(source, title, link, guid, description, content, author, pubDateStr, categories);
+    }
+
+    /**
+     * 构建最终的Article实体，处理所有边界情况和默认值
+     */
+    private static Article buildFinalArticle(
+            RssSource source,
+            String title,
+            String link,
+            String guid,
+            String description,
+            String content,
+            String author,
+            String pubDateStr,
+            String categories
+    ) {
+        // 解析发布时间，失败则使用当前时间
+        LocalDateTime pubDate = tryParsePubDate(pubDateStr);
+        if (pubDate == null) {
+            pubDate = LocalDateTime.now();
+        }
+
+        // title fallback
+        if (isBlank(title)) {
+            if (!isBlank(description)) {
+                String cleaned = cleanHtml(description);
+                title = cleaned.length() > 120 ? cleaned.substring(0, 120) + "..." : cleaned;
+            } else if (!isBlank(link)) {
+                title = link;
+            } else {
+                title = "(无标题)";
+            }
+        } else {
+            title = cleanHtml(title);
+        }
+
+        // guid fallback: 优先link，否则生成唯一标识
+        if (isBlank(guid)) {
+            guid = !isBlank(link) ? link : "generated-" + System.nanoTime();
+        }
+
+        // 清理HTML
+        description = cleanHtml(description);
+        content = cleanHtml(content);
+
+        return Article.builder()
+                .source(source)
+                .title(title.trim())
+                .link(link != null ? link.trim() : null)
+                .guid(guid.trim())
+                .description(description)
+                .content(content)
+                .author(author != null ? author.trim() : null)
+                .pubDate(pubDate)
+                .categories(categories)
+                .fetchedAt(LocalDateTime.now())
+                .build();
+    }
+
+    /**
+     * 提取Atom格式的link（优先rel="alternate"）
+     */
+    private static String extractAtomLink(Element entry) {
+        NodeList linkNodes = entry.getElementsByTagName("link");
+        String alternateLink = null;
+        String firstLink = null;
+
+        for (int i = 0; i < linkNodes.getLength(); i++) {
+            Element linkEl = (Element) linkNodes.item(i);
+            String href = linkEl.getAttribute("href");
+            String rel = linkEl.getAttribute("rel");
+
+            if (firstLink == null && !isBlank(href)) {
+                firstLink = href;
+            }
+            if ("alternate".equals(rel) || isBlank(rel)) {
+                alternateLink = href;
+                break;
+            }
+        }
+
+        return alternateLink != null ? alternateLink : firstLink;
+    }
+
+    /**
+     * 提取Atom格式的author/name
+     */
+    private static String extractAtomAuthor(Element entry) {
+        NodeList authorNodes = entry.getElementsByTagName("author");
+        if (authorNodes.getLength() > 0) {
+            Element authorEl = (Element) authorNodes.item(0);
+            String name = getElementText(authorEl, "name");
+            if (!isBlank(name)) return name;
+        }
+        return null;
+    }
+
+    /**
+     * 提取Atom格式的categories（从term属性）
+     */
+    private static String extractAtomCategories(Element entry) {
+        NodeList categoryNodes = entry.getElementsByTagName("category");
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < categoryNodes.getLength(); i++) {
+            Element catEl = (Element) categoryNodes.item(i);
+            String term = catEl.getAttribute("term");
+            if (!isBlank(term)) {
+                if (sb.length() > 0) sb.append(",");
+                sb.append(term.trim());
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 提取RSS格式的categories
+     */
+    private static String extractCategories(Element item, String tagName) {
+        NodeList categoryNodes = item.getElementsByTagName(tagName);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < categoryNodes.getLength(); i++) {
+            String text = categoryNodes.item(i).getTextContent();
+            if (!isBlank(text)) {
+                if (sb.length() > 0) sb.append(",");
+                sb.append(text.trim());
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 从元素中安全读取文本内容（按标签名）
      */
     public static String getElementText(Element parent, String tagName) {
-        if (parent == null) return null;
+        if (parent == null || tagName == null) return null;
         NodeList nodeList = parent.getElementsByTagName(tagName);
         if (nodeList.getLength() > 0) {
             String text = nodeList.item(0).getTextContent();
@@ -42,135 +386,64 @@ public final class RssUtils {
     }
 
     /**
-     * 简单清理HTML标签，保留纯文本。非严格的HTML-to-text转换。
+     * 从元素中读取带命名空间的标签文本
      */
-    public static String cleanHtml(String html) {
-        if (html == null) return null;
-        return html.replaceAll("<[^>]+>", "")
-                .replaceAll("&nbsp;", " ")
-                .replaceAll("&amp;", "&")
-                .replaceAll("&lt;", "<")
-                .replaceAll("&gt;", ">")
-                .replaceAll("&quot;", "\"")
-                .trim();
-    }
-
-    /**
-     * 尝试解析常见的RSS/Atom日期字符串。若无法解析则返回null。
-     */
-    public static LocalDateTime tryParsePubDate(String dateStr) {
-        if (dateStr == null || dateStr.isBlank()) return null;
-
-        for (DateTimeFormatter formatter : DATE_FORMATTERS) {
-            try {
-                ZonedDateTime zdt = ZonedDateTime.parse(dateStr.trim(), formatter);
-                return zdt.toLocalDateTime();
-            } catch (DateTimeParseException ignored) {
-                // 继续尝试其他格式
-            }
+    private static String getElementTextNS(Element parent, String namespaceURI, String localName) {
+        if (parent == null) return null;
+        NodeList nodeList = parent.getElementsByTagNameNS(namespaceURI, localName);
+        if (nodeList.getLength() > 0) {
+            String text = nodeList.item(0).getTextContent();
+            return text != null ? text.trim() : null;
         }
         return null;
     }
 
     /**
-     * 将一个RSS/Atom的条目Element转换为Article实体，内部处理边界情况：
-     * - 优先使用content标签作为正文，若不存在则使用description
-     * - title/guid/pubDate提供备用方案或默认值
+     * 尝试解析常见的RSS/Atom日期字符串
      */
-    public static Article buildArticleFromElement(Element item, RssSource source) {
-        if (item == null || source == null) return null;
+    public static LocalDateTime tryParsePubDate(String dateStr) {
+        if (isBlank(dateStr)) return null;
 
-        // title
-        String title = getElementText(item, "title");
+        String trimmed = dateStr.trim();
 
-        // link（兼容Atom可能使用href）
-        String link = getElementText(item, "link");
-        if ((link == null || link.isBlank())) {
-            NodeList linkNodes = item.getElementsByTagName("link");
-            if (linkNodes.getLength() > 0) {
-                Element linkElement = (Element) linkNodes.item(0);
-                link = linkElement.getAttribute("href");
+        for (DateTimeFormatter formatter : DATE_FORMATTERS) {
+            try {
+                ZonedDateTime zdt = ZonedDateTime.parse(trimmed, formatter);
+                return zdt.toLocalDateTime();
+            } catch (DateTimeParseException ignored) {
+                // 继续尝试
             }
         }
 
-        // guid 或 id
-        String guid = getElementText(item, "guid");
-        if (guid == null || guid.isBlank()) {
-            guid = getElementText(item, "id");
+        // 尝试LocalDateTime直接解析（无时区）
+        try {
+            return LocalDateTime.parse(trimmed, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (DateTimeParseException ignored) {
         }
 
-        // description / summary
-        String description = getElementText(item, "description");
-        if (description == null) {
-            description = getElementText(item, "summary");
-        }
+        log.warn("无法解析日期: {}", dateStr);
+        return null;
+    }
 
-        // content 优先：content:encoded -> content -> description
-        String content = getElementText(item, "content:encoded");
-        if (content == null) content = getElementText(item, "content");
-        if (content == null) content = description;
+    /**
+     * 简单清理HTML标签，保留纯文本
+     */
+    public static String cleanHtml(String html) {
+        if (html == null) return null;
+        return html
+                .replaceAll("<[^>]+>", "")
+                .replaceAll("&nbsp;", " ")
+                .replaceAll("&amp;", "&")
+                .replaceAll("&lt;", "<")
+                .replaceAll("&gt;", ">")
+                .replaceAll("&quot;", "\"")
+                .replaceAll("&#39;", "'")
+                .replaceAll("&apos;", "'")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
 
-        // author
-        String author = getElementText(item, "author");
-        if (author == null) {
-            author = getElementText(item, "dc:creator");
-        }
-
-        // pubDate published updated
-        String pubDateStr = getElementText(item, "pubDate");
-        if (pubDateStr == null) {
-            pubDateStr = getElementText(item, "published");
-            if (pubDateStr == null) {
-                pubDateStr = getElementText(item, "updated");
-            }
-        }
-        LocalDateTime pubDate = tryParsePubDate(pubDateStr);
-        if (pubDate == null) {
-            pubDate = LocalDateTime.now(); // 回退为当前时间
-        }
-
-        // categories
-        StringBuilder categories = new StringBuilder();
-        NodeList categoryNodes = item.getElementsByTagName("category");
-        for (int i = 0; i < categoryNodes.getLength(); i++) {
-            if (i > 0) categories.append(",");
-            categories.append(categoryNodes.item(i).getTextContent().trim());
-        }
-
-        // title fallback: 若title为空，则尝试使用description的前100字符
-        if (title == null || title.isBlank()) {
-            if (description != null && !description.isBlank()) {
-                String s = cleanHtml(description);
-                title = s.length() > 120 ? s.substring(0, 120) + "..." : s;
-            } else if (link != null) {
-                title = link;
-            } else {
-                title = "(no title)";
-            }
-        } else {
-            title = cleanHtml(title);
-        }
-
-        // guid fallback: 优先使用link作为唯一标识
-        if (guid == null || guid.isBlank()) {
-            guid = link != null ? link : String.valueOf(System.identityHashCode(item));
-        }
-
-        // clean description/content
-        description = cleanHtml(description);
-        if (content != null) content = cleanHtml(content);
-
-        return Article.builder()
-                .source(source)
-                .title(title)
-                .link(link != null ? link.trim() : null)
-                .guid(guid)
-                .description(description)
-                .content(content)
-                .author(author)
-                .pubDate(pubDate)
-                .categories(categories.toString())
-                .fetchedAt(LocalDateTime.now())
-                .build();
+    private static boolean isBlank(String str) {
+        return str == null || str.isBlank();
     }
 }

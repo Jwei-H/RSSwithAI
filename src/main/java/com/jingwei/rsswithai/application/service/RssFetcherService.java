@@ -4,48 +4,41 @@ import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
+import com.jingwei.rsswithai.utils.RssUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
-
-import com.jingwei.rsswithai.utils.RssUtils;
 
 /**
  * RSS抓取执行器服务（Fetcher）
- * 负责执行实际的HTTP请求、XML解析、内容提取，并将有效条目封装为标准化格式
+ * 负责执行实际的HTTP请求，并调用RssUtils进行统一解析
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class RssFetcherService {
 
-    
     private final RssSourceRepository rssSourceRepository;
     private final ArticleRepository articleRepository;
+
     // 使用虚拟线程的HttpClient
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
+
     @Value("${collector.fetch.timeout:30}")
     private int fetchTimeout;
+
     @Value("${collector.fetch.max-retries:3}")
     private int maxRetries;
 
@@ -79,32 +72,33 @@ public class RssFetcherService {
 
         while (retryCount < maxRetries) {
             try {
-                // 执行HTTP请求获取RSS内容
-                String rssContent = fetchRssContent(source.getUrl());
+                // 1. 执行HTTP请求获取RSS内容
+                String content = fetchRssContent(source.getUrl());
 
-                // 解析RSS内容
-                List<Article> articles = parseRssContent(rssContent, source);
+                // 2. 使用RssUtils统一解析（自动检测RSS/Atom格式）
+                List<Article> articles = RssUtils.parseContent(content, source);
 
-                // 去重并保存
+                // 3. 去重并保存文章
                 int savedCount = saveArticlesWithDeduplication(articles);
 
-                // 记录成功
+                // 4. 记录抓取成功
                 source.recordFetchSuccess();
                 rssSourceRepository.save(source);
 
-                log.info("RSS源抓取成功: id={}, name={}, 新文章数={}",
-                        source.getId(), source.getName(), savedCount);
+                log.info("RSS源抓取成功: id={}, name={}, 解析文章数={}, 新增文章数={}",
+                        source.getId(), source.getName(), articles.size(), savedCount);
                 return savedCount;
 
             } catch (Exception e) {
                 lastException = e;
                 retryCount++;
-                log.warn("RSS源抓取失败，重试 {}/{}: id={}, error={}",
-                        retryCount, maxRetries, source.getId(), e.getMessage());
+                log.warn("RSS源抓取失败，第{}次重试: id={}, name={}, error={}",
+                        retryCount, source.getId(), source.getName(), e.getMessage());
 
                 if (retryCount < maxRetries) {
                     try {
-                        Thread.sleep(1000L * retryCount); // 指数退避
+                        // 指数退避重试
+                        Thread.sleep(1000L * retryCount);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         break;
@@ -130,7 +124,7 @@ public class RssFetcherService {
                 .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(fetchTimeout))
                 .header("User-Agent", "RSSwithAI/1.0")
-                .header("Accept", "application/rss+xml, application/xml, text/xml, */*")
+                .header("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml, */*")
                 .GET()
                 .build();
 
@@ -144,46 +138,6 @@ public class RssFetcherService {
     }
 
     /**
-     * 解析RSS内容
-     */
-    private List<Article> parseRssContent(String content, RssSource source) throws Exception {
-        List<Article> articles = new ArrayList<>();
-
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        // 安全设置，防止XXE攻击
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        Document doc = builder.parse(new InputSource(new StringReader(content)));
-        doc.getDocumentElement().normalize();
-
-        // 尝试解析RSS 2.0格式
-        NodeList itemList = doc.getElementsByTagName("item");
-        if (itemList.getLength() == 0) {
-            // 尝试解析Atom格式
-            itemList = doc.getElementsByTagName("entry");
-        }
-
-        for (int i = 0; i < itemList.getLength(); i++) {
-            Element item = (Element) itemList.item(i);
-            Article article = RssUtils.buildArticleFromElement(item, source);
-            if (article != null) {
-                articles.add(article);
-            }
-        }
-
-        log.debug("解析RSS内容完成: source={}, 文章数={}", source.getName(), articles.size());
-        return articles;
-    }
-
-    /**
-     * 解析单个条目
-     */
-    
-
-    /**
      * 去重并保存文章
      */
     private int saveArticlesWithDeduplication(List<Article> articles) {
@@ -193,17 +147,21 @@ public class RssFetcherService {
             String guid = article.getGuid();
             String link = article.getLink();
 
+            // 检查是否已存在（基于guid或link去重）
             boolean exists = false;
             if (guid != null && !guid.isBlank()) {
                 exists = articleRepository.existsByGuid(guid);
             }
-            if (!exists) {
+            if (!exists && link != null && !link.isBlank()) {
                 exists = articleRepository.existsByLink(link);
             }
 
             if (!exists) {
                 articleRepository.save(article);
                 savedCount++;
+                log.debug("保存新文章: title={}, guid={}", article.getTitle(), guid);
+            } else {
+                log.debug("文章已存在，跳过: guid={}, link={}", guid, link);
             }
         }
 

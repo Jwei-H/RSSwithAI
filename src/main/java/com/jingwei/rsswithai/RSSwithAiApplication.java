@@ -2,12 +2,15 @@ package com.jingwei.rsswithai;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
+@SuppressWarnings("SpellCheckingInspection")
 @SpringBootApplication
-public class RsSwithAiApplication {
+@EnableScheduling
+public class RSSwithAiApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(RsSwithAiApplication.class, args);
+        SpringApplication.run(RSSwithAiApplication.class, args);
     }
 
 }
