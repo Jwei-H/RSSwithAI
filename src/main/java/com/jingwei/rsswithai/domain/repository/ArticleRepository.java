@@ -56,11 +56,6 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     Page<Article> findBySourceIdOrderByPubDateDesc(Long sourceId, Pageable pageable);
 
     /**
-     * 根据发布时间范围查找文章
-     */
-    List<Article> findByPubDateBetween(LocalDateTime start, LocalDateTime end);
-
-    /**
      * 根据RSS源和发布时间范围查找文章
      */
     List<Article> findBySourceAndPubDateAfter(RssSource source, LocalDateTime after);

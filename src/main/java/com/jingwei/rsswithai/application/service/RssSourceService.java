@@ -26,7 +26,7 @@ public class RssSourceService {
 
     private final RssSourceRepository rssSourceRepository;
 
-    @Value("${collector.fetch.default-interval:30}")
+    @Value("${collector.fetch.interval:30}")
     private int defaultFetchInterval;
 
     /**

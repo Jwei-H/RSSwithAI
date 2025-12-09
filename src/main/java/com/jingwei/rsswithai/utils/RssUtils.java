@@ -2,6 +2,7 @@ package com.jingwei.rsswithai.utils;
 
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.RssSource;
+import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -38,6 +39,8 @@ public final class RssUtils {
             DateTimeFormatter.ISO_DATE_TIME,
             DateTimeFormatter.ISO_OFFSET_DATE_TIME
     );
+
+    private static final FlexmarkHtmlConverter converter = FlexmarkHtmlConverter.builder().build();
 
     private RssUtils() {
     }
@@ -247,7 +250,7 @@ public final class RssUtils {
             String link,
             String guid,
             String description,
-            String content,
+            String rawContent,
             String author,
             String pubDateStr,
             String categories
@@ -280,13 +283,26 @@ public final class RssUtils {
         // 清理HTML
         description = cleanHtml(description);
 
+        // 将HTML内容转换为Markdown
+        String markdownContent = null;
+        if (rawContent != null && !rawContent.isBlank()) {
+            markdownContent = converter.convert(rawContent).trim();
+        }
+
+        // 如果转换后的内容为空，则认为此条目无效（可能是视频或格式不正确），不创建文章
+        if (isBlank(markdownContent)) {
+            log.debug("文章内容为空，已跳过: title={}, link={}", title, link);
+            return null;
+        }
+
         return Article.builder()
                 .source(source)
                 .title(title.trim())
                 .link(link != null ? link.trim() : null)
                 .guid(guid.trim())
                 .description(description)
-                .content(content)
+                .rawContent(rawContent)
+                .content(markdownContent)
                 .author(author != null ? author.trim() : null)
                 .pubDate(pubDate)
                 .categories(categories)
@@ -450,3 +466,4 @@ public final class RssUtils {
         UNKNOWN
     }
 }
+

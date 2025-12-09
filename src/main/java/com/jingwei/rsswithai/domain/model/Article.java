@@ -58,7 +58,13 @@ public class Article {
     private String description;
 
     /**
-     * 文章正文内容
+     * 文章正文原始内容 (HTML格式)
+     */
+    @Column(columnDefinition = "TEXT")
+    private String rawContent;
+
+    /**
+     * 文章正文内容 (Markdown格式)
      */
     @Column(columnDefinition = "TEXT")
     private String content;
