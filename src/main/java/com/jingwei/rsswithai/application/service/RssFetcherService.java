@@ -2,6 +2,7 @@ package com.jingwei.rsswithai.application.service;
 
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.RssSource;
+import com.jingwei.rsswithai.domain.model.SourceType;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
 import com.jingwei.rsswithai.utils.RssUtils;
@@ -42,6 +43,9 @@ public class RssFetcherService {
     @Value("${collector.fetch.max-retries:3}")
     private int maxRetries;
 
+    @Value("${rsshub.host:http://rsshub.app}")
+    private String rsshubHost;
+
     /**
      * 抓取单个RSS源
      *
@@ -73,7 +77,8 @@ public class RssFetcherService {
         while (retryCount < maxRetries) {
             try {
                 // 1. 执行HTTP请求获取RSS内容
-                String content = fetchRssContent(source.getUrl());
+                String fetchUrl = getFetchUrl(source);
+                String content = fetchRssContent(fetchUrl);
 
                 // 2. 使用RssUtils统一解析（自动检测RSS/Atom格式）
                 List<Article> articles = RssUtils.parseContent(content, source);
@@ -98,7 +103,7 @@ public class RssFetcherService {
                 if (retryCount < maxRetries) {
                     try {
                         // 指数退避重试
-                        Thread.sleep(1000L * retryCount);
+                        Thread.sleep(2000L * retryCount);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         break;
@@ -114,6 +119,17 @@ public class RssFetcherService {
         log.error("RSS源抓取最终失败: id={}, name={}, error={}",
                 source.getId(), source.getName(), errorMsg);
         return 0;
+    }
+
+    private String getFetchUrl(RssSource source) {
+        if (source.getType() == SourceType.RSSHUB) {
+            String route = source.getUrl();
+            if (!route.startsWith("/")) {
+                route = "/" + route;
+            }
+            return rsshubHost + route;
+        }
+        return source.getUrl();
     }
 
     /**

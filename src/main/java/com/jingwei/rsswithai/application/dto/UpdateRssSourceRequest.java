@@ -1,8 +1,8 @@
 package com.jingwei.rsswithai.application.dto;
 
 import com.jingwei.rsswithai.domain.model.SourceStatus;
+import com.jingwei.rsswithai.domain.model.SourceType;
 import jakarta.validation.constraints.Min;
-import org.hibernate.validator.constraints.URL;
 
 /**
  * 更新RSS源请求
@@ -10,9 +10,10 @@ import org.hibernate.validator.constraints.URL;
 public record UpdateRssSourceRequest(
     String name,
     
-    @URL(message = "URL格式不正确")
     String url,
-    
+
+    SourceType type,
+
     String description,
     
     @Min(value = 1, message = "抓取间隔至少为1分钟")

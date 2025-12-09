@@ -3,6 +3,7 @@ package com.jingwei.rsswithai.application.dto;
 import com.jingwei.rsswithai.domain.model.FetchStatus;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.model.SourceStatus;
+import com.jingwei.rsswithai.domain.model.SourceType;
 
 import java.time.LocalDateTime;
 
@@ -13,6 +14,7 @@ public record RssSourceDTO(
     Long id,
     String name,
     String url,
+    SourceType type,
     String description,
     Integer fetchIntervalMinutes,
     SourceStatus status,
@@ -31,6 +33,7 @@ public record RssSourceDTO(
             source.getId(),
             source.getName(),
             source.getUrl(),
+            source.getType(),
             source.getDescription(),
             source.getFetchIntervalMinutes(),
             source.getStatus(),

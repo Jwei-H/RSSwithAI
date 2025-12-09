@@ -5,6 +5,7 @@ import com.jingwei.rsswithai.application.dto.RssSourceDTO;
 import com.jingwei.rsswithai.application.dto.UpdateRssSourceRequest;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.model.SourceStatus;
+import com.jingwei.rsswithai.domain.model.SourceType;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -36,14 +37,10 @@ public class RssSourceService {
     public RssSourceDTO createSource(CreateRssSourceRequest request) {
         log.info("创建RSS源: {}", request.name());
         
-        // 检查URL是否已存在
-        if (rssSourceRepository.existsByUrl(request.url())) {
-            throw new IllegalArgumentException("该URL已存在: " + request.url());
-        }
-
         RssSource source = RssSource.builder()
             .name(request.name())
             .url(request.url())
+            .type(request.type())
             .description(request.description())
             .fetchIntervalMinutes(request.fetchIntervalMinutes() != null 
                 ? request.fetchIntervalMinutes() 
@@ -68,14 +65,14 @@ public class RssSourceService {
 
         // 如果URL变更，检查新URL是否已存在
         if (request.url() != null && !request.url().equals(source.getUrl())) {
-            if (rssSourceRepository.existsByUrl(request.url())) {
-                throw new IllegalArgumentException("该URL已存在: " + request.url());
-            }
             source.setUrl(request.url());
         }
 
         if (request.name() != null) {
             source.setName(request.name());
+        }
+        if (request.type() != null) {
+            source.setType(request.type());
         }
         if (request.description() != null) {
             source.setDescription(request.description());

@@ -28,10 +28,18 @@ public class RssSource {
     private String name;
 
     /**
-     * RSS源URL
+     * RSS源URL或RSSHub路由
      */
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String url;
+
+    /**
+     * 源类型 (ORIGIN, RSSHUB)
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private SourceType type = SourceType.ORIGIN;
 
     /**
      * 源描述
@@ -137,7 +145,6 @@ public class RssSource {
      */
     public void recordFetchFailure(String errorMessage) {
         this.lastFetchStatus = FetchStatus.FAILED;
-        this.lastFetchTime = LocalDateTime.now();
         this.lastFetchError = errorMessage;
         this.failureCount++;
     }
