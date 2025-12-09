@@ -1,5 +1,6 @@
 package com.jingwei.rsswithai.application.service;
 
+import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,23 +25,32 @@ public class RssSchedulerService {
 
     private final RssSourceRepository rssSourceRepository;
     private final RssFetcherService rssFetcherService;
+    private final AppConfig appConfig;
 
     // 使用虚拟线程执行器实现并发抓取
     private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
     
     // 防止任务重叠执行
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
+    private long lastRunTime = 0;
 
     /**
      * 定时任务：每分钟检查需要抓取的源
      * 实际抓取由各源的fetchIntervalMinutes控制
      */
-    @Scheduled(fixedRate = 60000) // 每分钟执行一次
+    @Scheduled(fixedRate = 1000) // 每秒检查一次，实际执行频率由配置控制
     public void scheduledFetch() {
+        long interval = appConfig.getCollectorFetchInterval();
+        if (System.currentTimeMillis() - lastRunTime < interval) {
+            return;
+        }
+
         if (!isRunning.compareAndSet(false, true)) {
             log.debug("上一轮抓取任务尚未完成，跳过本次调度");
             return;
         }
+
+        lastRunTime = System.currentTimeMillis();
 
         try {
             log.debug("开始检查需要抓取的RSS源...");

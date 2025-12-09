@@ -1,5 +1,6 @@
 package com.jingwei.rsswithai.application.service;
 
+import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.model.SourceType;
@@ -8,7 +9,6 @@ import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
 import com.jingwei.rsswithai.utils.RssUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,21 +30,13 @@ public class RssFetcherService {
 
     private final RssSourceRepository rssSourceRepository;
     private final ArticleRepository articleRepository;
+    private final AppConfig appConfig;
 
     // 使用虚拟线程的HttpClient
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
-
-    @Value("${collector.fetch.timeout:30}")
-    private int fetchTimeout;
-
-    @Value("${collector.fetch.max-retries:3}")
-    private int maxRetries;
-
-    @Value("${rsshub.host:http://rsshub.app}")
-    private String rsshubHost;
 
     /**
      * 抓取单个RSS源
@@ -73,6 +65,7 @@ public class RssFetcherService {
 
         int retryCount = 0;
         Exception lastException = null;
+        int maxRetries = appConfig.getCollectorFetchMaxRetries();
 
         while (retryCount < maxRetries) {
             try {
@@ -127,7 +120,7 @@ public class RssFetcherService {
             if (!route.startsWith("/")) {
                 route = "/" + route;
             }
-            return rsshubHost + route;
+            return appConfig.getRsshubHost() + route;
         }
         return source.getUrl();
     }
@@ -138,7 +131,7 @@ public class RssFetcherService {
     private String fetchRssContent(String url) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(fetchTimeout))
+                .timeout(Duration.ofSeconds(appConfig.getCollectorFetchTimeout()))
                 .header("User-Agent", "RSSwithAI/1.0")
                 .header("Accept", "application/rss+xml, application/atom+xml, application/xml, text/xml, */*")
                 .GET()
