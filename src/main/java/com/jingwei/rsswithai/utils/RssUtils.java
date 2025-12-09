@@ -2,7 +2,11 @@ package com.jingwei.rsswithai.utils;
 
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.RssSource;
+import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
+import com.vladsch.flexmark.parser.Parser;
+import com.vladsch.flexmark.util.ast.Node;
+import com.vladsch.flexmark.util.data.MutableDataSet;
 import lombok.extern.slf4j.Slf4j;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -40,7 +44,18 @@ public final class RssUtils {
             DateTimeFormatter.ISO_OFFSET_DATE_TIME
     );
 
-    private static final FlexmarkHtmlConverter converter = FlexmarkHtmlConverter.builder().build();
+    private static final FlexmarkHtmlConverter HTML_TO_MD_CONVERTER;
+    private static final Parser MD_PARSER;
+    private static final HtmlRenderer MD_TO_HTML_RENDERER;
+
+    static {
+        // 用于 HTML -> Markdown
+        HTML_TO_MD_CONVERTER = FlexmarkHtmlConverter.builder().build();
+        // 用于 Markdown -> HTML
+        MutableDataSet mdToHtmlOptions = new MutableDataSet();
+        MD_PARSER = Parser.builder(mdToHtmlOptions).build();
+        MD_TO_HTML_RENDERER = HtmlRenderer.builder(mdToHtmlOptions).build();
+    }
 
     private RssUtils() {
     }
@@ -286,7 +301,12 @@ public final class RssUtils {
         // 将HTML内容转换为Markdown
         String markdownContent = null;
         if (rawContent != null && !rawContent.isBlank()) {
-            markdownContent = converter.convert(rawContent).trim();
+            // 1. 先将输入（可能是Markdown或HTML）统一转换为HTML
+            Node document = MD_PARSER.parse(rawContent);
+            String unifiedHtml = MD_TO_HTML_RENDERER.render(document);
+
+            // 2. 再将统一后的HTML转换为Markdown
+            markdownContent = HTML_TO_MD_CONVERTER.convert(unifiedHtml).trim().replace("\\*\\*", "**");
         }
 
         // 如果转换后的内容为空，则认为此条目无效（可能是视频或格式不正确），不创建文章
