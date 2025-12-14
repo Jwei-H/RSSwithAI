@@ -105,12 +105,4 @@ public class Article {
             fetchedAt = LocalDateTime.now();
         }
     }
-
-    /**
-     * 获取用于去重的唯一标识
-     * 优先使用guid，其次使用link
-     */
-    public String getUniqueIdentifier() {
-        return guid != null && !guid.isBlank() ? guid : link;
-    }
 }

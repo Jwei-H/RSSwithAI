@@ -2,6 +2,8 @@ package com.jingwei.rsswithai.domain.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -90,38 +92,21 @@ public class RssSource {
     /**
      * 创建时间
      */
+    @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     /**
      * 更新时间
      */
+    @UpdateTimestamp
     @Column(nullable = false)
     private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    /**
-     * 判断是否可以进行抓取
-     */
-    public boolean canFetch() {
-        return status == SourceStatus.ENABLED && lastFetchStatus != FetchStatus.FETCHING;
-    }
-
     /**
      * 判断是否需要抓取（基于抓取间隔）
      */
     public boolean shouldFetch() {
-        if (!canFetch()) {
+        if (!(status == SourceStatus.ENABLED && lastFetchStatus != FetchStatus.FETCHING)) {
             return false;
         }
         if (lastFetchTime == null) {
