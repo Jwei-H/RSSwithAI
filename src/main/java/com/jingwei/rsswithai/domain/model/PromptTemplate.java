@@ -2,6 +2,7 @@ package com.jingwei.rsswithai.domain.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -16,6 +17,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class PromptTemplate {
 
     @Id
@@ -29,9 +31,11 @@ public class PromptTemplate {
     private String description;
 
     @Column(name = "latest_version", nullable = false)
+    @Builder.Default
     private Integer latestVersion = 0;
 
     @OneToMany(mappedBy = "template", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<PromptVersion> versions = new ArrayList<>();
 
     @CreationTimestamp

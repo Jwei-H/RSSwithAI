@@ -1,15 +1,25 @@
 package com.jingwei.rsswithai.application.dto;
 
-import lombok.Data;
+import com.jingwei.rsswithai.domain.model.PromptVersion;
 
 import java.time.LocalDateTime;
 
-@Data
-public class PromptVersionDTO {
-    private Long id;
-    private Long templateId;
-    private Integer version;
-    private String content;
-    private Boolean immutable;
-    private LocalDateTime createdAt;
+public record PromptVersionDTO(
+        Long id,
+        Long templateId,
+        Integer version,
+        String content,
+        Boolean immutable,
+        LocalDateTime createdAt
+) {
+    public static PromptVersionDTO from(PromptVersion entity) {
+        return new PromptVersionDTO(
+                entity.getId(),
+                entity.getTemplate().getId(),
+                entity.getVersion(),
+                entity.getContent(),
+                entity.getImmutable(),
+                entity.getCreatedAt()
+        );
+    }
 }

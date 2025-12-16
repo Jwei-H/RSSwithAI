@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,22 +24,24 @@ public class PromptService {
 
     @Transactional
     public PromptTemplateDTO createTemplate(CreatePromptTemplateRequest request) {
-        PromptTemplate template = new PromptTemplate();
-        template.setName(request.getName());
-        template.setDescription(request.getDescription());
-        template.setLatestVersion(1);
+        PromptTemplate template = PromptTemplate.builder()
+                .name(request.getName())
+                .description(request.getDescription())
+                .latestVersion(1)
+                .build();
 
         PromptTemplate savedTemplate = templateRepository.save(template);
 
-        PromptVersion version = new PromptVersion();
-        version.setTemplate(savedTemplate);
-        version.setVersion(1);
-        version.setContent("");
-        version.setImmutable(false);
+        PromptVersion version = PromptVersion.builder()
+                .template(savedTemplate)
+                .version(1)
+                .content("")
+                .immutable(false)
+                .build();
 
         versionRepository.save(version);
 
-        return convertToDTO(savedTemplate, version);
+        return PromptTemplateDTO.from(savedTemplate, version);
     }
 
     @Transactional
@@ -53,7 +54,7 @@ public class PromptService {
                 .map(t -> {
                     PromptVersion latest = versionRepository.findByTemplateIdAndVersion(t.getId(), t.getLatestVersion())
                             .orElse(null);
-                    return convertToDTO(t, latest);
+                    return PromptTemplateDTO.from(t, latest);
                 })
                 .collect(Collectors.toList());
     }
@@ -61,7 +62,7 @@ public class PromptService {
     public PromptVersionDTO getVersion(Long templateId, Integer version) {
         PromptVersion pv = versionRepository.findByTemplateIdAndVersion(templateId, version)
                 .orElseThrow(() -> new RuntimeException("Version not found"));
-        return convertToVersionDTO(pv);
+        return PromptVersionDTO.from(pv);
     }
 
     @Transactional
@@ -74,18 +75,18 @@ public class PromptService {
         }
         PromptTemplate template = pv.getTemplate();
         if (!template.getLatestVersion().equals(version)) {
-             throw new RuntimeException("Only the latest version can be modified");
+            throw new RuntimeException("Only the latest version can be modified");
         }
         pv.setContent(request.getContent());
         PromptVersion saved = versionRepository.save(pv);
-        return convertToVersionDTO(saved);
+        return PromptVersionDTO.from(saved);
     }
 
     @Transactional
     public void freezeVersion(Long templateId, Integer version) {
         PromptVersion pv = versionRepository.findByTemplateIdAndVersion(templateId, version)
                 .orElseThrow(() -> new RuntimeException("Version not found"));
-        
+
         pv.setImmutable(true);
         versionRepository.save(pv);
     }
@@ -100,45 +101,21 @@ public class PromptService {
                 .orElseThrow(() -> new RuntimeException("Latest version not found"));
 
         if (!currentLatest.getImmutable()) {
-             throw new RuntimeException("Current latest version must be locked (frozen) before creating a new version.");
+            throw new RuntimeException("Current latest version must be locked (frozen) before creating a new version.");
         }
 
-        PromptVersion newVersion = new PromptVersion();
-        newVersion.setTemplate(template);
-        newVersion.setVersion(currentLatestVersionNum + 1);
-        newVersion.setContent(currentLatest.getContent());
-        newVersion.setImmutable(false);
+        PromptVersion newVersion = PromptVersion.builder()
+                .template(template)
+                .version(currentLatestVersionNum + 1)
+                .content(currentLatest.getContent())
+                .immutable(false)
+                .build();
 
         versionRepository.save(newVersion);
 
         template.setLatestVersion(newVersion.getVersion());
         templateRepository.save(template);
 
-        return convertToVersionDTO(newVersion);
-    }
-
-    private PromptTemplateDTO convertToDTO(PromptTemplate template, PromptVersion latestVersion) {
-        PromptTemplateDTO dto = new PromptTemplateDTO();
-        dto.setId(template.getId());
-        dto.setName(template.getName());
-        dto.setDescription(template.getDescription());
-        dto.setLatestVersion(template.getLatestVersion());
-        dto.setCreatedAt(template.getCreatedAt());
-        dto.setUpdatedAt(template.getUpdatedAt());
-        if (latestVersion != null) {
-            dto.setLatestVersionDetail(convertToVersionDTO(latestVersion));
-        }
-        return dto;
-    }
-
-    private PromptVersionDTO convertToVersionDTO(PromptVersion version) {
-        PromptVersionDTO dto = new PromptVersionDTO();
-        dto.setId(version.getId());
-        dto.setTemplateId(version.getTemplate().getId());
-        dto.setVersion(version.getVersion());
-        dto.setContent(version.getContent());
-        dto.setImmutable(version.getImmutable());
-        dto.setCreatedAt(version.getCreatedAt());
-        return dto;
+        return PromptVersionDTO.from(newVersion);
     }
 }

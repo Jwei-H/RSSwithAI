@@ -2,6 +2,7 @@ package com.jingwei.rsswithai.domain.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class PromptVersion {
 
     @Id
@@ -30,6 +32,7 @@ public class PromptVersion {
     private String content;
 
     @Column(nullable = false)
+    @Builder.Default
     private Boolean immutable = false;
 
     @CreationTimestamp

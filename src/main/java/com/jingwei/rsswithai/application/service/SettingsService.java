@@ -28,7 +28,7 @@ public class SettingsService {
         loadSettings();
     }
 
-    public void loadSettings() {
+    private void loadSettings() {
         log.info("Loading settings from database...");
         List<Setting> settings = settingRepository.findAll();
         Map<String, String> settingMap = settings.stream()
@@ -56,7 +56,7 @@ public class SettingsService {
         updateAppConfig(newSettings);
     }
 
-    private synchronized void updateAppConfig(Map<String, String> settings) {
+    private void updateAppConfig(Map<String, String> settings) {
         Field[] fields = AppConfig.class.getDeclaredFields();
         for (Field field : fields) {
             if (field.isAnnotationPresent(SettingKey.class)) {
