@@ -1,16 +1,16 @@
 package com.jingwei.rsswithai.application.service;
 
+import com.jingwei.rsswithai.application.Event.ArticleProcessEvent;
 import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.model.SourceType;
-import com.jingwei.rsswithai.domain.repository.ArticleRepository;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
 import com.jingwei.rsswithai.utils.RssUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -29,8 +29,9 @@ import java.util.List;
 public class RssFetcherService {
 
     private final RssSourceRepository rssSourceRepository;
-    private final ArticleRepository articleRepository;
+    private final ArticleService articleService;
     private final AppConfig appConfig;
+    private final ApplicationEventPublisher eventPublisher;
 
     // 使用虚拟线程的HttpClient
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -43,7 +44,6 @@ public class RssFetcherService {
      *
      * @return 新抓取的文章数量
      */
-    @Transactional
     public int fetchSource(Long sourceId) {
         RssSource source = rssSourceRepository.findById(sourceId)
                 .orElseThrow(() -> new IllegalArgumentException("RSS源不存在: " + sourceId));
@@ -55,62 +55,75 @@ public class RssFetcherService {
      *
      * @return 新抓取的文章数量
      */
-    @Transactional
     public int fetchSource(RssSource source) {
         log.info("开始抓取RSS源: id={}, name={}, url={}", source.getId(), source.getName(), source.getUrl());
 
-        // 标记为正在抓取
+        // 1. 短事务：标记为正在抓取 (立即提交到DB)
         source.markAsFetching();
         rssSourceRepository.save(source);
 
         int retryCount = 0;
         Exception lastException = null;
         int maxRetries = appConfig.getCollectorFetchMaxRetries();
+        boolean success = false; // 标记最终是否成功
 
-        while (retryCount < maxRetries) {
-            try {
-                // 1. 执行HTTP请求获取RSS内容
-                String fetchUrl = getFetchUrl(source);
-                String content = fetchRssContent(fetchUrl);
+        try {
+            while (retryCount < maxRetries) {
+                try {
+                    // 2. 执行耗时操作（网络IO + 解析）
+                    String fetchUrl = getFetchUrl(source);
+                    String content = fetchRssContent(fetchUrl);
 
-                // 2. 使用RssUtils统一解析（自动检测RSS/Atom格式）
-                List<Article> articles = RssUtils.parseContent(content, source);
+                    List<Article> articles = RssUtils.parseContent(content, source);
 
-                // 3. 去重并保存文章
-                int savedCount = saveArticlesWithDeduplication(articles);
+                    // 3. 去重并保存文章
+                    int savedCount = 0;
+                    for (Article article : articles) {
+                        Article savedArticle = articleService.saveArticleIfNotExists(article);
+                        if (savedArticle != null) {
+                            log.debug("保存新文章: title={}, guid={}", article.getTitle(), article.getGuid());
+                            eventPublisher.publishEvent(new ArticleProcessEvent(this, savedArticle.getId()));
+                            savedCount++;
+                        }
+                    }
 
-                // 4. 记录抓取成功
-                source.recordFetchSuccess();
-                rssSourceRepository.save(source);
+                    // 4. 短事务：标记抓取成功
+                    source.recordFetchSuccess();
+                    rssSourceRepository.save(source);
 
-                log.info("RSS源抓取成功: id={}, name={}, 解析文章数={}, 新增文章数={}",
-                        source.getId(), source.getName(), articles.size(), savedCount);
-                return savedCount;
+                    log.info("RSS源抓取成功: id={}, name={}, 新增文章数={}",
+                            source.getId(), source.getName(), savedCount);
 
-            } catch (Exception e) {
-                lastException = e;
-                retryCount++;
-                log.warn("RSS源抓取失败，第{}次重试: id={}, name={}, error={}",
-                        retryCount, source.getId(), source.getName(), e.getMessage());
+                    success = true;
+                    return savedCount;
 
-                if (retryCount < maxRetries) {
-                    try {
-                        // 指数退避重试
-                        Thread.sleep(2000L * retryCount);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        break;
+                } catch (Exception e) {
+                    lastException = e;
+                    retryCount++;
+                    log.warn("RSS源抓取失败，第{}次重试: id={}, name={}, error={}",
+                            retryCount, source.getId(), source.getName(), e.getMessage());
+
+                    if (retryCount < maxRetries) {
+                        try {
+                            Thread.sleep(2000L * retryCount);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
                     }
                 }
             }
+        } finally {
+            // 5. 兜底处理：如果未成功（重试耗尽 或 发生未捕获的RuntimeException），强制标记为失败
+            if (!success) {
+                String errorMsg = lastException != null ? lastException.getMessage() : "未知错误或被中断";
+                source.recordFetchFailure(errorMsg);
+                rssSourceRepository.save(source);
+                log.error("RSS源抓取最终失败: id={}, name={}, error={}",
+                        source.getId(), source.getName(), errorMsg);
+            }
         }
 
-        // 所有重试都失败
-        String errorMsg = lastException != null ? lastException.getMessage() : "未知错误";
-        source.recordFetchFailure(errorMsg);
-        rssSourceRepository.save(source);
-        log.error("RSS源抓取最终失败: id={}, name={}, error={}",
-                source.getId(), source.getName(), errorMsg);
         return 0;
     }
 
@@ -146,34 +159,4 @@ public class RssFetcherService {
         return response.body();
     }
 
-    /**
-     * 去重并保存文章
-     */
-    private int saveArticlesWithDeduplication(List<Article> articles) {
-        int savedCount = 0;
-
-        for (Article article : articles) {
-            String guid = article.getGuid();
-            String link = article.getLink();
-
-            // 检查是否已存在（基于guid或link去重）
-            boolean exists = false;
-            if (guid != null && !guid.isBlank()) {
-                exists = articleRepository.existsByGuid(guid);
-            }
-            if (!exists && link != null && !link.isBlank()) {
-                exists = articleRepository.existsByLink(link);
-            }
-
-            if (!exists) {
-                articleRepository.save(article);
-                savedCount++;
-                log.debug("保存新文章: title={}, guid={}", article.getTitle(), guid);
-            } else {
-                log.debug("文章已存在，跳过: guid={}, link={}", guid, link);
-            }
-        }
-
-        return savedCount;
-    }
 }

@@ -10,10 +10,10 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "articles", indexes = {
-    @Index(name = "idx_article_link", columnList = "link"),
-    @Index(name = "idx_article_guid", columnList = "guid"),
-    @Index(name = "idx_article_pub_date", columnList = "pubDate"),
-    @Index(name = "idx_article_source", columnList = "source_id")
+        @Index(name = "idx_article_link", columnList = "link"),
+        @Index(name = "idx_article_guid", columnList = "guid"),
+        @Index(name = "idx_article_pub_date", columnList = "pubDate"),
+        @Index(name = "idx_article_source", columnList = "source_id")
 })
 @Getter
 @Setter
@@ -32,6 +32,12 @@ public class Article {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_id", nullable = false)
     private RssSource source;
+
+    /**
+     * RSS源名称（冗余字段，方便查询）
+     */
+    @Column(length = 200)
+    private String sourceName;
 
     /**
      * 文章标题

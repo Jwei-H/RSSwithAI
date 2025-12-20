@@ -1,5 +1,6 @@
 package com.jingwei.rsswithai.application.service;
 
+import com.jingwei.rsswithai.application.Event.ConfigUpdateEvent;
 import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.config.SettingKey;
 import com.jingwei.rsswithai.domain.model.Setting;
@@ -7,6 +8,7 @@ import com.jingwei.rsswithai.domain.repository.SettingRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ public class SettingsService {
 
     private final SettingRepository settingRepository;
     private final AppConfig appConfig;
+    private final ApplicationEventPublisher eventPublisher;
 
     @PostConstruct
     public void init() {
@@ -31,7 +34,7 @@ public class SettingsService {
     private void loadSettings() {
         log.info("Loading settings from database...");
         List<Setting> settings = settingRepository.findAll();
-        Map<String, String> settingMap = settings.stream()
+        Map<String, String> settingMap = settings.stream().filter(s -> s.getValue() != null)
                 .collect(Collectors.toMap(Setting::getKey, Setting::getValue));
 
         updateAppConfig(settingMap);
@@ -54,6 +57,7 @@ public class SettingsService {
             settingRepository.save(setting);
         }
         updateAppConfig(newSettings);
+        eventPublisher.publishEvent(new ConfigUpdateEvent(this));
     }
 
     private void updateAppConfig(Map<String, String> settings) {
