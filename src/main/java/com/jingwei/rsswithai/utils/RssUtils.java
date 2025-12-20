@@ -317,6 +317,7 @@ public final class RssUtils {
 
         return Article.builder()
                 .source(source)
+                .sourceName(source.getName())
                 .title(title.trim())
                 .link(link != null ? link.trim() : null)
                 .guid(guid.trim())
@@ -486,4 +487,3 @@ public final class RssUtils {
         UNKNOWN
     }
 }
-

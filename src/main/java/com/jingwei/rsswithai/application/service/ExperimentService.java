@@ -19,7 +19,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -121,15 +121,15 @@ public class ExperimentService {
         try {
             Map<String, Object> model = Map.of(
                     "title", article.getTitle(),
-                    "author", article.getAuthor() != null ? article.getAuthor() : "",
-                    "content", article.getContent() != null ? article.getContent() : ""
+                    "author", Objects.requireNonNullElse(article.getAuthor(), ""),
+                    "content", article.getContent(),
+                    "source", article.getSource().getName(),
+                    "pubDate", article.getPubDate().toString()
             );
 
             Prompt prompt = aiPromptTemplate.create(model);
             String promptContent = prompt.getContents();
             log.debug("Generated prompt for article {}: {}", articleId, promptContent);
-            resultBuilder.promptContent(promptContent);
-
             ChatResponse response = chatModel.call(prompt);
 
             long endTime = System.currentTimeMillis();
@@ -138,7 +138,8 @@ public class ExperimentService {
             Integer inputTokens = response.getMetadata().getUsage().getPromptTokens();
             Integer outputTokens = response.getMetadata().getUsage().getCompletionTokens();
 
-            resultBuilder.analysisResult(content)
+            resultBuilder.promptContent(promptContent)
+                    .analysisResult(content)
                     .inputTokens(inputTokens)
                     .outputTokens(outputTokens)
                     .executionTimeMs(endTime - startTime)
@@ -163,28 +164,25 @@ public class ExperimentService {
                 .temperature(config.getTemperature())
                 .topP(config.getTopP())
                 .maxTokens(config.getMaxTokens())
-//                .extraBody(Map.of("topK", config.getTopK()))
+                .seed(Math.toIntExact(config.getSeed()))
+                .extraBody(Map.of("topK", Objects.requireNonNullElse(config.getTopK(), "")))
                 .build();
         return OpenAiChatModel.builder().openAiApi(openAiApi).defaultOptions(options).build();
     }
 
     public Page<ExperimentDTO> getExperiments(ExperimentStatus status, Pageable pageable) {
-        Page<Experiment> page;
-        if (status != null) {
-            page = experimentRepository.findByStatus(status, pageable);
-        } else {
-            page = experimentRepository.findAll(pageable);
-        }
-        return page.map(ExperimentDTO::fromEntity);
+        return Objects.nonNull(status) ?
+                experimentRepository.findByStatus(status, pageable).map(ExperimentDTO::fromEntity) :
+                experimentRepository.findAll(pageable).map(ExperimentDTO::fromEntity);
     }
 
+    @Transactional(readOnly = true)
     public ExperimentDetailDTO getExperimentDetail(Long id) {
         Experiment experiment = experimentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Experiment not found"));
-
-        List<AnalysisResult> results = analysisResultRepository.findByExperimentId(id);
-
-        return ExperimentDetailDTO.fromEntity(experiment, results);
+        PromptVersion promptVersion = promptVersionRepository.findByTemplateIdAndVersion(experiment.getPromptTemplate().getId(), experiment.getPromptVersion())
+                .orElseThrow(() -> new IllegalArgumentException("PromptVersion not found"));
+        return ExperimentDetailDTO.fromEntity(experiment, promptVersion);
     }
 
     public void deleteExperiment(Long id) {
@@ -198,15 +196,22 @@ public class ExperimentService {
         experimentRepository.delete(experiment);
     }
 
-    public List<AnalysisResultWithExperimentDTO> getAnalysisResultsByArticle(Long articleId) {
-        List<AnalysisResult> results = analysisResultRepository.findByArticleId(articleId);
-        return results.stream().map(AnalysisResultWithExperimentDTO::fromEntity).collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public Page<AnalysisResultDTO> getAnalysisResultsByArticle(Long articleId, Pageable pageable) {
+        return analysisResultRepository.findPageByArticleId(articleId, pageable)
+                .map(AnalysisResultDTO::fromEntity);
     }
 
+    @Transactional(readOnly = true)
+    public Page<AnalysisResultDTO> getAnalysisResultsByExperiment(Long experimentId, Pageable pageable) {
+        return analysisResultRepository.findPageByExperimentId(experimentId, pageable)
+                .map(AnalysisResultDTO::fromEntity);
+    }
+
+    @Transactional(readOnly = true)
     public AnalysisResultDetailDTO getAnalysisResultDetail(Long id) {
-        AnalysisResult result = analysisResultRepository.findById(id)
+        AnalysisResult result = analysisResultRepository.findWithExperimentAndArticleById(id)
                 .orElseThrow(() -> new IllegalArgumentException("AnalysisResult not found"));
         return AnalysisResultDetailDTO.fromEntity(result);
     }
-
 }

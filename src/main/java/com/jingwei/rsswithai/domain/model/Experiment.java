@@ -39,7 +39,6 @@ public class Experiment {
     @Column(name = "article_ids", columnDefinition = "bigint[]")
     private List<Long> articleIds = new ArrayList<>();
 
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "model_config_id", nullable = false)
     private ModelConfig modelConfig;

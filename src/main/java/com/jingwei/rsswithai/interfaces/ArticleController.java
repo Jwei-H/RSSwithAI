@@ -8,7 +8,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 文章REST控制器
@@ -53,8 +56,8 @@ public class ArticleController {
     public ResponseEntity<Page<ArticleDTO>> getArticlesBySource(
             @PathVariable Long sourceId,
             @PageableDefault(size = 20) Pageable pageable) {
-        log.debug("获取RSS源文章: sourceId={}, page={}, size={}", 
-            sourceId, pageable.getPageNumber(), pageable.getPageSize());
+        log.debug("获取RSS源文章: sourceId={}, page={}, size={}",
+                sourceId, pageable.getPageNumber(), pageable.getPageSize());
         Page<ArticleDTO> articles = articleService.getArticlesBySource(sourceId, pageable);
         return ResponseEntity.ok(articles);
     }

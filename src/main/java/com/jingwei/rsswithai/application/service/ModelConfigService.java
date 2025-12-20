@@ -7,11 +7,10 @@ import com.jingwei.rsswithai.domain.model.ModelConfig;
 import com.jingwei.rsswithai.domain.repository.ModelConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,10 +19,9 @@ public class ModelConfigService {
 
     private final ModelConfigRepository modelConfigRepository;
 
-    public List<ModelConfigDTO> getAllConfigs() {
-        return modelConfigRepository.findAll().stream()
-                .map(ModelConfigDTO::from)
-                .collect(Collectors.toList());
+    public Page<ModelConfigDTO> getAllConfigs(Pageable pageable) {
+        return modelConfigRepository.findAll(pageable)
+                .map(ModelConfigDTO::from);
     }
 
     public ModelConfigDTO getConfig(Long id) {

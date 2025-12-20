@@ -10,7 +10,9 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "prompt_versions")
+@Table(name = "prompt_versions",
+        indexes = {
+                @Index(name = "idx_prompt_version_template_id_version", columnList = "template_id, version", unique = true)})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

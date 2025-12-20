@@ -7,10 +7,11 @@ import com.jingwei.rsswithai.application.service.ModelConfigService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/model-configs")
@@ -21,8 +22,8 @@ public class ModelConfigController {
     private final ModelConfigService modelConfigService;
 
     @GetMapping
-    public ResponseEntity<List<ModelConfigDTO>> getAllConfigs() {
-        return ResponseEntity.ok(modelConfigService.getAllConfigs());
+    public ResponseEntity<Page<ModelConfigDTO>> getAllConfigs(@PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(modelConfigService.getAllConfigs(pageable));
     }
 
     @PostMapping

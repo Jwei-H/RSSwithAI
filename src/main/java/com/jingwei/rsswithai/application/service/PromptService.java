@@ -9,11 +9,10 @@ import com.jingwei.rsswithai.domain.model.PromptVersion;
 import com.jingwei.rsswithai.domain.repository.PromptTemplateRepository;
 import com.jingwei.rsswithai.domain.repository.PromptVersionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -49,14 +48,9 @@ public class PromptService {
         templateRepository.deleteById(templateId);
     }
 
-    public List<PromptTemplateDTO> getAllTemplates() {
-        return templateRepository.findAll().stream()
-                .map(t -> {
-                    PromptVersion latest = versionRepository.findByTemplateIdAndVersion(t.getId(), t.getLatestVersion())
-                            .orElse(null);
-                    return PromptTemplateDTO.from(t, latest);
-                })
-                .collect(Collectors.toList());
+    public Page<PromptTemplateDTO> getAllTemplates(Pageable pageable) {
+        return templateRepository.findAll(pageable)
+                .map(t -> PromptTemplateDTO.from(t, null));
     }
 
     public PromptVersionDTO getVersion(Long templateId, Integer version) {

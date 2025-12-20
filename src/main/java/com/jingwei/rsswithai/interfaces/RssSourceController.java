@@ -8,11 +8,12 @@ import com.jingwei.rsswithai.application.service.RssSourceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * RSS源管理REST控制器
@@ -32,9 +33,9 @@ public class RssSourceController {
      * GET /api/v1/rss-sources
      */
     @GetMapping
-    public ResponseEntity<List<RssSourceDTO>> getAllSources() {
+    public ResponseEntity<Page<RssSourceDTO>> getAllSources(@PageableDefault(size = 20) Pageable pageable) {
         log.debug("获取所有RSS源");
-        List<RssSourceDTO> sources = rssSourceService.getAllSources();
+        Page<RssSourceDTO> sources = rssSourceService.getAllSources(pageable);
         return ResponseEntity.ok(sources);
     }
 

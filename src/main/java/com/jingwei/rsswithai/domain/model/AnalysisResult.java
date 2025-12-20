@@ -12,7 +12,10 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "analysis_results")
+@Table(name = "analysis_results", indexes = {
+        @Index(name = "idx_analysis_results_article_id", columnList = "article_id"),
+        @Index(name = "idx_analysis_results_experiment_id", columnList = "experiment_id")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
