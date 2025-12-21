@@ -1,4 +1,4 @@
-package com.jingwei.rsswithai.interfaces;
+package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.dto.CreateRssSourceRequest;
 import com.jingwei.rsswithai.application.dto.RssSourceDTO;
@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
  * 提供RSS源的CRUD操作和手动触发抓取的API
  */
 @RestController
-@RequestMapping("/api/v1/rss-sources")
+@RequestMapping("/api/admin/v1/rss-sources")
 @RequiredArgsConstructor
 @Slf4j
 public class RssSourceController {

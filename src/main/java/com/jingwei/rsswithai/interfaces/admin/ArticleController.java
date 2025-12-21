@@ -1,4 +1,4 @@
-package com.jingwei.rsswithai.interfaces;
+package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.dto.ArticleDTO;
 import com.jingwei.rsswithai.application.service.ArticleService;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 提供文章的查询API
  */
 @RestController
-@RequestMapping("/api/v1/articles")
+@RequestMapping("/api/admin/v1/articles")
 @RequiredArgsConstructor
 @Slf4j
 public class ArticleController {

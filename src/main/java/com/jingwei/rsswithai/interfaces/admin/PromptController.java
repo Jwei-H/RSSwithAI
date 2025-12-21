@@ -1,4 +1,4 @@
-package com.jingwei.rsswithai.interfaces;
+package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.dto.CreatePromptTemplateRequest;
 import com.jingwei.rsswithai.application.dto.PromptTemplateDTO;
@@ -15,7 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/prompts")
+@RequestMapping("/api/admin/v1/prompts")
 @RequiredArgsConstructor
 @Slf4j
 public class PromptController {

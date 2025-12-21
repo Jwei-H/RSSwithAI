@@ -1,4 +1,4 @@
-package com.jingwei.rsswithai.interfaces;
+package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.dto.CreateExperimentRequest;
 import com.jingwei.rsswithai.application.dto.ExperimentDTO;
@@ -14,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/experiments")
+@RequestMapping("/api/admin/v1/experiments")
 @RequiredArgsConstructor
 @Slf4j
 public class ExperimentController {

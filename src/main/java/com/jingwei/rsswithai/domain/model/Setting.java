@@ -19,9 +19,9 @@ public class Setting {
     @Column(name = "setting_key", nullable = false, unique = true)
     private String key;
 
-    @Column(name = "setting_value")
+    @Column(name = "setting_value", columnDefinition = "TEXT")
     private String value;
 
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 }

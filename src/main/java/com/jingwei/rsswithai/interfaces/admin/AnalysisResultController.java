@@ -1,4 +1,4 @@
-package com.jingwei.rsswithai.interfaces;
+package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.dto.AnalysisResultDetailDTO;
 import com.jingwei.rsswithai.application.dto.AnalysisResultDTO;
@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/analysis-results")
+@RequestMapping("/api/admin/v1/analysis-results")
 @RequiredArgsConstructor
 public class AnalysisResultController {
 

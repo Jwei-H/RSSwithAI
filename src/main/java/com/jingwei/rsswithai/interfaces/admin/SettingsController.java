@@ -1,4 +1,4 @@
-package com.jingwei.rsswithai.interfaces;
+package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.service.SettingsService;
 import com.jingwei.rsswithai.domain.model.Setting;
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/settings")
+@RequestMapping("/api/admin/settings")
 @RequiredArgsConstructor
 public class SettingsController {
 

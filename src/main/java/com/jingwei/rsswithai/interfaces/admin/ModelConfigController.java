@@ -1,4 +1,4 @@
-package com.jingwei.rsswithai.interfaces;
+package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.dto.CreateModelConfigRequest;
 import com.jingwei.rsswithai.application.dto.ModelConfigDTO;
@@ -14,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/model-configs")
+@RequestMapping("/api/admin/v1/model-configs")
 @RequiredArgsConstructor
 @Slf4j
 public class ModelConfigController {
