@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -224,11 +225,10 @@ public class LlmProcessService {
                 .status("FAILED");
 
         try {
-            String prompt = buildPrompt(article);
+            Prompt prompt = buildPrompt(article);
             log.debug("Generated prompt for article {}", article.getId());
 
-            Prompt aiPrompt = new Prompt(prompt);
-            ChatResponse response = chatModel.call(aiPrompt);
+            ChatResponse response = chatModel.call(prompt);
 
             String content = response.getResult().getOutput().getText();
             log.debug("AI response for article {}: {}", article.getId(), content);
@@ -272,14 +272,16 @@ public class LlmProcessService {
     /**
      * 构建提示词
      */
-    private String buildPrompt(Article article) {
-        String promptTemplate = appConfig.getLlmGenPrompt();
-
+    private Prompt buildPrompt(Article article) {
+        PromptTemplate promptTemplate = PromptTemplate.builder()
+                .template(appConfig.getLlmGenPrompt())
+                .build();
         // 替换模板中的占位符
-        return promptTemplate
-                .replace("{title}", article.getTitle())
-                .replace("{source}", article.getSourceName())
-                .replace("{content}", article.getContent());
+        return new Prompt(promptTemplate.createMessage(Map.of(
+                "title", article.getTitle(),
+                "source", article.getSourceName(),
+                "content", article.getContent()
+        )));
     }
 
     /**
