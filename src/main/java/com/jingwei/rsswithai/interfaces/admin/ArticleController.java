@@ -1,6 +1,7 @@
 package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.dto.ArticleDTO;
+import com.jingwei.rsswithai.application.dto.ArticleExtraDTO;
 import com.jingwei.rsswithai.application.service.ArticleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,5 +61,19 @@ public class ArticleController {
                 sourceId, pageable.getPageNumber(), pageable.getPageSize());
         Page<ArticleDTO> articles = articleService.getArticlesBySource(sourceId, pageable);
         return ResponseEntity.ok(articles);
+    }
+
+    /**
+     * 获取文章增强信息
+     * GET /api/v1/articles/{id}/extra
+     */
+    @GetMapping("/{id}/extra")
+    public ResponseEntity<ArticleExtraDTO> getArticleExtra(@PathVariable Long id) {
+        log.debug("获取文章增强信息: articleId={}", id);
+        ArticleExtraDTO extra = articleService.getArticleExtra(id);
+        if (extra == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(extra);
     }
 }

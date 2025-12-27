@@ -1,7 +1,9 @@
 package com.jingwei.rsswithai.application.service;
 
 import com.jingwei.rsswithai.application.dto.ArticleDTO;
+import com.jingwei.rsswithai.application.dto.ArticleExtraDTO;
 import com.jingwei.rsswithai.domain.model.Article;
+import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ArticleService {
 
     private final ArticleRepository articleRepository;
+    private final ArticleExtraRepository articleExtraRepository;
 
     /**
      * 获取文章详情
@@ -46,6 +49,15 @@ public class ArticleService {
     public Page<ArticleDTO> getAllArticles(Pageable pageable) {
         return articleRepository.findAllByOrderByPubDateDesc(pageable)
                 .map(ArticleDTO::fromBasic);
+    }
+
+    /**
+     * 获取文章增强信息
+     */
+    public ArticleExtraDTO getArticleExtra(Long articleId) {
+        return articleExtraRepository.findByArticleId(articleId)
+                .map(ArticleExtraDTO::from)
+                .orElse(null);
     }
 
     @Transactional
