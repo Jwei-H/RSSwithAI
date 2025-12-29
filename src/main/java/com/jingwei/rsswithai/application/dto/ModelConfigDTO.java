@@ -13,7 +13,7 @@ public record ModelConfigDTO(
         Double topP,
         Integer topK,
         Integer maxTokens,
-        Long seed,
+        Integer seed,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

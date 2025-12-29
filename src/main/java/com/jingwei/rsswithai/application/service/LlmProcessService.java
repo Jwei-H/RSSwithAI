@@ -171,7 +171,7 @@ public class LlmProcessService {
         try {
             // 获取许可，控制并发
             semaphore.acquire();
-            log.debug("Acquired semaphore permit for article: {}", articleId);
+//            log.debug("Acquired semaphore permit for article: {}", articleId);
 
             // 检查是否已处理过
             if (articleExtraRepository.existsByArticleId(articleId)) {
@@ -212,7 +212,7 @@ public class LlmProcessService {
             saveFailedResult(articleId, e.getMessage());
         } finally {
             semaphore.release();
-            log.debug("Released semaphore permit for article: {}", articleId);
+//            log.debug("Released semaphore permit for article: {}", articleId);
         }
     }
 
@@ -231,7 +231,7 @@ public class LlmProcessService {
             ChatResponse response = chatModel.call(prompt);
 
             String content = response.getResult().getOutput().getText();
-            log.debug("AI response for article {}: {}", article.getId(), content);
+//            log.debug("AI response for article {}: {}", article.getId(), content);
 
             // 解析JSON响应
             JsonNode jsonResponse = objectMapper.readTree(Objects.requireNonNull(content).replace("```json", "").replace("```", ""));

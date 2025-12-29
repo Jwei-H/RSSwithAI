@@ -14,5 +14,5 @@ public class CreateModelConfigRequest {
     private Double topP;
     private Integer topK;
     private Integer maxTokens;
-    private Long seed;
+    private Integer seed;
 }

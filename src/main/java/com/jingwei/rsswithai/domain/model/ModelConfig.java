@@ -42,7 +42,7 @@ public class ModelConfig {
     @Column(name = "max_tokens")
     private Integer maxTokens;
 
-    private Long seed;
+    private Integer seed;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

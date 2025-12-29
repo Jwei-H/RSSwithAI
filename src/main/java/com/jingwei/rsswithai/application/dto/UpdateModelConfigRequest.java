@@ -11,5 +11,5 @@ public class UpdateModelConfigRequest {
     private Double topP;
     private Integer topK;
     private Integer maxTokens;
-    private Long seed;
+    private Integer seed;
 }

@@ -123,7 +123,7 @@ public class ExperimentService {
                     "title", article.getTitle(),
                     "author", Objects.requireNonNullElse(article.getAuthor(), ""),
                     "content", article.getContent(),
-                    "source", article.getSource().getName(),
+                    "source", article.getSourceName(),
                     "pubDate", article.getPubDate().toString()
             );
 
@@ -164,7 +164,7 @@ public class ExperimentService {
                 .temperature(config.getTemperature())
                 .topP(config.getTopP())
                 .maxTokens(config.getMaxTokens())
-                .seed(Math.toIntExact(config.getSeed()))
+                .seed(config.getSeed())
                 .extraBody(Map.of("topK", Objects.requireNonNullElse(config.getTopK(), "")))
                 .build();
         return OpenAiChatModel.builder().openAiApi(openAiApi).defaultOptions(options).build();
