@@ -3,6 +3,7 @@ package com.jingwei.rsswithai.domain.repository;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.model.SourceStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -24,4 +25,7 @@ public interface RssSourceRepository extends JpaRepository<RssSource, Long> {
     default List<RssSource> findAllEnabled() {
         return findByStatus(SourceStatus.ENABLED);
     }
+
+    @Query("SELECT s.lastFetchStatus, COUNT(s) FROM RssSource s GROUP BY s.lastFetchStatus")
+    List<Object[]> countByLastFetchStatus();
 }

@@ -2,6 +2,7 @@ package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.dto.CreateRssSourceRequest;
 import com.jingwei.rsswithai.application.dto.RssSourceDTO;
+import com.jingwei.rsswithai.application.dto.RssSourceStatsDTO;
 import com.jingwei.rsswithai.application.dto.UpdateRssSourceRequest;
 import com.jingwei.rsswithai.application.service.RssSchedulerService;
 import com.jingwei.rsswithai.application.service.RssSourceService;
@@ -37,6 +38,17 @@ public class RssSourceController {
         log.debug("获取所有RSS源");
         Page<RssSourceDTO> sources = rssSourceService.getAllSources(pageable);
         return ResponseEntity.ok(sources);
+    }
+
+    /**
+     * 获取RSS源统计信息
+     * GET /api/admin/v1/rss-sources/stats
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<RssSourceStatsDTO> getStats() {
+        log.debug("获取RSS源统计信息");
+        RssSourceStatsDTO stats = rssSourceService.getStats();
+        return ResponseEntity.ok(stats);
     }
 
     /**

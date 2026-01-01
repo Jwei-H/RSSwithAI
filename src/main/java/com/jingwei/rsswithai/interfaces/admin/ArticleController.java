@@ -2,6 +2,7 @@ package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.dto.ArticleDTO;
 import com.jingwei.rsswithai.application.dto.ArticleExtraDTO;
+import com.jingwei.rsswithai.application.dto.ArticleStatsDTO;
 import com.jingwei.rsswithai.application.service.ArticleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,17 @@ public class ArticleController {
         log.debug("获取所有文章, page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
         Page<ArticleDTO> articles = articleService.getAllArticles(pageable);
         return ResponseEntity.ok(articles);
+    }
+
+    /**
+     * 获取文章统计信息
+     * GET /api/admin/v1/articles/stats
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<ArticleStatsDTO> getStats() {
+        log.debug("获取文章统计信息");
+        ArticleStatsDTO stats = articleService.getStats();
+        return ResponseEntity.ok(stats);
     }
 
     /**

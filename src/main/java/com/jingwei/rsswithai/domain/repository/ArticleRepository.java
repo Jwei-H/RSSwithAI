@@ -26,4 +26,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     List<Article> findBySourceAndPubDateAfter(RssSource source, LocalDateTime after);
 
     Page<Article> findAllByOrderByPubDateDesc(Pageable pageable);
+
+    @Query(value = "SELECT CAST(created_at AS DATE), COUNT(*) FROM articles WHERE created_at >= :startDate GROUP BY CAST(created_at AS DATE)", nativeQuery = true)
+    List<Object[]> countDailyNewArticles(@Param("startDate") LocalDateTime startDate);
 }

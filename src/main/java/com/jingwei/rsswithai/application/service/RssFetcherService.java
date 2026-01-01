@@ -58,25 +58,22 @@ public class RssFetcherService {
     public int fetchSource(RssSource source) {
         log.info("开始抓取RSS源: id={}, name={}, url={}", source.getId(), source.getName(), source.getUrl());
 
-        // 1. 短事务：标记为正在抓取 (立即提交到DB)
-        source.markAsFetching();
-        rssSourceRepository.save(source);
-
         int retryCount = 0;
         Exception lastException = null;
         int maxRetries = appConfig.getCollectorFetchMaxRetries();
         boolean success = false; // 标记最终是否成功
 
         try {
+            source.markAsFetching();
+            rssSourceRepository.save(source);
+
             while (retryCount < maxRetries) {
                 try {
-                    // 2. 执行耗时操作（网络IO + 解析）
                     String fetchUrl = getFetchUrl(source);
                     String content = fetchRssContent(fetchUrl);
 
                     List<Article> articles = RssUtils.parseContent(content, source);
 
-                    // 3. 去重并保存文章
                     int savedCount = 0;
                     for (Article article : articles) {
                         Article savedArticle = articleService.saveArticleIfNotExists(article);
@@ -87,7 +84,6 @@ public class RssFetcherService {
                         }
                     }
 
-                    // 4. 短事务：标记抓取成功
                     source.recordFetchSuccess();
                     rssSourceRepository.save(source);
 
@@ -114,7 +110,7 @@ public class RssFetcherService {
                 }
             }
         } finally {
-            // 5. 兜底处理：如果未成功（重试耗尽 或 发生未捕获的RuntimeException），强制标记为失败
+            // 兜底处理：如果未成功（重试耗尽 或 发生未捕获的RuntimeException），强制标记为失败
             if (!success) {
                 String errorMsg = lastException != null ? lastException.getMessage() : "未知错误或被中断";
                 source.recordFetchFailure(errorMsg);

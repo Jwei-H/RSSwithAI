@@ -2,7 +2,9 @@ package com.jingwei.rsswithai.application.service;
 
 import com.jingwei.rsswithai.application.dto.CreateRssSourceRequest;
 import com.jingwei.rsswithai.application.dto.RssSourceDTO;
+import com.jingwei.rsswithai.application.dto.RssSourceStatsDTO;
 import com.jingwei.rsswithai.application.dto.UpdateRssSourceRequest;
+import com.jingwei.rsswithai.domain.model.FetchStatus;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.model.SourceStatus;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
@@ -14,6 +16,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * RSS源管理服务（Source Manager）
@@ -150,5 +156,24 @@ public class RssSourceService {
         RssSource saved = rssSourceRepository.save(source);
         log.info("RSS源已禁用: id={}", id);
         return RssSourceDTO.from(saved);
+    }
+
+    /**
+     * 获取RSS源统计信息
+     */
+    public RssSourceStatsDTO getStats() {
+        long total = rssSourceRepository.count();
+        List<Object[]> counts = rssSourceRepository.countByLastFetchStatus();
+        Map<String, Long> statusCounts = new HashMap<>();
+
+        // Initialize with 0 for all statuses
+        for (FetchStatus status : FetchStatus.values()) {
+            statusCounts.put(status.name(), 0L);
+        }
+
+        for (Object[] row : counts) {
+            statusCounts.put(((FetchStatus) row[0]).name(), (Long) row[1]);
+        }
+        return new RssSourceStatsDTO(total, statusCounts);
     }
 }

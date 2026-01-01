@@ -2,6 +2,7 @@ package com.jingwei.rsswithai.application.service;
 
 import com.jingwei.rsswithai.application.dto.ArticleDTO;
 import com.jingwei.rsswithai.application.dto.ArticleExtraDTO;
+import com.jingwei.rsswithai.application.dto.ArticleStatsDTO;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
@@ -13,6 +14,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 文章服务
@@ -58,6 +66,35 @@ public class ArticleService {
         return articleExtraRepository.findByArticleId(articleId)
                 .map(ArticleExtraDTO::from)
                 .orElse(null);
+    }
+
+    /**
+     * 获取文章统计信息
+     */
+    public ArticleStatsDTO getStats() {
+        long total = articleRepository.count();
+        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(6).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        List<Object[]> dailyCountsRaw = articleRepository.countDailyNewArticles(sevenDaysAgo);
+
+        Map<LocalDate, Long> countsMap = new HashMap<>();
+        for (Object[] row : dailyCountsRaw) {
+            LocalDate date;
+            if (row[0] instanceof java.sql.Date) {
+                date = ((java.sql.Date) row[0]).toLocalDate();
+            } else {
+                date = LocalDate.parse(row[0].toString());
+            }
+            long count = ((Number) row[1]).longValue();
+            countsMap.put(date, count);
+        }
+
+        List<ArticleStatsDTO.DailyCount> dailyCounts = new ArrayList<>();
+        for (int i = 0; i < 7; i++) {
+            LocalDate date = sevenDaysAgo.toLocalDate().plusDays(i);
+            dailyCounts.add(new ArticleStatsDTO.DailyCount(date, countsMap.getOrDefault(date, 0L)));
+        }
+
+        return new ArticleStatsDTO(total, dailyCounts);
     }
 
     @Transactional
