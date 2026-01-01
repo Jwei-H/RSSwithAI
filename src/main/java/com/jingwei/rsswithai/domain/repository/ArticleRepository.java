@@ -23,9 +23,15 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
 
     Page<Article> findBySourceIdOrderByPubDateDesc(Long sourceId, Pageable pageable);
 
+    @Query("SELECT a FROM Article a WHERE a.source.id = :sourceId AND (a.title LIKE %:searchWord% OR a.author LIKE %:searchWord%) ORDER BY a.pubDate DESC")
+    Page<Article> findBySourceIdAndSearchWordOrderByPubDateDesc(@Param("sourceId") Long sourceId, @Param("searchWord") String searchWord, Pageable pageable);
+
     List<Article> findBySourceAndPubDateAfter(RssSource source, LocalDateTime after);
 
     Page<Article> findAllByOrderByPubDateDesc(Pageable pageable);
+
+    @Query("SELECT a FROM Article a WHERE a.title LIKE %:searchWord% OR a.author LIKE %:searchWord% ORDER BY a.pubDate DESC")
+    Page<Article> findAllBySearchWordOrderByPubDateDesc(@Param("searchWord") String searchWord, Pageable pageable);
 
     @Query(value = "SELECT CAST(created_at AS DATE), COUNT(*) FROM articles WHERE created_at >= :startDate GROUP BY CAST(created_at AS DATE)", nativeQuery = true)
     List<Object[]> countDailyNewArticles(@Param("startDate") LocalDateTime startDate);

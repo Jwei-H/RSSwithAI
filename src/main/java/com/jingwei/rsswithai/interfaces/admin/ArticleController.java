@@ -29,13 +29,14 @@ public class ArticleController {
 
     /**
      * 获取所有文章（分页）
-     * GET /api/v1/articles?page=0&size=20
+     * GET /api/v1/articles?page=0&size=20&searchWord=keyword
      */
     @GetMapping
-    public ResponseEntity<Page<ArticleDTO>> getAllArticles(
+    public ResponseEntity<Page<ArticleDTO>> getArticles(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String searchWord,
             @PageableDefault(size = 20) Pageable pageable) {
-        log.debug("获取所有文章, page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
-        Page<ArticleDTO> articles = articleService.getAllArticles(pageable);
+        log.debug("获取所有文章, page={}, size={}, searchWord={}", pageable.getPageNumber(), pageable.getPageSize(), searchWord);
+        Page<ArticleDTO> articles = articleService.getArticles(searchWord, pageable);
         return ResponseEntity.ok(articles);
     }
 
@@ -63,15 +64,16 @@ public class ArticleController {
 
     /**
      * 获取指定RSS源的文章（分页）
-     * GET /api/v1/articles/source/{sourceId}?page=0&size=20
+     * GET /api/v1/articles/source/{sourceId}?page=0&size=20&searchWord=keyword
      */
     @GetMapping("/source/{sourceId}")
     public ResponseEntity<Page<ArticleDTO>> getArticlesBySource(
             @PathVariable Long sourceId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String searchWord,
             @PageableDefault(size = 20) Pageable pageable) {
-        log.debug("获取RSS源文章: sourceId={}, page={}, size={}",
-                sourceId, pageable.getPageNumber(), pageable.getPageSize());
-        Page<ArticleDTO> articles = articleService.getArticlesBySource(sourceId, pageable);
+        log.debug("获取RSS源文章: sourceId={}, page={}, size={}, searchWord={}",
+                sourceId, pageable.getPageNumber(), pageable.getPageSize(), searchWord);
+        Page<ArticleDTO> articles = articleService.getArticlesBySource(sourceId, searchWord, pageable);
         return ResponseEntity.ok(articles);
     }
 

@@ -1,7 +1,7 @@
 package com.jingwei.rsswithai.interfaces.admin;
 
-import com.jingwei.rsswithai.application.dto.AnalysisResultDetailDTO;
 import com.jingwei.rsswithai.application.dto.AnalysisResultDTO;
+import com.jingwei.rsswithai.application.dto.AnalysisResultDetailDTO;
 import com.jingwei.rsswithai.application.service.ExperimentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,13 +22,13 @@ public class AnalysisResultController {
 
     @GetMapping("/articles/{articleId}")
     public ResponseEntity<Page<AnalysisResultDTO>> getAnalysisResultsByArticle(@PathVariable Long articleId,
-                                                                               @PageableDefault(size = 20) Pageable pageable) {
+                                                                               @PageableDefault(size = 20, sort = "id") Pageable pageable) {
         return ResponseEntity.ok(experimentService.getAnalysisResultsByArticle(articleId, pageable));
     }
 
     @GetMapping("/experiments/{experimentId}")
     public ResponseEntity<Page<AnalysisResultDTO>> getAnalysisResultsByExperiment(@PathVariable Long experimentId,
-                                                                                 @PageableDefault(size = 20) Pageable pageable) {
+                                                                                  @PageableDefault(size = 20, sort = "id") Pageable pageable) {
         return ResponseEntity.ok(experimentService.getAnalysisResultsByExperiment(experimentId, pageable));
     }
 

@@ -52,10 +52,32 @@ public class ArticleService {
     }
 
     /**
+     * 根据RSS源ID和搜索词分页获取文章
+     */
+    public Page<ArticleDTO> getArticlesBySource(Long sourceId, String searchWord, Pageable pageable) {
+        if (searchWord == null || searchWord.trim().isEmpty()) {
+            return getArticlesBySource(sourceId, pageable);
+        }
+        return articleRepository.findBySourceIdAndSearchWordOrderByPubDateDesc(sourceId, searchWord.trim(), pageable)
+                .map(ArticleDTO::fromBasic);
+    }
+
+    /**
      * 分页获取所有文章
      */
-    public Page<ArticleDTO> getAllArticles(Pageable pageable) {
+    public Page<ArticleDTO> getArticles(Pageable pageable) {
         return articleRepository.findAllByOrderByPubDateDesc(pageable)
+                .map(ArticleDTO::fromBasic);
+    }
+
+    /**
+     * 根据搜索词分页获取所有文章
+     */
+    public Page<ArticleDTO> getArticles(String searchWord, Pageable pageable) {
+        if (searchWord == null || searchWord.trim().isEmpty()) {
+            return getArticles(pageable);
+        }
+        return articleRepository.findAllBySearchWordOrderByPubDateDesc(searchWord.trim(), pageable)
                 .map(ArticleDTO::fromBasic);
     }
 

@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +35,7 @@ public class RssSourceController {
      * GET /api/v1/rss-sources
      */
     @GetMapping
-    public ResponseEntity<Page<RssSourceDTO>> getAllSources(@PageableDefault(size = 20) Pageable pageable) {
+    public ResponseEntity<Page<RssSourceDTO>> getAllSources(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
         log.debug("获取所有RSS源");
         Page<RssSourceDTO> sources = rssSourceService.getAllSources(pageable);
         return ResponseEntity.ok(sources);
