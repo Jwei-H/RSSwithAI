@@ -34,6 +34,11 @@ public class PromptController {
         return ResponseEntity.ok(promptService.getAllTemplates(pageable));
     }
 
+    @GetMapping("/{tempId}")
+    public ResponseEntity<PromptTemplateDTO> getTemplate(@PathVariable Long tempId) {
+        return ResponseEntity.ok(promptService.getTemplate(tempId));
+    }
+
     @DeleteMapping("/{tempId}")
     public ResponseEntity<Void> deleteTemplate(@PathVariable Long tempId) {
         log.info("Deleting prompt template with id: {}", tempId);

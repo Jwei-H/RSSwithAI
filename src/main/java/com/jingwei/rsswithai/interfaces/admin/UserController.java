@@ -3,6 +3,7 @@ package com.jingwei.rsswithai.interfaces.admin;
 import com.jingwei.rsswithai.application.dto.LoginRequest;
 import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.utils.JwtUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
+@Slf4j
 public class UserController {
 
     private final AppConfig appConfig;
@@ -23,6 +25,7 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+        log.debug("Attempting login for user: {}", loginRequest.getUsername());
         if (appConfig.getAdminUsername() != null &&
                 appConfig.getAdminUsername().equals(loginRequest.getUsername()) &&
                 appConfig.getAdminPassword() != null &&

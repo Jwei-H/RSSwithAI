@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Array;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -19,7 +20,7 @@ import java.util.List;
  */
 @Entity
 @Table(name = "article_extra", indexes = {
-    @Index(name = "idx_article_extra_article_id", columnList = "article_id", unique = true)
+        @Index(name = "idx_article_extra_article_id", columnList = "article_id", unique = true)
 })
 @Data
 @NoArgsConstructor
@@ -60,7 +61,9 @@ public class ArticleExtra {
     /**
      * 文章向量表示（1024维，由embedding模型生成）
      */
-    @Column(columnDefinition = "vector(1024)")
+    @Column
+    @JdbcTypeCode(SqlTypes.VECTOR)
+    @Array(length = 1024)
     private float[] vector;
 
     /**

@@ -11,5 +11,5 @@ public class CreateExperimentRequest {
     private List<Long> articleIds;
     private Long modelConfigId;
     private Long promptTemplateId;
-    private Integer promptVersion;
+    private Integer promptVersionNum;
 }

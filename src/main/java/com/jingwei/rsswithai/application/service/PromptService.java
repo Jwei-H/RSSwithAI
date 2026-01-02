@@ -50,7 +50,15 @@ public class PromptService {
 
     public Page<PromptTemplateDTO> getAllTemplates(Pageable pageable) {
         return templateRepository.findAll(pageable)
-                .map(t -> PromptTemplateDTO.from(t, null));
+                .map(t -> PromptTemplateDTO.from(t, versionRepository.findByTemplateIdAndVersion(t.getId(), t.getLatestVersion()).orElse(null)));
+    }
+
+    public PromptTemplateDTO getTemplate(Long templateId) {
+        PromptTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new RuntimeException("Template not found"));
+        PromptVersion pv = versionRepository.findByTemplateIdAndVersion(templateId, template.getLatestVersion())
+                .orElseThrow(() -> new RuntimeException("Version not found"));
+        return PromptTemplateDTO.from(template, pv);
     }
 
     public PromptVersionDTO getVersion(Long templateId, Integer version) {

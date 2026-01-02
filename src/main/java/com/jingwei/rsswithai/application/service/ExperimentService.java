@@ -43,7 +43,7 @@ public class ExperimentService {
         PromptTemplate promptTemplate = promptTemplateRepository.findById(request.getPromptTemplateId())
                 .orElseThrow(() -> new IllegalArgumentException("PromptTemplate not found"));
 
-        PromptVersion promptVersion = promptVersionRepository.findByTemplateIdAndVersion(request.getPromptTemplateId(), request.getPromptVersion())
+        PromptVersion promptVersion = promptVersionRepository.findByTemplateIdAndVersion(request.getPromptTemplateId(), request.getPromptVersionNum())
                 .orElseThrow(() -> new IllegalArgumentException("PromptVersion not found"));
 
         if (!promptVersion.getImmutable()) {
@@ -57,7 +57,7 @@ public class ExperimentService {
                 .articleIds(request.getArticleIds())
                 .modelConfig(modelConfig)
                 .promptTemplate(promptTemplate)
-                .promptVersion(request.getPromptVersion())
+                .promptVersion(request.getPromptVersionNum())
                 .build();
 
         Experiment savedExperiment = experimentRepository.save(experiment);
