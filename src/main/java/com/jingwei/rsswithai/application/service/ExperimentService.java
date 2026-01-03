@@ -185,6 +185,7 @@ public class ExperimentService {
         return ExperimentDetailDTO.fromEntity(experiment, promptVersion);
     }
 
+    @Transactional
     public void deleteExperiment(Long id) {
         Experiment experiment = experimentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Experiment not found"));
@@ -192,7 +193,7 @@ public class ExperimentService {
         if (experiment.getStatus() == ExperimentStatus.RUNNING) {
             throw new IllegalStateException("Cannot delete running experiment");
         }
-
+        analysisResultRepository.deleteByExperimentId(experiment.getId());
         experimentRepository.delete(experiment);
     }
 

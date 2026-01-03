@@ -19,4 +19,6 @@ public interface AnalysisResultRepository extends JpaRepository<AnalysisResult, 
 
     @EntityGraph(attributePaths = {"experiment", "article"})
     Optional<AnalysisResult> findWithExperimentAndArticleById(Long id);
+
+    void deleteByExperimentId(Long id);
 }
