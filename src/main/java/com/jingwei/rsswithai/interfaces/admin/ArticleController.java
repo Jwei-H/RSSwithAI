@@ -4,16 +4,14 @@ import com.jingwei.rsswithai.application.dto.ArticleDTO;
 import com.jingwei.rsswithai.application.dto.ArticleExtraDTO;
 import com.jingwei.rsswithai.application.dto.ArticleStatsDTO;
 import com.jingwei.rsswithai.application.service.ArticleService;
+import com.jingwei.rsswithai.application.service.LlmProcessService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 文章REST控制器
@@ -26,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ArticleController {
 
     private final ArticleService articleService;
+    private final LlmProcessService llmProcessService;
 
     /**
      * 获取所有文章（分页）
@@ -90,4 +89,21 @@ public class ArticleController {
         }
         return ResponseEntity.ok(extra);
     }
+
+    /**
+     * 重新生成文章增强信息
+     * POST /api/v1/articles/{id}/extra/regenerate
+     */
+    @PostMapping("/{id}/extra/regenerate")
+    public ResponseEntity<ArticleExtraDTO> regenerateArticleExtra(@PathVariable Long id) {
+        log.debug("重新生成文章增强信息: articleId={}", id);
+        llmProcessService.regenerateArticleExtra(id);
+        ArticleExtraDTO extra = articleService.getArticleExtra(id);
+        if (extra == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(extra);
+    }
+
+
 }

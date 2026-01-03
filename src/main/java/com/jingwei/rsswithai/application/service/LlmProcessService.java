@@ -197,16 +197,14 @@ public class LlmProcessService {
                 String vectorText = articleExtra.getOverview() + "\n" +
                         String.join("\n", articleExtra.getKeyInformation());
                 articleExtra.setVector(generateVector(vectorText));
+            } else {
+                articleExtra.setVector(generateVector(article.getTitle()));
             }
 
             // 保存结果
             articleExtraRepository.save(articleExtra);
             log.info("Article {} processing completed successfully", articleId);
 
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("Interrupted while processing article {}", articleId, e);
-            saveFailedResult(articleId, "Processing interrupted: " + e.getMessage());
         } catch (Exception e) {
             log.error("Error processing article {}", articleId, e);
             saveFailedResult(articleId, e.getMessage());
@@ -317,4 +315,32 @@ public class LlmProcessService {
         }
     }
 
+    public void regenerateArticleExtra(Long articleId) {
+        try {
+            articleExtraRepository.deleteByArticleId(articleId);
+            log.info("Cleaned up existing article extra for article: {}", articleId);
+
+            Article article = articleRepository.findById(articleId).orElse(null);
+            if (article == null) {
+                log.warn("Article not found: {}", articleId);
+                return;
+            }
+            ArticleExtra articleExtra = generateContent(article);
+
+            if (articleExtra.getOverview() != null && !articleExtra.getOverview().isBlank()) {
+                String vectorText = articleExtra.getOverview() + "\n" +
+                        String.join("\n", articleExtra.getKeyInformation());
+                articleExtra.setVector(generateVector(vectorText));
+            } else {
+                articleExtra.setVector(generateVector(article.getTitle()));
+            }
+
+            articleExtraRepository.save(articleExtra);
+            log.info("Article {} regeneration completed successfully", articleId);
+
+        } catch (Exception e) {
+            log.error("Error regenerating article {}", articleId, e);
+            saveFailedResult(articleId, e.getMessage());
+        }
+    }
 }
