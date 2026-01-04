@@ -123,7 +123,7 @@ public class ExperimentService {
                     "title", article.getTitle(),
                     "author", Objects.requireNonNullElse(article.getAuthor(), ""),
                     "content", article.getContent(),
-                    "source", article.getSourceName(),
+                    "source", Objects.requireNonNullElse(article.getSourceName(), ""),
                     "pubDate", article.getPubDate().toString()
             );
 

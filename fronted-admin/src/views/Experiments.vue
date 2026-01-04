@@ -347,7 +347,7 @@ onMounted(() => {
               <td class="px-6 py-4 text-sm text-gray-900">{{ exp.articleIds.length }}</td>
               <td class="px-6 py-4 text-sm text-gray-500">{{ exp.modelConfigName }}</td>
               <td class="px-6 py-4 text-sm text-gray-500">
-                {{ exp.promptTemplateName }} v{{ exp.promptVersionNum }}
+                {{ exp.promptTemplateName }} v{{ exp.promptVersion }}
               </td>
               <td class="px-6 py-4 text-sm text-gray-500">{{ formatDateTime(exp.createdAt) }}</td>
               <td class="px-6 py-4 text-sm space-x-2">
@@ -486,7 +486,27 @@ onMounted(() => {
             搜索
           </button>
         </div>
-        <div class="text-sm text-gray-600">已选择: {{ selectedArticleMap.size }} 篇</div>
+        <!-- <div class="text-sm text-gray-600">已选择: {{ selectedArticleMap.size }} 篇</div> -->
+        
+        <div v-if="selectedArticleMap.size > 0" class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+          <div class="text-sm font-medium text-blue-900 mb-2">已选文章 ({{ selectedArticleMap.size }})</div>
+          <div class="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+            <div
+              v-for="[id, title] in selectedArticleMap"
+              :key="id"
+              class="inline-flex items-center px-2 py-1 rounded bg-white text-blue-700 text-xs border border-blue-200 shadow-sm"
+            >
+              <span class="max-w-[200px] truncate" :title="title">{{ title }}</span>
+              <button
+                @click="selectedArticleMap.delete(id)"
+                class="ml-1 p-0.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-red-500"
+              >
+                <X class="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="border border-gray-200 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50 sticky top-0">

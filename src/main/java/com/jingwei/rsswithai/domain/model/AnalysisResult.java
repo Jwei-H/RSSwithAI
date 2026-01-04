@@ -35,10 +35,10 @@ public class AnalysisResult {
     private Article article;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "model_config_json", columnDefinition = "JSONB", nullable = false)
+    @Column(name = "model_config_json", columnDefinition = "JSONB")
     private String modelConfigJson;
 
-    @Column(name = "prompt_content", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "prompt_content", columnDefinition = "TEXT")
     private String promptContent;
 
     @Column(name = "analysis_result", columnDefinition = "TEXT")
