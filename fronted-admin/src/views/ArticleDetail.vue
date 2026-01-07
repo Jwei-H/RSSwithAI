@@ -10,15 +10,29 @@ import { getAnalysisResultsByArticleId, getAnalysisResultById } from '@/api/anal
 import { formatDateTime } from '@/utils/date'
 import type { Article, ArticleExtra, AnalysisResult } from '@/types'
 import { marked } from 'marked'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github.css'
 
 const route = useRoute()
 const router = useRouter()
+
+const renderer = {
+  code({ text, lang }: { text: string, lang?: string }) {
+    const validLang = !!(lang && hljs.getLanguage(lang))
+    const highlighted = validLang
+      ? hljs.highlight(text, { language: lang as string }).value
+      : hljs.highlightAuto(text).value
+    return `<pre><code class="hljs ${validLang ? 'language-' + lang : ''}">${highlighted}</code></pre>`
+  }
+}
+
+marked.use({ renderer })
 
 const renderMarkdown = (text: string) => {
   if (!text) return ''
   const html = marked.parse(text)
   // 为图片添加 lazy 与 no-referrer 以减少防盗链 403
-  return html.replace(/<img\s/gi, '<img loading="lazy" referrerpolicy="no-referrer" ')
+  return (html as string).replace(/<img\s/gi, '<img loading="lazy" referrerpolicy="no-referrer" ')
 }
 const handleBack = () => {
   const { sourceId, searchWord, page, size } = route.query as Record<string, any>

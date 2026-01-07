@@ -15,6 +15,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "highlight.js": "^11.11.1",
     "lucide-vue-next": "^0.562.0",
     "marked": "^17.0.1",
     "tailwind-merge": "^3.4.0",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
+    "@types/highlight.js": "^9.12.4",
     "@types/node": "^24.10.4",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/tsconfig": "^0.8.1",
