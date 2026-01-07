@@ -33,7 +33,6 @@ public class RssFetcherService {
     private final AppConfig appConfig;
     private final ApplicationEventPublisher eventPublisher;
 
-    // 使用虚拟线程的HttpClient
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -56,6 +55,15 @@ public class RssFetcherService {
      * @return 新抓取的文章数量
      */
     public int fetchSource(RssSource source) {
+        // 如果返回 0，说明该源已经在 NEW/FETCHING 状态（被其他线程或节点处理中），直接跳过
+        int updatedRows = rssSourceRepository.compareAndSetFetching(source.getId());
+        if (updatedRows == 0) {
+            log.info("RSS源正在抓取中，跳过本次执行: id={}, name={}", source.getId(), source.getName());
+            return 0;
+        }
+
+        source.markAsFetching();
+
         log.info("开始抓取RSS源: id={}, name={}, url={}", source.getId(), source.getName(), source.getUrl());
 
         int retryCount = 0;
@@ -64,9 +72,6 @@ public class RssFetcherService {
         boolean success = false; // 标记最终是否成功
 
         try {
-            source.markAsFetching();
-            rssSourceRepository.save(source);
-
             while (retryCount < maxRetries) {
                 try {
                     String fetchUrl = getFetchUrl(source);
