@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { RefreshCw, Search, RotateCcw, ChevronDown } from 'lucide-vue-next'
 import {
   Chart as ChartJS,
@@ -31,6 +31,7 @@ ChartJS.register(
   Legend
 )
 
+const route = useRoute()
 const router = useRouter()
 
 const loading = ref(false)
@@ -167,7 +168,13 @@ const handleRefresh = async () => {
 
 // 查看详情
 const handleViewDetail = (article: Article) => {
-  router.push(`/articles/${article.id}`)
+  const query: Record<string, any> = {
+    sourceId: filters.value.sourceId || undefined,
+    searchWord: filters.value.searchWord || undefined,
+    page: pagination.value.page,
+    size: pagination.value.size
+  }
+  router.push({ path: `/articles/${article.id}`, query })
 }
 
 // 分页
@@ -177,6 +184,23 @@ const handlePageChange = (page: number) => {
 }
 
 onMounted(() => {
+  // 从路由查询参数恢复筛选与分页状态
+  const q = route.query as Record<string, any>
+  if (q.sourceId != null) {
+    filters.value.sourceId = String(q.sourceId)
+  }
+  if (q.searchWord != null) {
+    filters.value.searchWord = String(q.searchWord)
+  }
+  if (q.page != null) {
+    const p = Number(q.page)
+    if (!Number.isNaN(p)) pagination.value.page = p
+  }
+  if (q.size != null) {
+    const s = Number(q.size)
+    if (!Number.isNaN(s)) pagination.value.size = s
+  }
+
   loadStats()
   loadSources()
   loadArticles()

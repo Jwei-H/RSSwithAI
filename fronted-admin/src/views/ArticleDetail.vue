@@ -16,7 +16,17 @@ const router = useRouter()
 
 const renderMarkdown = (text: string) => {
   if (!text) return ''
-  return marked.parse(text)
+  const html = marked.parse(text)
+  // 为图片添加 lazy 与 no-referrer 以减少防盗链 403
+  return html.replace(/<img\s/gi, '<img loading="lazy" referrerpolicy="no-referrer" ')
+}
+const handleBack = () => {
+  const { sourceId, searchWord, page, size } = route.query as Record<string, any>
+  if (sourceId != null || searchWord != null || page != null || size != null) {
+    router.push({ path: '/articles', query: { sourceId, searchWord, page, size } })
+  } else {
+    router.back()
+  }
 }
 
 const article = ref<Article | null>(null)
@@ -117,7 +127,7 @@ onMounted(() => {
   <div class="space-y-6">
     <!-- 返回按钮 -->
     <button
-      @click="router.back()"
+      @click="handleBack"
       class="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
     >
       <ArrowLeft class="w-4 h-4" />
