@@ -46,4 +46,7 @@ public class AppConfig {
 
     @SettingKey("admin_password")
     private String adminPassword;
+
+    @SettingKey("default_avatar")
+    private String defaultAvatar;
 }
