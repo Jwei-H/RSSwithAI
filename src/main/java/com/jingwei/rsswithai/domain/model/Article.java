@@ -30,7 +30,7 @@ public class Article {
      * 所属RSS源
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "source_id", nullable = false)
+    @JoinColumn(name = "source_id")
     private RssSource source;
 
     /**

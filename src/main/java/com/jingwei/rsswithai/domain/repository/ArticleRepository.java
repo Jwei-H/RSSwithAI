@@ -5,6 +5,7 @@ import com.jingwei.rsswithai.domain.model.RssSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -35,4 +36,10 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
 
     @Query(value = "SELECT CAST(created_at AS DATE), COUNT(*) FROM articles WHERE created_at >= :startDate GROUP BY CAST(created_at AS DATE)", nativeQuery = true)
     List<Object[]> countDailyNewArticles(@Param("startDate") LocalDateTime startDate);
+
+    // 在 ArticleRepository 中添加
+    @Modifying
+    @Query("UPDATE Article a SET a.source = NULL WHERE a.source.id = :sourceId")
+    void detachSource(@Param("sourceId") Long sourceId);
+
 }

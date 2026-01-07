@@ -306,7 +306,7 @@ public final class RssUtils {
             String unifiedHtml = MD_TO_HTML_RENDERER.render(document);
 
             // 2. 再将统一后的HTML转换为Markdown
-            markdownContent = HTML_TO_MD_CONVERTER.convert(unifiedHtml).trim().replace("\\*\\*", "**");
+            markdownContent = HTML_TO_MD_CONVERTER.convert(unifiedHtml).trim().replace("\\*\\*", "**").replace("hljs language-","");
         }
 
         // 如果转换后的内容为空，则认为此条目无效（可能是视频或格式不正确），不创建文章

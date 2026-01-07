@@ -7,6 +7,7 @@ import com.jingwei.rsswithai.application.dto.UpdateRssSourceRequest;
 import com.jingwei.rsswithai.domain.model.FetchStatus;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.model.SourceStatus;
+import com.jingwei.rsswithai.domain.repository.ArticleRepository;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ import java.util.Map;
 public class RssSourceService {
 
     private final RssSourceRepository rssSourceRepository;
+    private final ArticleRepository articleRepository;
 
     @Value("${collector.fetch.interval:30}")
     private int defaultFetchInterval;
@@ -104,7 +106,7 @@ public class RssSourceService {
         if (!rssSourceRepository.existsById(id)) {
             throw new EntityNotFoundException("RSS源不存在: " + id);
         }
-
+        articleRepository.detachSource(id);
         rssSourceRepository.deleteById(id);
         log.info("RSS源删除成功: id={}", id);
     }
