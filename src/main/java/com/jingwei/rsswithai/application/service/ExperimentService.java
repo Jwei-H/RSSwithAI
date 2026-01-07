@@ -37,13 +37,13 @@ public class ExperimentService {
 
     @Transactional
     public ExperimentDTO createExperiment(CreateExperimentRequest request) {
-        ModelConfig modelConfig = modelConfigRepository.findById(request.getModelConfigId())
+        ModelConfig modelConfig = modelConfigRepository.findById(request.modelConfigId())
                 .orElseThrow(() -> new IllegalArgumentException("ModelConfig not found"));
 
-        PromptTemplate promptTemplate = promptTemplateRepository.findById(request.getPromptTemplateId())
+        PromptTemplate promptTemplate = promptTemplateRepository.findById(request.promptTemplateId())
                 .orElseThrow(() -> new IllegalArgumentException("PromptTemplate not found"));
 
-        PromptVersion promptVersion = promptVersionRepository.findByTemplateIdAndVersion(request.getPromptTemplateId(), request.getPromptVersionNum())
+        PromptVersion promptVersion = promptVersionRepository.findByTemplateIdAndVersion(request.promptTemplateId(), request.promptVersionNum())
                 .orElseThrow(() -> new IllegalArgumentException("PromptVersion not found"));
 
         if (!promptVersion.getImmutable()) {
@@ -51,13 +51,13 @@ public class ExperimentService {
         }
 
         Experiment experiment = Experiment.builder()
-                .name(request.getName())
-                .description(request.getDescription())
+                .name(request.name())
+                .description(request.description())
                 .status(ExperimentStatus.RUNNING)
-                .articleIds(request.getArticleIds())
+                .articleIds(request.articleIds())
                 .modelConfig(modelConfig)
                 .promptTemplate(promptTemplate)
-                .promptVersion(request.getPromptVersionNum())
+                .promptVersion(request.promptVersionNum())
                 .build();
 
         Experiment savedExperiment = experimentRepository.save(experiment);

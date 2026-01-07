@@ -13,24 +13,24 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin")
 @Slf4j
-public class UserController {
+public class AuthController {
 
     private final AppConfig appConfig;
     private final JwtUtils jwtUtils;
 
-    public UserController(AppConfig appConfig, JwtUtils jwtUtils) {
+    public AuthController(AppConfig appConfig, JwtUtils jwtUtils) {
         this.appConfig = appConfig;
         this.jwtUtils = jwtUtils;
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        log.debug("Attempting login for user: {}", loginRequest.getUsername());
+        log.debug("Attempting login for user: {}", loginRequest.username());
         if (appConfig.getAdminUsername() != null &&
-                appConfig.getAdminUsername().equals(loginRequest.getUsername()) &&
+                appConfig.getAdminUsername().equals(loginRequest.username()) &&
                 appConfig.getAdminPassword() != null &&
-                appConfig.getAdminPassword().equals(loginRequest.getPassword())) {
-            String token = jwtUtils.generateToken(loginRequest.getUsername());
+                appConfig.getAdminPassword().equals(loginRequest.password())) {
+            String token = jwtUtils.generateToken(loginRequest.username());
             return ResponseEntity.ok(Map.of("token", token));
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");

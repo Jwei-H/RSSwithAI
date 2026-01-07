@@ -1,10 +1,8 @@
 package com.jingwei.rsswithai.application.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
 
-@Data
-public class UpdatePromptVersionRequest {
+public record UpdatePromptVersionRequest(
     @NotBlank
-    private String content;
-}
+    String content
+) {}

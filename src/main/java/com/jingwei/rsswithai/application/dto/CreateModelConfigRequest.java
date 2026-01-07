@@ -1,18 +1,16 @@
 package com.jingwei.rsswithai.application.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
 
-@Data
-public class CreateModelConfigRequest {
+public record CreateModelConfigRequest(
     @NotBlank
-    private String name;
-    private String description;
+    String name,
+    String description,
     @NotBlank
-    private String modelId;
-    private Double temperature;
-    private Double topP;
-    private Integer topK;
-    private Integer maxTokens;
-    private Integer seed;
-}
+    String modelId,
+    Double temperature,
+    Double topP,
+    Integer topK,
+    Integer maxTokens,
+    Integer seed
+) {}

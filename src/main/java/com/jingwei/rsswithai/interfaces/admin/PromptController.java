@@ -25,7 +25,7 @@ public class PromptController {
 
     @PostMapping
     public ResponseEntity<PromptTemplateDTO> createTemplate(@Valid @RequestBody CreatePromptTemplateRequest request) {
-        log.info("Creating new prompt template with name: {}", request.getName());
+        log.info("Creating new prompt template with name: {}", request.name());
         return ResponseEntity.ok(promptService.createTemplate(request));
     }
 

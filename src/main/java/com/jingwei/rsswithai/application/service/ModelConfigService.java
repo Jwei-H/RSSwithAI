@@ -33,14 +33,14 @@ public class ModelConfigService {
     @Transactional
     public ModelConfigDTO createConfig(CreateModelConfigRequest request) {
         ModelConfig config = ModelConfig.builder()
-                .name(request.getName())
-                .description(request.getDescription())
-                .modelId(request.getModelId())
-                .temperature(request.getTemperature())
-                .topP(request.getTopP())
-                .topK(request.getTopK())
-                .maxTokens(request.getMaxTokens())
-                .seed(request.getSeed())
+                .name(request.name())
+                .description(request.description())
+                .modelId(request.modelId())
+                .temperature(request.temperature())
+                .topP(request.topP())
+                .topK(request.topK())
+                .maxTokens(request.maxTokens())
+                .seed(request.seed())
                 .build();
 
         ModelConfig saved = modelConfigRepository.save(config);
@@ -54,14 +54,14 @@ public class ModelConfigService {
 
         config = ModelConfig.builder()
                 .id(config.getId())
-                .name(request.getName())
-                .description(request.getDescription())
-                .modelId(request.getModelId())
-                .temperature(request.getTemperature())
-                .topP(request.getTopP())
-                .topK(request.getTopK())
-                .maxTokens(request.getMaxTokens())
-                .seed(request.getSeed())
+                .name(request.name())
+                .description(request.description())
+                .modelId(request.modelId())
+                .temperature(request.temperature())
+                .topP(request.topP())
+                .topK(request.topK())
+                .maxTokens(request.maxTokens())
+                .seed(request.seed())
                 .build();
 
         ModelConfig saved = modelConfigRepository.save(config);

@@ -29,7 +29,7 @@ public class ModelConfigController {
 
     @PostMapping
     public ResponseEntity<ModelConfigDTO> createConfig(@Valid @RequestBody CreateModelConfigRequest request) {
-        log.info("Creating new model config with name: {}", request.getName());
+        log.info("Creating new model config with name: {}", request.name());
         return ResponseEntity.ok(modelConfigService.createConfig(request));
     }
 

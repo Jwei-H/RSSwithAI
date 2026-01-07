@@ -24,8 +24,8 @@ public class PromptService {
     @Transactional
     public PromptTemplateDTO createTemplate(CreatePromptTemplateRequest request) {
         PromptTemplate template = PromptTemplate.builder()
-                .name(request.getName())
-                .description(request.getDescription())
+                .name(request.name())
+                .description(request.description())
                 .latestVersion(1)
                 .build();
 
@@ -79,7 +79,7 @@ public class PromptService {
         if (!template.getLatestVersion().equals(version)) {
             throw new RuntimeException("Only the latest version can be modified");
         }
-        pv.setContent(request.getContent());
+        pv.setContent(request.content());
         PromptVersion saved = versionRepository.save(pv);
         return PromptVersionDTO.from(saved);
     }
