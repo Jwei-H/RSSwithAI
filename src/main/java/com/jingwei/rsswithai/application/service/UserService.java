@@ -14,6 +14,7 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -40,7 +41,16 @@ public class UserService {
     }
 
     @Transactional
-    public UserDTO register(UserRegisterRequest request) {
+    public UserDTO register(UserRegisterRequest request, String ipAddress) {
+        long recentRegistrations = userRepository.countByRegistrationIpAndCreatedAtAfter(
+            ipAddress, 
+            LocalDateTime.now().minusHours(24)
+        );
+        
+        if (recentRegistrations >= 10) {
+            throw new RuntimeException("Registration limit exceeded for this IP address (max 10 per 24h)");
+        }
+
         if (userRepository.existsByUsername(request.username())) {
             throw new RuntimeException("Username already exists");
         }
@@ -50,6 +60,7 @@ public class UserService {
                 .username(request.username())
                 .password(md5(request.password()))
                 .avatarUrl(defaultAvatar != null ? defaultAvatar : "")
+                .registrationIp(ipAddress)
                 .build();
 
         User savedUser = userRepository.save(user);

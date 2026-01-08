@@ -2,6 +2,7 @@ package com.jingwei.rsswithai.domain.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -101,14 +102,7 @@ public class Article {
     /**
      * 创建时间
      */
+    @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        if (fetchedAt == null) {
-            fetchedAt = LocalDateTime.now();
-        }
-    }
 }

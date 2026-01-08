@@ -7,16 +7,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
-public class JwtInterceptor implements HandlerInterceptor {
+public class AdminJwtInterceptor implements HandlerInterceptor {
 
     private final JwtUtils jwtUtils;
 
-    public JwtInterceptor(JwtUtils jwtUtils) {
+    public AdminJwtInterceptor(JwtUtils jwtUtils) {
         this.jwtUtils = jwtUtils;
     }
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
