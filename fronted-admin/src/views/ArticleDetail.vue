@@ -36,7 +36,7 @@ marked.use({ renderer })
 const renderMarkdown = (text: string) => {
   if (!text) return ''
   // 修复部分中文符号结尾导致加粗渲染失效的问题，全部添加零宽空格
-  const fixedText = text.replace(/\*\*/g, '\u200B**')
+  const fixedText = text.replace(/\*\*/g, '\u200B**\u200B')
   const html = marked.parse(fixedText)
   return html as string
 }
@@ -159,9 +159,11 @@ onMounted(() => {
       <div class="bg-white rounded-lg shadow p-6 space-y-4 h-fit">
         <h1 class="text-2xl font-bold text-gray-900">{{ article.title }}</h1>
 
-        <div class="flex items-center space-x-4 text-sm text-gray-600">
+        <div class="flex items-center space-x-8 text-sm text-gray-600">
           <div>来源：{{ article.sourceName }}</div>
           <div v-if="article.author">作者：{{ article.author }}</div>
+        </div>
+        <div class="flex items-center space-x-8 text-sm text-gray-600">
           <div>发布时间：{{ formatDateTime(article.pubDate) }}</div>
           <div v-if="article.wordCount">字数：{{ article.wordCount }}</div>
         </div>

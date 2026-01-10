@@ -13,10 +13,7 @@ import java.time.LocalDateTime;
 @Table(name = "articles", indexes = {
         @Index(name = "idx_article_link", columnList = "link"),
         @Index(name = "idx_article_guid", columnList = "guid"),
-        @Index(name = "idx_article_source_pubdate", columnList = "source_id,pubDate", 
-               unique = false),
-        @Index(name = "idx_article_source_pubdate_covered", columnList = "source_id,pubDate",
-               unique = false)
+        @Index(name = "idx_article_pub_date", columnList = "pubDate"),
 })
 @Getter
 @Setter
