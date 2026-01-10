@@ -152,7 +152,7 @@ const handleSave = async () => {
 // 删除
 const handleDelete = async (id: number) => {
   if (!confirm('确定要删除这个RSS源吗？')) return
-  
+
   try {
     await deleteRssSource(id)
     await handleRefresh()
@@ -282,7 +282,7 @@ onMounted(() => {
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">抓取间隔</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">状态</th>
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">最后抓取状态</th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">最后抓取时间</th>
+<!--              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">最后抓取时间</th>-->
               <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">操作</th>
             </tr>
           </thead>
@@ -311,9 +311,9 @@ onMounted(() => {
                   {{ getFetchStatusText(source.lastFetchStatus) }}
                 </Badge>
               </td>
-              <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
-                {{ formatDateTime(source.lastFetchTime) }}
-              </td>
+<!--              <td class="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">-->
+<!--                {{ formatDateTime(source.lastFetchTime) }}-->
+<!--              </td>-->
               <td class="px-6 py-4 text-sm space-x-2 whitespace-nowrap">
                 <button
                   @click="handleDetail(source)"
