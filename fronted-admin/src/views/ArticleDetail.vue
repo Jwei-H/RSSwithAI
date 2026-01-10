@@ -8,6 +8,7 @@ import Pagination from '@/components/Pagination.vue'
 import { getArticleById, getArticleExtra, regenerateArticleExtra } from '@/api/articles'
 import { getAnalysisResultsByArticleId, getAnalysisResultById } from '@/api/analysis-results'
 import { formatDateTime } from '@/utils/date'
+import { rewriteUrl } from '@/utils/url-rewrites'
 import type { Article, ArticleExtra, AnalysisResult } from '@/types'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
@@ -23,6 +24,10 @@ const renderer = {
       ? hljs.highlight(text, { language: lang as string }).value
       : hljs.highlightAuto(text).value
     return `<pre><code class="hljs ${validLang ? 'language-' + lang : ''}">${highlighted}</code></pre>`
+  },
+  image({ href, title, text }: { href: string, title: string | null, text: string }) {
+    const newHref = rewriteUrl(href, true)
+    return `<img src="${newHref}" alt="${text}" title="${title || ''}" loading="lazy" referrerpolicy="no-referrer" class="rounded-lg shadow-sm max-w-full h-auto my-4" />`
   }
 }
 
@@ -33,8 +38,7 @@ const renderMarkdown = (text: string) => {
   // 修复部分中文符号结尾导致加粗渲染失效的问题，全部添加零宽空格
   const fixedText = text.replace(/\*\*/g, '\u200B**')
   const html = marked.parse(fixedText)
-  // 为图片添加 lazy 与 no-referrer 以减少防盗链 403
-  return (html as string).replace(/<img\s/gi, '<img loading="lazy" referrerpolicy="no-referrer" ')
+  return html as string
 }
 const handleBack = () => {
   const { sourceId, searchWord, page, size } = route.query as Record<string, any>
