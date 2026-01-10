@@ -30,7 +30,9 @@ marked.use({ renderer })
 
 const renderMarkdown = (text: string) => {
   if (!text) return ''
-  const html = marked.parse(text)
+  // 修复部分中文符号结尾导致加粗渲染失效的问题，全部添加零宽空格
+  const fixedText = text.replace(/\*\*/g, '\u200B**')
+  const html = marked.parse(fixedText)
   // 为图片添加 lazy 与 no-referrer 以减少防盗链 403
   return (html as string).replace(/<img\s/gi, '<img loading="lazy" referrerpolicy="no-referrer" ')
 }
@@ -64,7 +66,7 @@ const loadArticle = async () => {
   try {
     const id = Number(route.params.id)
     article.value = await getArticleById(id)
-    
+
     // 加载增强信息
     try {
       articleExtra.value = await getArticleExtra(id)
@@ -152,7 +154,7 @@ onMounted(() => {
       <!-- 文章信息 -->
       <div class="bg-white rounded-lg shadow p-6 space-y-4 h-fit">
         <h1 class="text-2xl font-bold text-gray-900">{{ article.title }}</h1>
-        
+
         <div class="flex items-center space-x-6 text-sm text-gray-600">
           <div>来源：{{ article.sourceName }}</div>
           <div v-if="article.author">作者：{{ article.author }}</div>
@@ -255,7 +257,7 @@ onMounted(() => {
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-semibold text-gray-900">分析结果</h2>
           </div>
-          
+
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
