@@ -49,6 +49,7 @@ public class RssSourceService {
                 .url(request.url())
                 .type(request.type())
                 .description(request.description())
+                .icon(request.icon())
                 .fetchIntervalMinutes(request.fetchIntervalMinutes() != null
                         ? request.fetchIntervalMinutes()
                         : defaultFetchInterval)
@@ -83,6 +84,9 @@ public class RssSourceService {
         }
         if (request.description() != null) {
             source.setDescription(request.description());
+        }
+        if (request.icon() != null) {
+            source.setIcon(request.icon());
         }
         if (request.fetchIntervalMinutes() != null) {
             source.setFetchIntervalMinutes(request.fetchIntervalMinutes());

@@ -155,10 +155,11 @@ onMounted(() => {
       <div class="bg-white rounded-lg shadow p-6 space-y-4 h-fit">
         <h1 class="text-2xl font-bold text-gray-900">{{ article.title }}</h1>
 
-        <div class="flex items-center space-x-6 text-sm text-gray-600">
+        <div class="flex items-center space-x-4 text-sm text-gray-600">
           <div>来源：{{ article.sourceName }}</div>
           <div v-if="article.author">作者：{{ article.author }}</div>
           <div>发布时间：{{ formatDateTime(article.pubDate) }}</div>
+          <div v-if="article.wordCount">字数：{{ article.wordCount }}</div>
         </div>
 
         <div v-if="article.categories" class="flex items-center space-x-2">

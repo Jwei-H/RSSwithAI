@@ -99,6 +99,7 @@ Entity (RssSource)
 | url | String | RSS源URL |
 | type | SourceType | 源类型（ORIGIN/RSSHUB） |
 | description | String | 描述 |
+| icon | String | 图标URL |
 | fetchIntervalMinutes | Integer | 抓取间隔（分钟） |
 | status | SourceStatus | 源状态（ENABLED/DISABLED） |
 | lastFetchStatus | FetchStatus | 最后抓取状态 |

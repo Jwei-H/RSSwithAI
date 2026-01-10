@@ -59,6 +59,7 @@ export interface RssSource {
   url: string
   type: SourceType
   description?: string
+  icon?: string
   fetchIntervalMinutes: number
   status: SourceStatus
   lastFetchStatus: FetchStatus
@@ -94,6 +95,8 @@ export interface Article {
   author?: string
   pubDate: string
   categories?: string
+  wordCount?: number
+  coverImage?: string
   fetchedAt: string
   createdAt: string
 }

@@ -13,8 +13,10 @@ import java.time.LocalDateTime;
 @Table(name = "articles", indexes = {
         @Index(name = "idx_article_link", columnList = "link"),
         @Index(name = "idx_article_guid", columnList = "guid"),
-        @Index(name = "idx_article_pub_date", columnList = "pubDate"),
-        @Index(name = "idx_article_source", columnList = "source_id")
+        @Index(name = "idx_article_source_pubdate", columnList = "source_id,pubDate", 
+               unique = false),
+        @Index(name = "idx_article_source_pubdate_covered", columnList = "source_id,pubDate",
+               unique = false)
 })
 @Getter
 @Setter
@@ -98,6 +100,17 @@ public class Article {
      */
     @Column(nullable = false)
     private LocalDateTime fetchedAt;
+
+    /**
+     * 文章字数（中文按一个字，英文按一个单词）
+     */
+    private Long wordCount;
+
+    /**
+     * 文章封面图片URL（从markdown内容提取）
+     */
+    @Column(length = 2000)
+    private String coverImage;
 
     /**
      * 创建时间

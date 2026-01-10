@@ -89,6 +89,8 @@ Entity (Article, ArticleExtra)
 | author | String | 作者 |
 | pubDate | LocalDateTime | 发布日期 |
 | categories | String | 分类（逗号分隔） |
+| wordCount | Long | 字数（中文字符+英文单词） |
+| coverImage | String | 封面图片URL |
 | fetchedAt | LocalDateTime | 抓取时间 |
 | createdAt | LocalDateTime | 创建时间 |
 

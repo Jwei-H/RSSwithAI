@@ -402,6 +402,8 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
       "url": "https://example.com/rss",
       "type": "ORIGIN",
       "description": "科技新闻源",
+      "icon": "https://example.com/icon.png",
+      "icon": "https://example.com/icon.png",
       "fetchIntervalMinutes": 30,
       "status": "ENABLED",
       "lastFetchStatus": "SUCCESS",
@@ -467,6 +469,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 | url | String | 是 | RSS 源 URL 或 RSSHub 路由 |
 | type | SourceType | 是 | 源类型（ORIGIN 或 RSSHUB） |
 | description | String | 否 | 描述 |
+| icon | String | 否 | RSS 源图标 URL |
 | fetchIntervalMinutes | Integer | 否 | 抓取间隔（分钟），默认 30 |
 
 **SourceType 枚举值：**
@@ -482,6 +485,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "url": "https://example.com/rss",
   "type": "ORIGIN",
   "description": "科技新闻源",
+  "icon": "https://example.com/icon.png",
   "fetchIntervalMinutes": 30
 }
 ```
@@ -495,6 +499,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "url": "https://example.com/rss",
   "type": "ORIGIN",
   "description": "科技新闻源",
+  "icon": "https://example.com/icon.png",
   "fetchIntervalMinutes": 30,
   "status": "ENABLED",
   "lastFetchStatus": "NEVER",
@@ -530,6 +535,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 | url | String | 否 | RSS 源 URL |
 | type | SourceType | 否 | 源类型 |
 | description | String | 否 | 描述 |
+| icon | String | 否 | RSS 源图标 URL |
 | fetchIntervalMinutes | Integer | 否 | 抓取间隔（分钟） |
 | status | SourceStatus | 否 | 源状态（ENABLED 或 DISABLED） |
 
@@ -557,6 +563,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "url": "https://example.com/rss",
   "type": "ORIGIN",
   "description": "更新后的描述",
+  "icon": "https://example.com/icon.png",
   "fetchIntervalMinutes": 30,
   "status": "ENABLED",
   "lastFetchStatus": "SUCCESS",
@@ -723,6 +730,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
       "author": "John Doe",
       "pubDate": "2025-12-27T09:00:00",
       "categories": "AI,Technology",
+      "wordCount": 1500,
       "fetchedAt": "2025-12-27T10:00:00",
       "createdAt": "2025-12-27T10:00:00"
     }
@@ -766,6 +774,8 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "author": "John Doe",
   "pubDate": "2025-12-27T09:00:00",
   "categories": "AI,Technology",
+  "wordCount": 1500,
+  "coverImage": "https://example.com/image.jpg",
   "fetchedAt": "2025-12-27T10:00:00",
   "createdAt": "2025-12-27T10:00:00"
 }

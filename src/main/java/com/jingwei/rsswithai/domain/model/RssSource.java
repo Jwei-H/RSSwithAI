@@ -90,6 +90,12 @@ public class RssSource {
     private Integer failureCount = 0;
 
     /**
+     * RSS源图标URL（非必须）
+     */
+    @Column(length = 2000)
+    private String icon;
+
+    /**
      * 创建时间
      */
     @CreationTimestamp

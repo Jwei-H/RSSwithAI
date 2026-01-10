@@ -16,6 +16,8 @@ public record UpdateRssSourceRequest(
 
     String description,
     
+    String icon,
+    
     @Min(value = 1, message = "抓取间隔至少为1分钟")
     Integer fetchIntervalMinutes,
     

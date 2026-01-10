@@ -17,6 +17,8 @@ public record ArticleDTO(
         String author,
         LocalDateTime pubDate,
         String categories,
+        Long wordCount,
+        String coverImage,
         LocalDateTime fetchedAt,
         LocalDateTime createdAt
 ) {
@@ -35,6 +37,8 @@ public record ArticleDTO(
                 article.getAuthor(),
                 article.getPubDate(),
                 article.getCategories(),
+                article.getWordCount(),
+                article.getCoverImage(),
                 article.getFetchedAt(),
                 article.getCreatedAt()
         );
@@ -54,6 +58,8 @@ public record ArticleDTO(
                 article.getAuthor(),
                 article.getPubDate(),
                 article.getCategories(),
+                article.getWordCount(),
+                null,
                 article.getFetchedAt(),
                 article.getCreatedAt()
         );

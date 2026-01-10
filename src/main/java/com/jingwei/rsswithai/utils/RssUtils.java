@@ -19,6 +19,8 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * RSS/Atom 统一解析工具类
@@ -291,6 +293,9 @@ public final class RssUtils {
             return null;
         }
 
+        Long wordCount = countWords(markdownContent);
+        String coverImage = extractFirstImage(markdownContent);
+
         return Article.builder()
                 .source(source)
                 .sourceName(source.getName())
@@ -300,6 +305,8 @@ public final class RssUtils {
                 .description(description)
                 .rawContent(rawContent)
                 .content(markdownContent)
+                .wordCount(wordCount)
+                .coverImage(coverImage)
                 .author(author != null ? author.trim() : null)
                 .pubDate(pubDate)
                 .categories(categories)
@@ -451,6 +458,63 @@ public final class RssUtils {
 
     private static boolean isBlank(String str) {
         return str == null || str.isBlank();
+    }
+
+    /**
+     * 统计文章字数（中文按一个字，英文按一个单词）
+     */
+    private static Long countWords(String content) {
+        if (isBlank(content)) {
+            return 0L;
+        }
+
+        long count = 0;
+        boolean inWord = false; // 标记当前是否处于英文单词中
+
+        for (char c : content.toCharArray()) {
+            if (isChinese(c)) {
+                count++;
+                inWord = false; // 中文打断英文单词
+            } else if (Character.isLetter(c)) {
+                if (!inWord) {
+                    count++;
+                    inWord = true;
+                }
+            } else {
+                // 数字、空格、标点符号等：不算字数，并重置单词状态
+                inWord = false;
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * 判断字符是否为中文
+     */
+    private static boolean isChinese(char c) {
+        Character.UnicodeBlock ub = Character.UnicodeBlock.of(c);
+        return ub == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS
+                || ub == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS
+                || ub == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A;
+    }
+
+    /**
+     * 从Markdown内容中提取第一个图片URL
+     */
+    private static String extractFirstImage(String content) {
+        if (isBlank(content)) {
+            return null;
+        }
+
+        // Markdown图片格式: ![alt](url)
+        Pattern markdownImagePattern = Pattern.compile("!\\[.*?\\]\\((.*?)\\)");
+        Matcher matcher = markdownImagePattern.matcher(content);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+
+        return null;
     }
 
     /**
