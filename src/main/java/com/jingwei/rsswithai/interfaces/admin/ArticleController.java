@@ -1,6 +1,7 @@
 package com.jingwei.rsswithai.interfaces.admin;
 
 import com.jingwei.rsswithai.application.dto.ArticleDTO;
+import com.jingwei.rsswithai.application.dto.ArticleDetailDTO;
 import com.jingwei.rsswithai.application.dto.ArticleExtraDTO;
 import com.jingwei.rsswithai.application.dto.ArticleStatsDTO;
 import com.jingwei.rsswithai.application.service.ArticleService;
@@ -55,9 +56,9 @@ public class ArticleController {
      * GET /api/v1/articles/{id}
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ArticleDTO> getArticle(@PathVariable Long id) {
+    public ResponseEntity<ArticleDetailDTO> getArticle(@PathVariable Long id) {
         log.debug("获取文章详情: id={}", id);
-        ArticleDTO article = articleService.getArticle(id);
+        ArticleDetailDTO article = articleService.getArticle(id);
         return ResponseEntity.ok(article);
     }
 

@@ -1,6 +1,7 @@
 package com.jingwei.rsswithai.application.service;
 
 import com.jingwei.rsswithai.application.dto.ArticleDTO;
+import com.jingwei.rsswithai.application.dto.ArticleDetailDTO;
 import com.jingwei.rsswithai.application.dto.ArticleExtraDTO;
 import com.jingwei.rsswithai.application.dto.ArticleStatsDTO;
 import com.jingwei.rsswithai.domain.model.Article;
@@ -37,10 +38,10 @@ public class ArticleService {
     /**
      * 获取文章详情
      */
-    public ArticleDTO getArticle(Long id) {
+    public ArticleDetailDTO getArticle(Long id) {
         Article article = articleRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("文章不存在: " + id));
-        return ArticleDTO.from(article);
+        return ArticleDetailDTO.from(article);
     }
 
     /**
@@ -48,7 +49,7 @@ public class ArticleService {
      */
     public Page<ArticleDTO> getArticlesBySource(Long sourceId, Pageable pageable) {
         return articleRepository.findBySourceIdOrderByPubDateDesc(sourceId, pageable)
-                .map(ArticleDTO::fromBasic);
+                .map(ArticleDTO::from);
     }
 
     /**
@@ -59,7 +60,7 @@ public class ArticleService {
             return getArticlesBySource(sourceId, pageable);
         }
         return articleRepository.findBySourceIdAndSearchWordOrderByPubDateDesc(sourceId, searchWord.trim(), pageable)
-                .map(ArticleDTO::fromBasic);
+                .map(ArticleDTO::from);
     }
 
     /**
@@ -67,7 +68,7 @@ public class ArticleService {
      */
     public Page<ArticleDTO> getArticles(Pageable pageable) {
         return articleRepository.findAllByOrderByPubDateDesc(pageable)
-                .map(ArticleDTO::fromBasic);
+                .map(ArticleDTO::from);
     }
 
     /**
@@ -78,7 +79,7 @@ public class ArticleService {
             return getArticles(pageable);
         }
         return articleRepository.findAllBySearchWordOrderByPubDateDesc(searchWord.trim(), pageable)
-                .map(ArticleDTO::fromBasic);
+                .map(ArticleDTO::from);
     }
 
     /**
