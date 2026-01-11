@@ -176,6 +176,7 @@ RSSwithAI 是一个基于 RSS 信息源的智能情报收集、分析与展示�
 | 名称       | `name`               |
 | URL      | `url`                |
 | 类型       | `type`               |
+| 分类       | `category`           |
 | 描述       | `description`        |
 | 抓取间隔（分钟） | `fetchIntervalMinutes` |
 | 状态       | `status`             |
@@ -186,7 +187,7 @@ RSSwithAI 是一个基于 RSS 信息源的智能情报收集、分析与展示�
 | 创建时间     | `createdAt`          |
 | 更新时间     | `updatedAt`          |
 
-**说明**：错误信息（`lastFetchError`）仅在抓取失败时显示。
+**说明**：分类（`category`）字段仅在详情中展示，列表中不显示；错误信息（`lastFetchError`）仅在抓取失败时显示。
 
 #### 新增/编辑对话框
 
@@ -197,6 +198,7 @@ RSSwithAI 是一个基于 RSS 信息源的智能情报收集、分析与展示�
 | 名称       | 文本输入框 | 是  |        |                 |
 | URL      | 文本输入框 | 是  |        |                 |
 | 类型       | 下拉选择  | 是  | ORIGIN | ORIGIN / RSSHUB |
+| 分类       | 下拉选择  | 否  | OTHER  | NEWS / TECH / SOCIETY / FINANCE / LIFESTYLE / OTHER |
 | 描述       | 文本域   | 否  |        |                 |
 | 抓取间隔（分钟） | 数字输入框 | 否  | 30     |                 |
 

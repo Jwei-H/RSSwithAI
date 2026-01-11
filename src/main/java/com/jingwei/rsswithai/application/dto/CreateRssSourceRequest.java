@@ -1,5 +1,6 @@
 package com.jingwei.rsswithai.application.dto;
 
+import com.jingwei.rsswithai.domain.model.SourceCategory;
 import com.jingwei.rsswithai.domain.model.SourceType;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +24,8 @@ public record CreateRssSourceRequest(
     String icon,
     
     @Min(value = 1, message = "抓取间隔至少为1分钟")
-    Integer fetchIntervalMinutes
+    Integer fetchIntervalMinutes,
+    
+    SourceCategory category
 ) {
 }

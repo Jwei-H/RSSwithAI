@@ -39,6 +39,16 @@ export enum FetchStatus {
   FETCHING = 'FETCHING'
 }
 
+// RSS 源分类
+export enum SourceCategory {
+  NEWS = 'NEWS',
+  TECH = 'TECH',
+  SOCIETY = 'SOCIETY',
+  FINANCE = 'FINANCE',
+  LIFESTYLE = 'LIFESTYLE',
+  OTHER = 'OTHER'
+}
+
 // 实验状态
 export enum ExperimentStatus {
   RUNNING = 'RUNNING',
@@ -62,6 +72,7 @@ export interface RssSource {
   icon?: string
   fetchIntervalMinutes: number
   status: SourceStatus
+  category: SourceCategory
   lastFetchStatus: FetchStatus
   lastFetchTime?: string
   lastFetchError?: string
@@ -211,8 +222,10 @@ export interface RssSourceRequest {
   url: string
   type: SourceType
   description?: string
+  icon?: string
   fetchIntervalMinutes?: number
   status?: SourceStatus
+  category?: SourceCategory
 }
 
 // 创建/更新模型配置请求

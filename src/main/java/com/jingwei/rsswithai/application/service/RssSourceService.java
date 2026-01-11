@@ -53,6 +53,7 @@ public class RssSourceService {
                 .fetchIntervalMinutes(request.fetchIntervalMinutes() != null
                         ? request.fetchIntervalMinutes()
                         : defaultFetchInterval)
+                .category(request.category() != null ? request.category() : com.jingwei.rsswithai.domain.model.SourceCategory.OTHER)
                 .status(SourceStatus.ENABLED)
                 .build();
 
@@ -93,6 +94,9 @@ public class RssSourceService {
         }
         if (request.status() != null) {
             source.setStatus(request.status());
+        }
+        if (request.category() != null) {
+            source.setCategory(request.category());
         }
 
         RssSource saved = rssSourceRepository.save(source);

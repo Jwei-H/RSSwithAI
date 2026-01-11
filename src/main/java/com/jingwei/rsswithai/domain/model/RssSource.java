@@ -96,6 +96,14 @@ public class RssSource {
     private String icon;
 
     /**
+     * RSS源分类
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private SourceCategory category = SourceCategory.OTHER;
+
+    /**
      * 创建时间
      */
     @CreationTimestamp

@@ -17,9 +17,9 @@ RSS源管理模块负责管理RSS订阅源的配置、调度抓取任务、监�
 
 管理员可以通过REST API进行以下操作：
 
-1. **创建RSS源**：设置名称、URL、类型、描述、抓取间隔
+1. **创建RSS源**：设置名称、URL、类型、描述、抓取间隔、分类（默认为OTHER）
 2. **查询RSS源**：查看列表、详情、统计信息
-3. **更新RSS源**：修改配置信息或启用/禁用状态
+3. **更新RSS源**：修改配置信息或启用/禁用状态、分类
 4. **删除RSS源**：移除不需要的源
 5. **手动抓取**：触发单个源或所有启用源的抓取
 
@@ -102,6 +102,7 @@ Entity (RssSource)
 | icon | String | 图标URL |
 | fetchIntervalMinutes | Integer | 抓取间隔（分钟） |
 | status | SourceStatus | 源状态（ENABLED/DISABLED） |
+| category | SourceCategory | 源分类（NEWS/TECH/SOCIETY/FINANCE/LIFESTYLE/OTHER） |
 | lastFetchStatus | FetchStatus | 最后抓取状态 |
 | lastFetchTime | LocalDateTime | 最后抓取时间 |
 | lastFetchError | String | 最后抓取错误 |
@@ -113,6 +114,7 @@ Entity (RssSource)
 
 - **SourceType**: ORIGIN（原始RSS源）、RSSHUB（RSSHub源）
 - **SourceStatus**: ENABLED（启用）、DISABLED（禁用）
+- **SourceCategory**: NEWS（新闻）、TECH（科技）、SOCIETY（社会）、FINANCE（财经）、LIFESTYLE（生活）、OTHER（其他）
 - **FetchStatus**: NEVER（从未抓取）、SUCCESS（成功）、FAILED（失败）、FETCHING（抓取中）
 
 ---

@@ -2,6 +2,7 @@ package com.jingwei.rsswithai.application.dto;
 
 import com.jingwei.rsswithai.domain.model.FetchStatus;
 import com.jingwei.rsswithai.domain.model.RssSource;
+import com.jingwei.rsswithai.domain.model.SourceCategory;
 import com.jingwei.rsswithai.domain.model.SourceStatus;
 import com.jingwei.rsswithai.domain.model.SourceType;
 
@@ -19,6 +20,7 @@ public record RssSourceDTO(
     String icon,
     Integer fetchIntervalMinutes,
     SourceStatus status,
+    SourceCategory category,
     FetchStatus lastFetchStatus,
     LocalDateTime lastFetchTime,
     String lastFetchError,
@@ -39,6 +41,7 @@ public record RssSourceDTO(
             source.getIcon(),
             source.getFetchIntervalMinutes(),
             source.getStatus(),
+            source.getCategory(),
             source.getLastFetchStatus(),
             source.getLastFetchTime(),
             source.getLastFetchError(),

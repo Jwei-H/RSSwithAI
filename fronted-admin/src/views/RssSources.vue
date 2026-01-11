@@ -19,7 +19,7 @@ import {
   fetchAllRssSources
 } from '@/api/rss-sources'
 import { formatDateTime } from '@/utils/date'
-import type { RssSource, RssSourceStats, SourceType, SourceStatus, FetchStatus } from '@/types'
+import type { RssSource, RssSourceStats, SourceType, SourceStatus, FetchStatus, SourceCategory } from '@/types'
 
 // 数据
 const loading = ref(false)
@@ -46,12 +46,22 @@ const formData = ref({
   type: 'ORIGIN' as SourceType,
   description: '',
   icon: '',
-  fetchIntervalMinutes: 30
+  fetchIntervalMinutes: 30,
+  category: 'OTHER' as SourceCategory
 })
 
 const typeOptions = [
   { value: 'ORIGIN', label: '原始RSS源' },
   { value: 'RSSHUB', label: 'RSSHub源' }
+]
+
+const categoryOptions = [
+  { value: 'NEWS', label: '新闻' },
+  { value: 'TECH', label: '科技' },
+  { value: 'SOCIETY', label: '社会' },
+  { value: 'FINANCE', label: '财经' },
+  { value: 'LIFESTYLE', label: '生活' },
+  { value: 'OTHER', label: '其他' }
 ]
 
 // 加载统计数据
@@ -106,7 +116,8 @@ const handleCreate = () => {
     type: 'ORIGIN',
     description: '',
     icon: '',
-    fetchIntervalMinutes: 30
+    fetchIntervalMinutes: 30,
+    category: 'OTHER'
   }
   dialogVisible.value = true
 }
@@ -121,7 +132,8 @@ const handleEdit = async (source: RssSource) => {
     type: source.type,
     description: source.description || '',
     icon: source.icon || '',
-    fetchIntervalMinutes: source.fetchIntervalMinutes
+    fetchIntervalMinutes: source.fetchIntervalMinutes,
+    category: source.category || 'OTHER'
   }
   dialogVisible.value = true
 }
@@ -227,6 +239,18 @@ const getFetchStatusText = (status: FetchStatus) => {
 
 const getTypeText = (type: SourceType) => {
   return type === 'ORIGIN' ? '原始RSS源' : 'RSSHub源'
+}
+
+const getCategoryText = (category: SourceCategory) => {
+  const map: Record<SourceCategory, string> = {
+    NEWS: '新闻',
+    TECH: '科技',
+    SOCIETY: '社会',
+    FINANCE: '财经',
+    LIFESTYLE: '生活',
+    OTHER: '其他'
+  }
+  return map[category] || '未知'
 }
 
 onMounted(() => {
@@ -404,7 +428,13 @@ onMounted(() => {
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">图标 URL</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1">分类</label>
+          <Select
+            v-model="formData.category"
+            :options="categoryOptions"
+          />
+        </div>
+        <div>
           <input
             v-model="formData.icon"
             type="text"
@@ -462,7 +492,10 @@ onMounted(() => {
               <div class="mt-1 text-sm text-gray-900">{{ getTypeText(currentSource.type!) }}</div>
             </div>
             <div>
-              <div class="text-sm font-medium text-gray-500">抓取间隔</div>
+              <div class="text-sm font-medium text-gray-500">分类</div>
+              <div class="mt-1 text-sm text-gray-900">{{ getCategoryText(currentSource.category!) }}</div>
+            </div>
+            <div>
               <div class="mt-1 text-sm text-gray-900">{{ currentSource.fetchIntervalMinutes }} 分钟</div>
             </div>
             <div>

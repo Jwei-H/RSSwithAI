@@ -403,9 +403,9 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
       "type": "ORIGIN",
       "description": "科技新闻源",
       "icon": "https://example.com/icon.png",
-      "icon": "https://example.com/icon.png",
       "fetchIntervalMinutes": 30,
       "status": "ENABLED",
+      "category": "TECH",
       "lastFetchStatus": "SUCCESS",
       "lastFetchTime": "2025-12-27T10:00:00",
       "lastFetchError": null,
@@ -446,6 +446,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "description": "科技新闻源",
   "fetchIntervalMinutes": 30,
   "status": "ENABLED",
+  "category": "TECH",
   "lastFetchStatus": "SUCCESS",
   "lastFetchTime": "2025-12-27T10:00:00",
   "lastFetchError": null,
@@ -471,11 +472,21 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 | description | String | 否 | 描述 |
 | icon | String | 否 | RSS 源图标 URL |
 | fetchIntervalMinutes | Integer | 否 | 抓取间隔（分钟），默认 30 |
+| category | SourceCategory | 否 | 源分类，默认 OTHER |
 
 **SourceType 枚举值：**
 
 - `ORIGIN`：原始 RSS 源
 - `RSSHUB`：RSSHub 源
+
+**SourceCategory 枚举值：**
+
+- `NEWS`：新闻
+- `TECH`：科技
+- `SOCIETY`：社会
+- `FINANCE`：财经
+- `LIFESTYLE`：生活
+- `OTHER`：其他（默认）
 
 **请求示例：**
 
@@ -486,7 +497,8 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "type": "ORIGIN",
   "description": "科技新闻源",
   "icon": "https://example.com/icon.png",
-  "fetchIntervalMinutes": 30
+  "fetchIntervalMinutes": 30,
+  "category": "TECH"
 }
 ```
 
@@ -502,6 +514,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "icon": "https://example.com/icon.png",
   "fetchIntervalMinutes": 30,
   "status": "ENABLED",
+  "category": "TECH",
   "lastFetchStatus": "NEVER",
   "lastFetchTime": null,
   "lastFetchError": null,
@@ -538,6 +551,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 | icon | String | 否 | RSS 源图标 URL |
 | fetchIntervalMinutes | Integer | 否 | 抓取间隔（分钟） |
 | status | SourceStatus | 否 | 源状态（ENABLED 或 DISABLED） |
+| category | SourceCategory | 否 | 源分类 |
 
 **SourceStatus 枚举值：**
 
@@ -550,7 +564,8 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 {
   "name": "Updated Tech News",
   "description": "更新后的描述",
-  "status": "ENABLED"
+  "status": "ENABLED",
+  "category": "TECH"
 }
 ```
 
@@ -566,6 +581,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "icon": "https://example.com/icon.png",
   "fetchIntervalMinutes": 30,
   "status": "ENABLED",
+  "category": "TECH",
   "lastFetchStatus": "SUCCESS",
   "lastFetchTime": "2025-12-27T10:00:00",
   "lastFetchError": null,
