@@ -109,8 +109,3 @@ Entity (ModelConfig)
 - temperature范围：0.0-2.0
 - topP范围：0.0-1.0
 - topK、maxTokens、seed必须为非负整数
-
-### 6.3 Builder模式
-
-- 使用Builder模式构建实体
-- 支持部分更新
