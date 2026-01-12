@@ -56,6 +56,13 @@
 | admin_username | - | 管理员用户名 |
 | admin_password | - | 管理员密码 |
 
+### 1.3.5 订阅系统配置
+
+| 配置键 | 默认值 | 说明 |
+|--------|--------|------|
+| feed_similarity_threshold | 0.3 | 主题语义匹配距离阈值（pgvector `<=>`） |
+| subscription_limit | 20 | 单个用户订阅数量上限（RSS + Topic 合计） |
+
 ---
 
 ## 2. 架构设计
