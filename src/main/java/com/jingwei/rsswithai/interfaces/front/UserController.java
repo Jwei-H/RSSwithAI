@@ -46,20 +46,20 @@ public class UserController {
     }
 
     @GetMapping("/user/profile")
-    public ResponseEntity<?> getProfile(HttpServletRequest request) {
-        String username = (String) request.getAttribute("username");
+    public ResponseEntity<?> getProfile() {
+        String username = UserContext.requireUsername();
         return ResponseEntity.ok(userService.getUserInfo(username));
     }
 
     @PutMapping("/user/username")
-    public ResponseEntity<?> updateUsername(HttpServletRequest request, @RequestBody UpdateUsernameRequest updateRequest) {
-        String username = (String) request.getAttribute("username");
+    public ResponseEntity<?> updateUsername(@RequestBody UpdateUsernameRequest updateRequest) {
+        String username = UserContext.requireUsername();
         return ResponseEntity.ok(userService.updateUsername(username, updateRequest));
     }
 
     @PutMapping("/user/password")
-    public ResponseEntity<?> updatePassword(HttpServletRequest request, @RequestBody UpdatePasswordRequest updateRequest) {
-        String username = (String) request.getAttribute("username");
+    public ResponseEntity<?> updatePassword(@RequestBody UpdatePasswordRequest updateRequest) {
+        String username = UserContext.requireUsername();
         userService.updatePassword(username, updateRequest);
         return ResponseEntity.ok().build();
     }

@@ -1,7 +1,6 @@
 package com.jingwei.rsswithai.config;
 
 import com.jingwei.rsswithai.interfaces.admin.AdminJwtInterceptor;
-import com.jingwei.rsswithai.interfaces.front.FrontJwtInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -11,11 +10,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
 
     private final AdminJwtInterceptor adminJwtInterceptor;
-    private final FrontJwtInterceptor frontJwtInterceptor;
 
-    public WebConfig(AdminJwtInterceptor adminJwtInterceptor, FrontJwtInterceptor frontJwtInterceptor) {
+    public WebConfig(AdminJwtInterceptor adminJwtInterceptor) {
         this.adminJwtInterceptor = adminJwtInterceptor;
-        this.frontJwtInterceptor = frontJwtInterceptor;
     }
 
     @Override
@@ -23,11 +20,6 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(adminJwtInterceptor)
                 .addPathPatterns("/api/admin/**")
                 .excludePathPatterns("/api/admin/login");
-
-        registry.addInterceptor(frontJwtInterceptor)
-                .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/admin/**", "/api/login", "/api/register")
-        ;
     }
 
     @Override

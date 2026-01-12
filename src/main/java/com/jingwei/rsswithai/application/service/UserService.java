@@ -43,10 +43,10 @@ public class UserService {
     @Transactional
     public UserDTO register(UserRegisterRequest request, String ipAddress) {
         long recentRegistrations = userRepository.countByRegistrationIpAndCreatedAtAfter(
-            ipAddress, 
+            ipAddress,
             LocalDateTime.now().minusHours(24)
         );
-        
+
         if (recentRegistrations >= 10) {
             throw new RuntimeException("Registration limit exceeded for this IP address (max 10 per 24h)");
         }
@@ -77,17 +77,26 @@ public class UserService {
         }
         log.info("User logged in: {}", user.getUsername());
 
-        return jwtUtils.generateToken(user.getUsername());
+        return jwtUtils.generateToken(user.getId(), user.getUsername());
     }
 
     public String refreshToken(String token) {
-        if (jwtUtils.validateToken(token)) {
-            String username = jwtUtils.extractUsername(token);
-            if (userRepository.existsByUsername(username)) {
-                return jwtUtils.generateToken(username);
-            }
+        if (!jwtUtils.validateToken(token)) {
+            throw new RuntimeException("Invalid token");
         }
-        throw new RuntimeException("Invalid token");
+
+        Long userId = jwtUtils.extractUserId(token);
+        String username = jwtUtils.extractUsername(token);
+
+        if (userId == null || username == null) {
+            throw new RuntimeException("Invalid token");
+        }
+
+        // Ensure user still exists
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Invalid token"));
+
+        return jwtUtils.generateToken(user.getId(), user.getUsername());
     }
 
     @Transactional

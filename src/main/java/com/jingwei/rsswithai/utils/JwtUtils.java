@@ -15,6 +15,8 @@ import java.util.function.Function;
 @Component
 public class JwtUtils {
 
+    public static final String CLAIM_USER_ID = "userId";
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -25,6 +27,10 @@ public class JwtUtils {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * Generate token with only username (legacy).
+     * Prefer {@link #generateToken(Long, String)}.
+     */
     public String generateToken(String username) {
         return Jwts.builder()
                 .subject(username)
@@ -34,8 +40,41 @@ public class JwtUtils {
                 .compact();
     }
 
+    /**
+     * Generate token containing both userId (claim) and username (subject).
+     */
+    public String generateToken(Long userId, String username) {
+        return Jwts.builder()
+                .subject(username)
+                .claim(CLAIM_USER_ID, userId)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + expiration.toMillis()))
+                .signWith(getSigningKey())
+                .compact();
+    }
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public Long extractUserId(String token) {
+        return extractClaim(token, claims -> {
+            Object v = claims.get(CLAIM_USER_ID);
+            if (v == null) {
+                return null;
+            }
+            if (v instanceof Number n) {
+                return n.longValue();
+            }
+            if (v instanceof String s && !s.isBlank()) {
+                try {
+                    return Long.parseLong(s);
+                } catch (NumberFormatException ignored) {
+                    return null;
+                }
+            }
+            return null;
+        });
     }
 
     public Date extractExpiration(String token) {
@@ -57,11 +96,6 @@ public class JwtUtils {
 
     public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
-    }
-
-    public boolean validateToken(String token, String username) {
-        final String extractedUsername = extractUsername(token);
-        return (extractedUsername.equals(username) && !isTokenExpired(token));
     }
 
     public boolean validateToken(String token) {

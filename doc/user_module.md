@@ -16,7 +16,7 @@
 前台用户可以通过REST API进行以下操作：
 
 1. **注册**：创建新账号，系统会自动记录IP并进行限流检查（24小时内同一IP最多注册10个账号）。
-2. **登录**：使用用户名和密码获取JWT Token。
+2. **登录**：使用用户名和密码获取JWT Token（Token 内同时包含 `userId` 与 `userName`）。
 3. **刷新Token**：使用旧Token换取新Token。
 4. **个人信息**：查看个人资料、修改用户名、修改密码。
 
@@ -50,8 +50,9 @@ Entity (User)
 | UserService | 实现注册、登录、更新信息等业务逻辑 |
 | UserRepository | 用户数据的持久化接口 |
 | User | 用户实体，包含用户名、密码hash、IP记录等 |
-| JwtUtils | 提供Token生成、解析和验证功能 |
-| FrontAuthInterceptor | 前台请求的鉴权拦截器 |
+| JwtUtils | 提供Token生成、解析和验证功能（Token中包含 `userId` claim） |
+| FrontJwtFilter | 前台请求鉴权Filter：校验JWT并解析 `userId` / `userName` |
+| UserContext | 使用 `ScopedValue` 保存当前请求的 `userId` / `userName`，供后续业务读取 |
 
 ### 2.3 数据结构 (User)
 
@@ -81,5 +82,5 @@ Entity (User)
 ### 3.2 用户登录流程
 
 1. **凭证校验**：查询用户，比对MD5密码。
-2. **生成Token**：验证通过后签发JWT Token。
+2. **生成Token**：验证通过后签发JWT Token（包含 `userId` claim，subject为 `userName`）。
 3. **返回Token**：客户端保存Token用于后续请求。
