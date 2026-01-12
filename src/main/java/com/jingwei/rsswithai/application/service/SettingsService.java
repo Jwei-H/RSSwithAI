@@ -84,6 +84,10 @@ public class SettingsService {
                 field.set(appConfig, Integer.parseInt(value));
             } else if (type == Long.class || type == long.class) {
                 field.set(appConfig, Long.parseLong(value));
+            } else if (type == Double.class || type == double.class) {
+                field.set(appConfig, Double.parseDouble(value));
+            } else if (type == Float.class || type == float.class) {
+                field.set(appConfig, Float.parseFloat(value));
             } else if (type == Boolean.class || type == boolean.class) {
                 field.set(appConfig, Boolean.parseBoolean(value));
             }

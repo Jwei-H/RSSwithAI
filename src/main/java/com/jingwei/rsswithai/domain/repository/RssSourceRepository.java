@@ -1,7 +1,10 @@
 package com.jingwei.rsswithai.domain.repository;
 
 import com.jingwei.rsswithai.domain.model.RssSource;
+import com.jingwei.rsswithai.domain.model.SourceCategory;
 import com.jingwei.rsswithai.domain.model.SourceStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -21,6 +24,12 @@ public interface RssSourceRepository extends JpaRepository<RssSource, Long> {
      * 根据状态查找RSS源列表
      */
     List<RssSource> findByStatus(SourceStatus status);
+
+    Page<RssSource> findByStatus(SourceStatus status, Pageable pageable);
+
+    Page<RssSource> findByStatusAndCategory(SourceStatus status, SourceCategory category, Pageable pageable);
+
+    Page<RssSource> findByCategory(SourceCategory category, Pageable pageable);
 
     /**
      * 获取所有启用的RSS源

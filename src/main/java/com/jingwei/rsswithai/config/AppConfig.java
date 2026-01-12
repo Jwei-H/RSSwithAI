@@ -41,6 +41,12 @@ public class AppConfig {
     @SettingKey("concurrent_limit")
     private Integer concurrentLimit = 5;
 
+    @SettingKey("feed_similarity_threshold")
+    private Double feedSimilarityThreshold = 0.3;
+
+    @SettingKey("subscription_limit")
+    private Integer subscriptionLimit = 20;
+
     @SettingKey("admin_username")
     private String adminUsername;
 

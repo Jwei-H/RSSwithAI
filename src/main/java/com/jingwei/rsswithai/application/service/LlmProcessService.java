@@ -285,7 +285,7 @@ public class LlmProcessService {
     /**
      * 生成向量表示
      */
-    private float[] generateVector(String text) {
+    public float[] generateVector(String text) {
         try {
             EmbeddingResponse embeddingResponse = embeddingModel.embedForResponse(List.of(text));
             return embeddingResponse.getResult().getOutput();
