@@ -55,7 +55,7 @@ public class SubscriptionController {
     }
 
     @GetMapping("/articles/feed")
-    public ResponseEntity<List<FeedArticleDTO>> getFeed(@RequestParam(value = "subscriptionId", required = false) Long subscriptionId,
+    public ResponseEntity<List<ArticleFeedDTO>> getFeed(@RequestParam(value = "subscriptionId", required = false) Long subscriptionId,
                                                         @RequestParam(value = "cursor", required = false) String cursor,
                                                         @RequestParam(value = "size", required = false) Integer size) {
         Long userId = UserContext.requireUserId();

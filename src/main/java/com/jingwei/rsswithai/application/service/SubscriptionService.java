@@ -2,7 +2,7 @@ package com.jingwei.rsswithai.application.service;
 
 import com.jingwei.rsswithai.application.dto.CreateSubscriptionRequest;
 import com.jingwei.rsswithai.application.dto.CreateTopicRequest;
-import com.jingwei.rsswithai.application.dto.FeedArticleDTO;
+import com.jingwei.rsswithai.application.dto.ArticleFeedDTO;
 import com.jingwei.rsswithai.application.dto.SubscriptionDTO;
 import com.jingwei.rsswithai.application.dto.TopicDTO;
 import com.jingwei.rsswithai.application.dto.UserRssSourceDTO;
@@ -114,7 +114,7 @@ public class SubscriptionService {
     }
 
     @Transactional(readOnly = true)
-    public List<FeedArticleDTO> getFeed(Long userId, Long subscriptionId, String cursor, Integer size) {
+    public List<ArticleFeedDTO> getFeed(Long userId, Long subscriptionId, String cursor, Integer size) {
         FeedCursor feedCursor = parseCursor(cursor);
         int pageSize = (size == null || size <= 0) ? DEFAULT_FEED_SIZE : Math.min(size, MAX_FEED_SIZE);
 
@@ -216,7 +216,7 @@ public class SubscriptionService {
         }
     }
 
-    private List<FeedArticleDTO> executeHybridFeed(List<Long> sourceIds,
+    private List<ArticleFeedDTO> executeHybridFeed(List<Long> sourceIds,
                                                    List<float[]> topicVectors,
                                                    LocalDateTime cursorTime,
                                                    long cursorId,
@@ -261,7 +261,7 @@ public class SubscriptionService {
         }
 
         List<?> rows = query.getResultList();
-        List<FeedArticleDTO> result = new ArrayList<>(rows.size());
+        List<ArticleFeedDTO> result = new ArrayList<>(rows.size());
         for (Object row : rows) {
             if (row instanceof Object[] columns) {
                 result.add(mapRow(columns));
@@ -287,7 +287,7 @@ public class SubscriptionService {
         }
     }
 
-    private FeedArticleDTO mapRow(Object[] row) {
+    private ArticleFeedDTO mapRow(Object[] row) {
         Long id = row[0] != null ? ((Number) row[0]).longValue() : null;
         Long sourceId = row[1] != null ? ((Number) row[1]).longValue() : null;
         String sourceName = row[2] != null ? row[2].toString() : null;
@@ -300,7 +300,7 @@ public class SubscriptionService {
         } else if (dateObj instanceof LocalDateTime time) {
             pubDate = time;
         }
-        return FeedArticleDTO.of(id, sourceId, sourceName, title, coverImage, pubDate);
+        return ArticleFeedDTO.of(id, sourceId, sourceName, title, coverImage, pubDate);
     }
 
     private String toPgVectorLiteral(float[] vector) {

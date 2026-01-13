@@ -2,7 +2,7 @@ package com.jingwei.rsswithai.application.dto;
 
 import java.time.LocalDateTime;
 
-public record FeedArticleDTO(
+public record ArticleFeedDTO(
         Long id,
         Long sourceId,
         String sourceName,
@@ -10,12 +10,12 @@ public record FeedArticleDTO(
         String coverImage,
         LocalDateTime pubDate
 ) {
-    public static FeedArticleDTO of(Long id,
+    public static ArticleFeedDTO of(Long id,
                                     Long sourceId,
                                     String sourceName,
                                     String title,
                                     String coverImage,
                                     LocalDateTime pubDate) {
-        return new FeedArticleDTO(id, sourceId, sourceName, title, coverImage, pubDate);
+        return new ArticleFeedDTO(id, sourceId, sourceName, title, coverImage, pubDate);
     }
 }
