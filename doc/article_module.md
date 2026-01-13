@@ -132,6 +132,8 @@ Entity (Article, ArticleExtra)
 |------|------|------|
 | GET | /api/front/v1/articles/{id} | 获取文章详情（ArticleDetailDTO） |
 | GET | /api/front/v1/articles/{id}/extra | 获取文章的AI增强信息（ArticleExtraDTO，如不存在或处理失败返回404，失败仅后台可见错误信息） |
+| GET | /api/front/v1/articles/search | 智能搜索（query必填；返回ArticleFeedDTO列表，最多20条） |
+| GET | /api/front/v1/articles/{id}/recommendations | 相似文章推荐（最多2条；若当前文章无有效vector则返回空列表） |
 
 ---
 
