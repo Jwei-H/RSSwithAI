@@ -25,6 +25,11 @@ public interface ArticleExtraRepository extends JpaRepository<ArticleExtra, Long
     boolean existsByArticleId(Long articleId);
 
     /**
+     * 检查文章是否存在向量
+     */
+    boolean existsByArticleIdAndVectorIsNotNull(Long articleId);
+
+    /**
      * 使用 @Query 显式指定查询字段，强制 Hibernate 不生成包含 vector 字段的 SQL。
      * 即使使用了 Projection，默认行为有时仍会加载完整实体导致 vector 映射错误。
      */
@@ -43,6 +48,12 @@ public interface ArticleExtraRepository extends JpaRepository<ArticleExtra, Long
     @Transactional
     @Query(value = "DELETE FROM article_extra WHERE article_id = :articleId", nativeQuery = true)
     void deleteByArticleId(@Param("articleId") Long articleId);
+
+    @Query(value = "SELECT ae.article_id FROM article_extra ae JOIN articles a ON a.id = ae.article_id WHERE ae.vector IS NOT NULL AND (ae.vector <=> CAST(:queryVector AS vector)) < :threshold ORDER BY a.pub_date DESC LIMIT :limit", nativeQuery = true)
+    List<Long> searchIdsByVector(@Param("queryVector") String queryVector, @Param("threshold") double threshold, @Param("limit") int limit);
+
+    @Query(value = "SELECT ae_other.article_id FROM article_extra ae_target JOIN article_extra ae_other ON ae_other.article_id != :articleId AND ae_other.vector IS NOT NULL WHERE ae_target.article_id = :articleId AND ae_target.vector IS NOT NULL ORDER BY ae_other.vector <=> ae_target.vector ASC LIMIT :limit", nativeQuery = true)
+    List<Long> findSimilarArticleIds(@Param("articleId") Long articleId, @Param("limit") int limit);
 
     /**
      * getArticleExtra 场景专用：不读取 vector，避免 vector 为 null 时的映射异常/无用大字段读取

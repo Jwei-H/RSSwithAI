@@ -3,10 +3,12 @@ package com.jingwei.rsswithai.application.service;
 import com.jingwei.rsswithai.application.dto.ArticleDTO;
 import com.jingwei.rsswithai.application.dto.ArticleDetailDTO;
 import com.jingwei.rsswithai.application.dto.ArticleExtraDTO;
+import com.jingwei.rsswithai.application.dto.ArticleFeedDTO;
 import com.jingwei.rsswithai.application.dto.ArticleStatsDTO;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
+import com.jingwei.rsswithai.config.AppConfig;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,10 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 文章服务
@@ -34,6 +34,8 @@ public class ArticleService {
 
     private final ArticleRepository articleRepository;
     private final ArticleExtraRepository articleExtraRepository;
+    private final LlmProcessService llmProcessService;
+    private final AppConfig appConfig;
 
     /**
      * 获取文章详情
@@ -91,6 +93,77 @@ public class ArticleService {
                 .orElse(null);
     }
 
+    @Transactional(readOnly = true)
+    public List<ArticleFeedDTO> searchArticles(String query) {
+        String trimmed = query == null ? "" : query.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Search query cannot be blank");
+        }
+
+        String likePattern = "%" + trimmed + "%";
+        List<Long> fuzzyIds = articleRepository.searchIdsByFuzzy(likePattern, 20);
+
+        float[] queryVector = llmProcessService.generateVector(trimmed);
+        List<Long> vectorIds = Collections.emptyList();
+        if (queryVector != null && queryVector.length > 0) {
+            double threshold = appConfig.getFeedSimilarityThreshold() != null
+                    ? appConfig.getFeedSimilarityThreshold()
+                    : 0.3D;
+            vectorIds = articleExtraRepository.searchIdsByVector(toPgVectorLiteral(queryVector), threshold, 50);
+        } else {
+            log.warn("Vector generation failed, fallback to keyword search only");
+        }
+
+        List<Long> merged = mergeHybridIds(fuzzyIds, vectorIds, 20);
+        Map<Long, Article> articleMap = toArticleMap(merged);
+
+        return merged.stream()
+                .map(articleMap::get)
+                .filter(Objects::nonNull)
+                .map(article -> ArticleFeedDTO.of(
+                        article.getId(),
+                        article.getSource() != null ? article.getSource().getId() : null,
+                        article.getSourceName(),
+                        article.getTitle(),
+                        article.getCoverImage(),
+                        article.getPubDate()
+                ))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ArticleFeedDTO> recommendArticles(Long articleId) {
+        if (articleId == null || articleId <= 0) {
+            throw new IllegalArgumentException("articleId must be positive");
+        }
+
+        articleRepository.findById(articleId)
+                .orElseThrow(() -> new EntityNotFoundException("文章不存在: " + articleId));
+
+        if (!hasVector(articleId)) {
+            return List.of();
+        }
+
+        List<Long> similarIds = articleExtraRepository.findSimilarArticleIds(articleId, 2);
+        if (similarIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Article> articleMap = toArticleMap(similarIds);
+        return similarIds.stream()
+            .map(articleMap::get)
+            .filter(article -> article != null)
+            .map(article -> ArticleFeedDTO.of(
+                article.getId(),
+                article.getSource() != null ? article.getSource().getId() : null,
+                article.getSourceName(),
+                article.getTitle(),
+                article.getCoverImage(),
+                article.getPubDate()
+            ))
+            .toList();
+    }
+
     /**
      * 获取文章统计信息
      */
@@ -131,5 +204,60 @@ public class ArticleService {
             log.debug("文章保存跳过（并发重复）: guid={}", article.getGuid());
             return null;
         }
+    }
+
+    private boolean hasVector(Long articleId) {
+        return articleExtraRepository.existsByArticleIdAndVectorIsNotNull(articleId);
+    }
+
+    private Map<Long, Article> toArticleMap(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
+        return articleRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Article::getId, article -> article));
+    }
+
+    private List<Long> mergeHybridIds(List<Long> fuzzyIds, List<Long> vectorIds, int limit) {
+        List<Long> fuzzyList = fuzzyIds == null ? List.of() : fuzzyIds;
+        List<Long> vectorList = vectorIds == null ? List.of() : vectorIds;
+
+        Set<Long> vectorSet = Set.copyOf(vectorList);
+        List<Long> intersection = fuzzyList.stream()
+                .filter(vectorSet::contains)
+                .toList();
+
+        Set<Long> intersectionSet = Set.copyOf(intersection);
+        List<Long> fuzzyOnly = fuzzyList.stream()
+                .filter(id -> !intersectionSet.contains(id))
+                .toList();
+
+        Set<Long> fuzzySet = Set.copyOf(fuzzyList);
+        List<Long> vectorOnly = vectorList.stream()
+                .filter(id -> !fuzzySet.contains(id))
+                .toList();
+
+        List<Long> merged = new ArrayList<>(intersection.size() + fuzzyOnly.size() + vectorOnly.size());
+        merged.addAll(intersection);
+        merged.addAll(fuzzyOnly);
+        merged.addAll(vectorOnly);
+
+        if (merged.size() > limit) {
+            return merged.subList(0, limit);
+        }
+        return merged;
+    }
+
+    private String toPgVectorLiteral(float[] vector) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('[');
+        for (int i = 0; i < vector.length; i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append(vector[i]);
+        }
+        sb.append(']');
+        return sb.toString();
     }
 }

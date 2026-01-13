@@ -25,11 +25,15 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
 
     Page<Article> findAllByOrderByPubDateDesc(Pageable pageable);
 
-    @Query("SELECT a FROM Article a WHERE a.title LIKE %:searchWord% OR a.author LIKE %:searchWord% ORDER BY a.pubDate DESC")
+    @Query("SELECT a FROM Article a WHERE a.title LIKE %:searchWord% OR a.author LIKE %:searchWord% OR a.sourceName LIKE %:searchWord% ORDER BY a.pubDate DESC")
     Page<Article> findAllBySearchWordOrderByPubDateDesc(@Param("searchWord") String searchWord, Pageable pageable);
+
+    @Query(value = "SELECT a.id FROM Article a WHERE a.title LIKE %:likePattern% OR a.author LIKE %:likePattern% OR a.sourceName LIKE %:likePattern% ORDER BY a.pubDate DESC LIMIT :limit")
+    List<Long> searchIdsByFuzzy(@Param("likePattern") String likePattern, @Param("limit") int limit);
 
     @Query(value = "SELECT CAST(created_at AS DATE), COUNT(*) FROM articles WHERE created_at >= :startDate GROUP BY CAST(created_at AS DATE)", nativeQuery = true)
     List<Object[]> countDailyNewArticles(@Param("startDate") LocalDateTime startDate);
+
 
     @Modifying
     @Query("UPDATE Article a SET a.source = NULL WHERE a.source.id = :sourceId")
