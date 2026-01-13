@@ -1,5 +1,6 @@
 package com.jingwei.rsswithai.domain.repository;
 
+import com.jingwei.rsswithai.domain.model.AnalysisStatus;
 import com.jingwei.rsswithai.domain.model.ArticleExtra;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -57,7 +58,7 @@ public interface ArticleExtraRepository extends JpaRepository<ArticleExtra, Long
 
         List<String> getTags();
 
-        String getStatus();
+        AnalysisStatus getStatus();
 
         String getErrorMessage();
 

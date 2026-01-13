@@ -126,6 +126,13 @@ Entity (Article, ArticleExtra)
 | GET | /api/admin/v1/articles/{id}/extra | 获取文章增强信息 |
 | POST | /api/admin/v1/articles/{id}/extra/regenerate | 重新生成增强信息 |
 
+### 前台（Front）接口
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| GET | /api/front/v1/articles/{id} | 获取文章详情（ArticleDetailDTO） |
+| GET | /api/front/v1/articles/{id}/extra | 获取文章的AI增强信息（ArticleExtraDTO，如不存在或处理失败返回404，失败仅后台可见错误信息） |
+
 ---
 
 ## 6. 关键设计点

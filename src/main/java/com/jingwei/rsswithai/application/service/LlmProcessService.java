@@ -3,6 +3,7 @@ package com.jingwei.rsswithai.application.service;
 import com.jingwei.rsswithai.application.Event.ArticleProcessEvent;
 import com.jingwei.rsswithai.application.Event.ConfigUpdateEvent;
 import com.jingwei.rsswithai.config.AppConfig;
+import com.jingwei.rsswithai.domain.model.AnalysisStatus;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.ArticleExtra;
 import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
@@ -220,7 +221,7 @@ public class LlmProcessService {
     private ArticleExtra generateContent(Article article) {
         ArticleExtra.ArticleExtraBuilder resultBuilder = ArticleExtra.builder()
                 .articleId(article.getId())
-                .status("FAILED");
+                .status(AnalysisStatus.FAILED);
 
         try {
             Prompt prompt = buildPrompt(article);
@@ -255,7 +256,7 @@ public class LlmProcessService {
             resultBuilder.overview(overview)
                     .keyInformation(keyInfoList)
                     .tags(tagsList)
-                    .status("SUCCESS");
+                    .status(AnalysisStatus.SUCCESS);
 
         } catch (Exception e) {
             log.error("Error generating content for article {}", article.getId(), e);
@@ -302,7 +303,7 @@ public class LlmProcessService {
         try {
             ArticleExtra articleExtra = ArticleExtra.builder()
                     .articleId(articleId)
-                    .status("FAILED")
+                    .status(AnalysisStatus.FAILED)
                     .errorMessage(errorMessage)
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())

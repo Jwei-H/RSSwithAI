@@ -69,8 +69,9 @@ public class ArticleExtra {
     /**
      * 最终状态：SUCCESS, FAILED
      */
-    @Column(nullable = false, length = 50)
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AnalysisStatus status;
 
     /**
      * 处理错误信息

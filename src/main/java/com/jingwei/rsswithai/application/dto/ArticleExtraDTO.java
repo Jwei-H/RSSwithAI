@@ -1,5 +1,6 @@
 package com.jingwei.rsswithai.application.dto;
 
+import com.jingwei.rsswithai.domain.model.AnalysisStatus;
 import com.jingwei.rsswithai.domain.model.ArticleExtra;
 import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 
@@ -12,7 +13,7 @@ public record ArticleExtraDTO(
         String overview,
         List<String> keyInformation,
         List<String> tags,
-        String status,
+        AnalysisStatus status,
         String errorMessage,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
