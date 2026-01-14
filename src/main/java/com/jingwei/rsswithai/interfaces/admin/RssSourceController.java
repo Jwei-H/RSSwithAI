@@ -4,7 +4,7 @@ import com.jingwei.rsswithai.application.dto.CreateRssSourceRequest;
 import com.jingwei.rsswithai.application.dto.RssSourceDTO;
 import com.jingwei.rsswithai.application.dto.RssSourceStatsDTO;
 import com.jingwei.rsswithai.application.dto.UpdateRssSourceRequest;
-import com.jingwei.rsswithai.application.service.RssSchedulerService;
+import com.jingwei.rsswithai.application.scheduler.RssTaskScheduler;
 import com.jingwei.rsswithai.application.service.RssSourceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class RssSourceController {
 
     private final RssSourceService rssSourceService;
-    private final RssSchedulerService rssSchedulerService;
+    private final RssTaskScheduler rssTaskScheduler;
 
     /**
      * 获取所有RSS源
@@ -127,7 +127,7 @@ public class RssSourceController {
     @PostMapping("/{id}/fetch")
     public ResponseEntity<Void> fetchSource(@PathVariable Long id) {
         log.info("手动触发抓取RSS源: id={}", id);
-        rssSchedulerService.fetchSource(id);
+        rssTaskScheduler.fetchSource(id);
         return ResponseEntity.accepted().build();
     }
 
@@ -138,7 +138,7 @@ public class RssSourceController {
     @PostMapping("/fetch-all")
     public ResponseEntity<Void> fetchAllSources() {
         log.info("手动触发抓取所有RSS源");
-        rssSchedulerService.fetchAllEnabled();
+        rssTaskScheduler.fetchAllEnabled();
         return ResponseEntity.accepted().build();
     }
 }

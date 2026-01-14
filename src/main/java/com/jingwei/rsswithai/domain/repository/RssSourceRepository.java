@@ -46,4 +46,7 @@ public interface RssSourceRepository extends JpaRepository<RssSource, Long> {
     @Query("UPDATE RssSource s SET s.lastFetchStatus = 'FETCHING', s.updatedAt = CURRENT_TIMESTAMP " +
             "WHERE s.id = :id AND s.lastFetchStatus != 'FETCHING'")
     int compareAndSetFetching(@Param("id") Long id);
+
+    @Query("SELECT s.id FROM RssSource s")
+    List<Long> findAllIds();
 }

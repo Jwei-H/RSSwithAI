@@ -1,5 +1,6 @@
-package com.jingwei.rsswithai.application.service;
+package com.jingwei.rsswithai.application.scheduler;
 
+import com.jingwei.rsswithai.application.service.RssFetcherService;
 import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
@@ -21,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class RssSchedulerService {
+public class RssTaskScheduler {
 
     private final RssSourceRepository rssSourceRepository;
     private final RssFetcherService rssFetcherService;
@@ -29,7 +30,7 @@ public class RssSchedulerService {
 
     // 使用虚拟线程执行器实现并发抓取
     private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
-    
+
     // 防止任务重叠执行
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
     private long lastRunTime = 0;
@@ -54,10 +55,10 @@ public class RssSchedulerService {
 
         try {
             log.debug("开始检查需要抓取的RSS源...");
-            
+
             // 获取所有启用的源
             List<RssSource> enabledSources = rssSourceRepository.findAllEnabled();
-            
+
             // 筛选出需要抓取的源
             List<RssSource> sourcesToFetch = enabledSources.stream()
                 .filter(RssSource::shouldFetch)
@@ -71,12 +72,12 @@ public class RssSchedulerService {
             log.info("本次需要抓取的RSS源数量: {}", sourcesToFetch.size());
 
             // 使用虚拟线程并发抓取
-            sourcesToFetch.forEach(source -> 
+            sourcesToFetch.forEach(source ->
                 virtualThreadExecutor.submit(() -> {
                     try {
                         rssFetcherService.fetchSource(source);
                     } catch (Exception e) {
-                        log.error("抓取RSS源异常: id={}, name={}, error={}", 
+                        log.error("抓取RSS源异常: id={}, name={}, error={}",
                             source.getId(), source.getName(), e.getMessage(), e);
                     }
                 })
@@ -92,15 +93,15 @@ public class RssSchedulerService {
      */
     public void fetchAllEnabled() {
         log.info("手动触发抓取所有启用的RSS源");
-        
+
         List<RssSource> enabledSources = rssSourceRepository.findAllEnabled();
-        
-        enabledSources.forEach(source -> 
+
+        enabledSources.forEach(source ->
             virtualThreadExecutor.submit(() -> {
                 try {
                     rssFetcherService.fetchSource(source);
                 } catch (Exception e) {
-                    log.error("抓取RSS源异常: id={}, name={}, error={}", 
+                    log.error("抓取RSS源异常: id={}, name={}, error={}",
                         source.getId(), source.getName(), e.getMessage(), e);
                 }
             })
@@ -112,7 +113,7 @@ public class RssSchedulerService {
      */
     public void fetchSource(Long sourceId) {
         log.info("手动触发抓取RSS源: id={}", sourceId);
-        
+
         virtualThreadExecutor.submit(() -> {
             try {
                 rssFetcherService.fetchSource(sourceId);
