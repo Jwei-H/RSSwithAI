@@ -39,4 +39,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     @Query("UPDATE Article a SET a.source = NULL WHERE a.source.id = :sourceId")
     void detachSource(@Param("sourceId") Long sourceId);
 
+    @Query(value = "SELECT a.id FROM articles a LEFT JOIN article_extra ae ON a.id = ae.article_id WHERE ae.id IS NULL AND a.created_at >= :since", nativeQuery = true)
+    List<Long> findArticleIdsWithoutExtraSince(@Param("since") LocalDateTime since);
+
 }
