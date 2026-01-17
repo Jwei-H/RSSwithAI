@@ -280,7 +280,6 @@ public final class RssUtils {
             guid = !isBlank(link) ? link : "generated-" + System.nanoTime();
         }
 
-        description = cleanHtml(description);
 
         String markdownContent = null;
         if (rawContent != null && !rawContent.isBlank()) {
@@ -294,6 +293,13 @@ public final class RssUtils {
         }
 
         Long wordCount = countWords(markdownContent);
+        // 如果字数少于100，直接跳过
+        if (wordCount < 100) {
+            log.debug("文章字数过少，已跳过: title={}, link={}, wordCount={}", title, link, wordCount);
+            return null;
+        }
+
+        description = cleanHtml(description);
         String coverImage = extractFirstImage(markdownContent);
 
         return Article.builder()
