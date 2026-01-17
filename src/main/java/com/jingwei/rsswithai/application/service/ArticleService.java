@@ -100,8 +100,7 @@ public class ArticleService {
             throw new IllegalArgumentException("Search query cannot be blank");
         }
 
-        String likePattern = "%" + trimmed + "%";
-        List<Long> fuzzyIds = articleRepository.searchIdsByFuzzy(likePattern, 20);
+        List<Long> fuzzyIds = articleRepository.searchIdsByFuzzy(trimmed, 20);
 
         float[] queryVector = llmProcessService.generateVector(trimmed);
         List<Long> vectorIds = Collections.emptyList();
