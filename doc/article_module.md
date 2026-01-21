@@ -24,6 +24,15 @@
 5. **查看增强信息**：查看AI生成的概览、关键信息、标签
 6. **重新生成增强信息**：手动触发AI处理（阻塞调用）
 
+前台用户可以通过REST API进行以下操作：
+
+1. **文章详情**：查看文章内容
+2. **AI增强信息**：查看文章的关键信息、概览、标签
+3. **智能搜索**：
+   - 全局搜索：在所有文章中搜索
+   - 订阅内搜索：仅在用户已订阅的RSS源中搜索
+4. **推荐文章**：查看与当前文章相似的推荐
+
 ### 1.3 配置项
 
 无特定配置项。
@@ -132,7 +141,7 @@ Entity (Article, ArticleExtra)
 |------|------|------|
 | GET | /api/front/v1/articles/{id} | 获取文章详情（ArticleDetailDTO） |
 | GET | /api/front/v1/articles/{id}/extra | 获取文章的AI增强信息（ArticleExtraDTO，如不存在或处理失败返回404，失败仅后台可见错误信息） |
-| GET | /api/front/v1/articles/search | 智能搜索（query必填；返回ArticleFeedDTO列表，最多20条） |
+| GET | /api/front/v1/articles/search | 智能搜索（query必填，scope可选ALL/SUBSCRIBED；返回ArticleFeedDTO列表，最多20条） |
 | GET | /api/front/v1/articles/{id}/recommendations | 相似文章推荐（最多2条；若当前文章无有效vector则返回空列表） |
 
 ---

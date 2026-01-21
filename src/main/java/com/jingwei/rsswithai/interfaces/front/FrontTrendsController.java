@@ -3,6 +3,7 @@ package com.jingwei.rsswithai.interfaces.front;
 import com.jingwei.rsswithai.application.dto.HotEventDTO;
 import com.jingwei.rsswithai.application.dto.WordCloudItemDTO;
 import com.jingwei.rsswithai.application.service.TrendsService;
+import com.jingwei.rsswithai.interfaces.context.UserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

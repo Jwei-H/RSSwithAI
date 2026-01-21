@@ -18,10 +18,11 @@
 前台用户通过 REST API 完成以下交互：
 
 1. 浏览可用RSS源列表（仅展示启用源），同时标记自己是否已订阅
-2. 创建主题（输入20字以内的主题描述，系统自动向量化）
-3. 创建订阅（订阅RSS源或订阅主题）
-4. 取消订阅
-5. 进入时间线：
+2. 预览RSS源文章：点击源查看其最近发布的文章，辅助决定是否订阅
+3. 创建主题（输入30字以内的主题描述，系统自动向量化）
+4. 创建订阅（订阅RSS源或订阅主题）
+5. 取消订阅
+6. 进入时间线：
    - 聚合时间线：汇总用户所有RSS订阅与主题订阅
    - 单订阅过滤：传入 `subscriptionId` 只看某一个订阅
 
@@ -30,7 +31,7 @@
 | 配置键 | 默认值 | 说明 |
 |--------|--------|------|
 | feed_similarity_threshold | 0.3 | 主题语义匹配的距离阈值（使用 pgvector `<=>` 计算距离） |
-| subscription_limit | 20 | 单个用户订阅数量上限（包含RSS与主题） |
+| subscription_limit | 30 | 单个用户订阅数量上限（包含RSS与主题） |
 
 > 以上配置项通过 `SettingsService` 从数据库 settings 表动态加载并可热更新。
 
@@ -68,7 +69,7 @@ Entity (Subscription / Topic / RssSource / Article / ArticleExtra)
 
 ### 3.1 主题创建流程
 
-1. **输入限制**：`content` 非空，长度 ≤ 20
+1. **输入限制**：`content` 非空，长度 ≤ 30
 2. **去重复用**：按 `Topic.content` 唯一索引，若已存在则直接复用
 3. **向量化**：调用 `LlmProcessService.generateVector(content)` 得到 1024 维向量
 4. **不可变**：Topic 创建后不提供修改接口（内容与向量强绑定）
@@ -154,7 +155,7 @@ Entity (Subscription / Topic / RssSource / Article / ArticleExtra)
 
 | 方法 | 路径 | 描述 |
 |------|------|------|
-| POST | /topics | 创建主题（20字以内；若已存在则复用） |
+| POST | /topics | 创建主题（30字以内；若已存在则复用） |
 
 请求：
 

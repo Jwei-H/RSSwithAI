@@ -1,4 +1,4 @@
-package com.jingwei.rsswithai.interfaces.front;
+package com.jingwei.rsswithai.interfaces.context;
 
 /**
  * Front-side authenticated user context stored via {@link java.lang.ScopedValue}.
@@ -17,5 +17,9 @@ public final class UserContext {
 
     public static String requireUsername() {
         return USERNAME.orElseThrow(() -> new RuntimeException("Unauthorized"));
+    }
+
+    public static Long currentUserId() {
+        return USER_ID.orElse(null);
     }
 }

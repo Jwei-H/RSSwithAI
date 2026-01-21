@@ -5,6 +5,7 @@ import com.jingwei.rsswithai.application.dto.UpdateUsernameRequest;
 import com.jingwei.rsswithai.application.dto.UserLoginRequest;
 import com.jingwei.rsswithai.application.dto.UserRegisterRequest;
 import com.jingwei.rsswithai.application.service.UserService;
+import com.jingwei.rsswithai.interfaces.context.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

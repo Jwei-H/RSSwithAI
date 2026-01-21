@@ -1,14 +1,13 @@
 package com.jingwei.rsswithai.application.service;
 
-import com.jingwei.rsswithai.application.dto.ArticleDTO;
-import com.jingwei.rsswithai.application.dto.ArticleDetailDTO;
-import com.jingwei.rsswithai.application.dto.ArticleExtraDTO;
-import com.jingwei.rsswithai.application.dto.ArticleFeedDTO;
-import com.jingwei.rsswithai.application.dto.ArticleStatsDTO;
+import com.jingwei.rsswithai.application.dto.*;
+import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.Article;
+import com.jingwei.rsswithai.domain.model.SubscriptionType;
 import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
-import com.jingwei.rsswithai.config.AppConfig;
+import com.jingwei.rsswithai.domain.repository.SubscriptionRepository;
+import com.jingwei.rsswithai.interfaces.front.FrontArticleController;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +35,7 @@ public class ArticleService {
     private final ArticleExtraRepository articleExtraRepository;
     private final LlmProcessService llmProcessService;
     private final AppConfig appConfig;
+    private final SubscriptionRepository subscriptionRepository;
 
     /**
      * 获取文章详情
@@ -94,21 +94,41 @@ public class ArticleService {
     }
 
     @Transactional(readOnly = true)
-    public List<ArticleFeedDTO> searchArticles(String query) {
+    public List<ArticleFeedDTO> searchArticles(String query, FrontArticleController.SearchScope scope, Long userId) {
         String trimmed = query == null ? "" : query.trim();
         if (trimmed.isEmpty()) {
             throw new IllegalArgumentException("Search query cannot be blank");
         }
 
-        List<Long> fuzzyIds = articleRepository.searchIdsByFuzzy(trimmed, 20);
+        List<Long> limitSourceIds = null;
+        if (scope == FrontArticleController.SearchScope.SUBSCRIBED) {
+            if (userId == null) {
+                throw new IllegalArgumentException("User must be logged in to search within subscriptions");
+            }
+            limitSourceIds = subscriptionRepository.findByUserIdAndTypeWithSource(userId, SubscriptionType.RSS).stream()
+                    .filter(sub -> sub.getSource() != null)
+                    .map(sub -> sub.getSource().getId())
+                    .toList();
 
-        float[] queryVector = llmProcessService.generateVector(trimmed);
+            if (limitSourceIds.isEmpty()) {
+                return List.of();
+            }
+        }
+
+        return executeSearch(trimmed, limitSourceIds);
+    }
+
+    private List<ArticleFeedDTO> executeSearch(String query, List<Long> limitSourceIds) {
+        List<Long> fuzzyIds = searchFuzzy(query, limitSourceIds, 20);
+
+        float[] queryVector = llmProcessService.generateVector(query);
         List<Long> vectorIds = Collections.emptyList();
+
         if (queryVector != null && queryVector.length > 0) {
             double threshold = appConfig.getFeedSimilarityThreshold() != null
                     ? appConfig.getFeedSimilarityThreshold()
                     : 0.3D;
-            vectorIds = articleExtraRepository.searchIdsByVector(toPgVectorLiteral(queryVector), threshold, 50);
+            vectorIds = searchVector(queryVector, limitSourceIds, threshold, 50);
         } else {
             log.warn("Vector generation failed, fallback to keyword search only");
         }
@@ -128,6 +148,21 @@ public class ArticleService {
                         article.getPubDate()
                 ))
                 .toList();
+    }
+
+    private List<Long> searchFuzzy(String query, List<Long> sourceIds, int limit) {
+        if (sourceIds != null) {
+            return articleRepository.searchIdsByFuzzyInSources(query, sourceIds, limit);
+        }
+        return articleRepository.searchIdsByFuzzy(query, limit);
+    }
+
+    private List<Long> searchVector(float[] vector, List<Long> sourceIds, double threshold, int limit) {
+        String vectorLiteral = toPgVectorLiteral(vector);
+        if (sourceIds != null) {
+            return articleExtraRepository.searchIdsByVectorInSources(vectorLiteral, sourceIds, threshold, limit);
+        }
+        return articleExtraRepository.searchIdsByVector(vectorLiteral, threshold, limit);
     }
 
     @Transactional(readOnly = true)
@@ -150,17 +185,17 @@ public class ArticleService {
 
         Map<Long, Article> articleMap = toArticleMap(similarIds);
         return similarIds.stream()
-            .map(articleMap::get)
-            .filter(article -> article != null)
-            .map(article -> ArticleFeedDTO.of(
-                article.getId(),
-                article.getSource() != null ? article.getSource().getId() : null,
-                article.getSourceName(),
-                article.getTitle(),
-                article.getCoverImage(),
-                article.getPubDate()
-            ))
-            .toList();
+                .map(articleMap::get)
+                .filter(article -> article != null)
+                .map(article -> ArticleFeedDTO.of(
+                        article.getId(),
+                        article.getSource() != null ? article.getSource().getId() : null,
+                        article.getSourceName(),
+                        article.getTitle(),
+                        article.getCoverImage(),
+                        article.getPubDate()
+                ))
+                .toList();
     }
 
     /**
@@ -203,6 +238,21 @@ public class ArticleService {
             log.debug("文章保存跳过（并发重复）: guid={}", article.getGuid());
             return null;
         }
+    }
+
+    /**
+     * 根据RSS源ID分页获取文章（FeedDTO）
+     */
+    public Page<ArticleFeedDTO> getArticleFeedsBySource(Long sourceId, Pageable pageable) {
+        return articleRepository.findBySourceIdOrderByPubDateDesc(sourceId, pageable)
+                .map(article -> ArticleFeedDTO.of(
+                        article.getId(),
+                        article.getSource() != null ? article.getSource().getId() : null,
+                        article.getSourceName(),
+                        article.getTitle(),
+                        article.getCoverImage(),
+                        article.getPubDate()
+                ));
     }
 
     private boolean hasVector(Long articleId) {
