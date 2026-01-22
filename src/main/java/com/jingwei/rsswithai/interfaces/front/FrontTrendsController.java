@@ -22,7 +22,7 @@ public class FrontTrendsController {
 
     @GetMapping("/wordcloud")
     public ResponseEntity<List<WordCloudItemDTO>> getWordCloud(@RequestParam(required = false) Long sourceId) {
-        long userId = UserContext.requireUserId();
+        long userId = UserContext.currentUserId();
         List<WordCloudItemDTO> result = trendsService.getWordCloud(sourceId, userId);
         return ResponseEntity.ok(result);
     }

@@ -25,7 +25,7 @@ public class SubscriptionController {
     @GetMapping("/rss-sources")
     public ResponseEntity<Page<UserRssSourceDTO>> getRssSources(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
                                                                @RequestParam(value = "category", required = false) SourceCategory category) {
-        Long userId = UserContext.requireUserId();
+        Long userId = UserContext.currentUserId();
         return ResponseEntity.ok(subscriptionService.listRssSources(userId, category, pageable));
     }
 
@@ -37,21 +37,21 @@ public class SubscriptionController {
 
     @PostMapping("/subscriptions")
     public ResponseEntity<SubscriptionDTO> createSubscription(@Valid @RequestBody CreateSubscriptionRequest request) {
-        Long userId = UserContext.requireUserId();
+        Long userId = UserContext.currentUserId();
         SubscriptionDTO subscription = subscriptionService.createSubscription(userId, request);
         return ResponseEntity.ok(subscription);
     }
 
     @DeleteMapping("/subscriptions/{id}")
     public ResponseEntity<Void> deleteSubscription(@PathVariable("id") Long id) {
-        Long userId = UserContext.requireUserId();
+        Long userId = UserContext.currentUserId();
         subscriptionService.deleteSubscription(userId, id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/subscriptions")
     public ResponseEntity<List<SubscriptionDTO>> listSubscriptions() {
-        Long userId = UserContext.requireUserId();
+        Long userId = UserContext.currentUserId();
         return ResponseEntity.ok(subscriptionService.listSubscriptions(userId));
     }
 
@@ -59,7 +59,7 @@ public class SubscriptionController {
     public ResponseEntity<List<ArticleFeedDTO>> getFeed(@RequestParam(value = "subscriptionId", required = false) Long subscriptionId,
                                                         @RequestParam(value = "cursor", required = false) String cursor,
                                                         @RequestParam(value = "size", required = false) Integer size) {
-        Long userId = UserContext.requireUserId();
+        Long userId = UserContext.currentUserId();
         return ResponseEntity.ok(subscriptionService.getFeed(userId, subscriptionId, cursor, size));
     }
 }

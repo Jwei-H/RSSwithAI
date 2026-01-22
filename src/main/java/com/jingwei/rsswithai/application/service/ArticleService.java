@@ -3,8 +3,10 @@ package com.jingwei.rsswithai.application.service;
 import com.jingwei.rsswithai.application.dto.*;
 import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.Article;
+import com.jingwei.rsswithai.domain.model.ArticleFavorite;
 import com.jingwei.rsswithai.domain.model.SubscriptionType;
 import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
+import com.jingwei.rsswithai.domain.repository.ArticleFavoriteRepository;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
 import com.jingwei.rsswithai.domain.repository.SubscriptionRepository;
 import com.jingwei.rsswithai.interfaces.front.FrontArticleController;
@@ -33,6 +35,7 @@ public class ArticleService {
 
     private final ArticleRepository articleRepository;
     private final ArticleExtraRepository articleExtraRepository;
+    private final ArticleFavoriteRepository articleFavoriteRepository;
     private final LlmProcessService llmProcessService;
     private final AppConfig appConfig;
     private final SubscriptionRepository subscriptionRepository;
@@ -93,6 +96,39 @@ public class ArticleService {
                 .orElse(null);
     }
 
+    @Transactional
+    public void favoriteArticle(Long userId, Long articleId) {
+        if (articleId == null || articleId <= 0) {
+            throw new IllegalArgumentException("articleId must be positive");
+        }
+        Article article = articleRepository.findById(articleId)
+                .orElseThrow(() -> new EntityNotFoundException("文章不存在: " + articleId));
+
+        if (articleFavoriteRepository.existsByUserIdAndArticle_Id(userId, articleId)) {
+            return;
+        }
+
+        articleFavoriteRepository.save(ArticleFavorite.builder()
+                .userId(userId)
+                .article(article)
+                .build());
+    }
+
+    @Transactional
+    public void unfavoriteArticle(Long userId, Long articleId) {
+        if (articleId == null || articleId <= 0) {
+            throw new IllegalArgumentException("articleId must be positive");
+        }
+        articleFavoriteRepository.findByUserIdAndArticle_Id(userId, articleId)
+                .ifPresent(articleFavoriteRepository::delete);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ArticleFeedDTO> listFavoriteArticles(Long userId, Pageable pageable) {
+        return articleFavoriteRepository.findFavoriteArticles(userId, pageable)
+                .map(ArticleFeedDTO::from);
+    }
+
     @Transactional(readOnly = true)
     public List<ArticleFeedDTO> searchArticles(String query, FrontArticleController.SearchScope scope, Long userId) {
         String trimmed = query == null ? "" : query.trim();
@@ -100,39 +136,39 @@ public class ArticleService {
             throw new IllegalArgumentException("Search query cannot be blank");
         }
 
-        List<Long> limitSourceIds = null;
-        if (scope == FrontArticleController.SearchScope.SUBSCRIBED) {
-            if (userId == null) {
-                throw new IllegalArgumentException("User must be logged in to search within subscriptions");
-            }
-            limitSourceIds = subscriptionRepository.findByUserIdAndTypeWithSource(userId, SubscriptionType.RSS).stream()
-                    .filter(sub -> sub.getSource() != null)
-                    .map(sub -> sub.getSource().getId())
-                    .toList();
-
-            if (limitSourceIds.isEmpty()) {
-                return List.of();
-            }
-        }
-
-        return executeSearch(trimmed, limitSourceIds);
+        return switch (scope) {
+            case SUBSCRIBED -> searchInSubscriptions(trimmed, userId);
+            case FAVORITE -> searchInFavorites(trimmed, userId);
+            case ALL -> searchAll(trimmed);
+        };
     }
 
-    private List<ArticleFeedDTO> executeSearch(String query, List<Long> limitSourceIds) {
-        List<Long> fuzzyIds = searchFuzzy(query, limitSourceIds, 20);
+    private List<ArticleFeedDTO> searchAll(String query) {
+        return executeSearch(searchIdsByFuzzyAll(query), searchIdsByVectorAll(query));
+    }
 
-        float[] queryVector = llmProcessService.generateVector(query);
-        List<Long> vectorIds = Collections.emptyList();
+    private List<ArticleFeedDTO> searchInSubscriptions(String query, Long userId) {
+        List<Long> sourceIds = subscriptionRepository.findByUserIdAndTypeWithSource(userId, SubscriptionType.RSS).stream()
+                .filter(sub -> sub.getSource() != null)
+                .map(sub -> sub.getSource().getId())
+                .toList();
 
-        if (queryVector != null && queryVector.length > 0) {
-            double threshold = appConfig.getFeedSimilarityThreshold() != null
-                    ? appConfig.getFeedSimilarityThreshold()
-                    : 0.3D;
-            vectorIds = searchVector(queryVector, limitSourceIds, threshold, 50);
-        } else {
-            log.warn("Vector generation failed, fallback to keyword search only");
+        if (sourceIds.isEmpty()) {
+            return List.of();
         }
 
+        return executeSearch(
+                searchIdsByFuzzyInSources(query, sourceIds),
+                searchIdsByVectorInSources(query, sourceIds));
+    }
+
+    private List<ArticleFeedDTO> searchInFavorites(String query, Long userId) {
+        return executeSearch(
+                searchIdsByFuzzyInFavorites(query, userId),
+                searchIdsByVectorInFavorites(query, userId));
+    }
+
+    private List<ArticleFeedDTO> executeSearch(List<Long> fuzzyIds, List<Long> vectorIds) {
         List<Long> merged = mergeHybridIds(fuzzyIds, vectorIds, 20);
         Map<Long, Article> articleMap = toArticleMap(merged);
 
@@ -143,19 +179,47 @@ public class ArticleService {
                 .toList();
     }
 
-    private List<Long> searchFuzzy(String query, List<Long> sourceIds, int limit) {
-        if (sourceIds != null) {
-            return articleRepository.searchIdsByFuzzyInSources(query, sourceIds, limit);
-        }
-        return articleRepository.searchIdsByFuzzy(query, limit);
+    private List<Long> searchIdsByFuzzyAll(String query) {
+        return articleRepository.searchIdsByFuzzy(query, 20);
     }
 
-    private List<Long> searchVector(float[] vector, List<Long> sourceIds, double threshold, int limit) {
-        String vectorLiteral = toPgVectorLiteral(vector);
-        if (sourceIds != null) {
-            return articleExtraRepository.searchIdsByVectorInSources(vectorLiteral, sourceIds, threshold, limit);
+    private List<Long> searchIdsByFuzzyInSources(String query, List<Long> sourceIds) {
+        return articleRepository.searchIdsByFuzzyInSources(query, sourceIds, 20);
+    }
+
+    private List<Long> searchIdsByFuzzyInFavorites(String query, Long userId) {
+        return articleRepository.searchIdsByFuzzyInFavorites(query, userId, 20);
+    }
+
+    private List<Long> searchIdsByVectorAll(String query) {
+        float[] vector = llmProcessService.generateVector(query);
+        if (vector == null || vector.length == 0) {
+            log.warn("Vector generation failed, fallback to keyword search only");
+            return Collections.emptyList();
         }
-        return articleExtraRepository.searchIdsByVector(vectorLiteral, threshold, limit);
+        double threshold = Objects.requireNonNullElse(appConfig.getFeedSimilarityThreshold(), 0.3D);
+
+        return articleExtraRepository.searchIdsByVector(toPgVectorLiteral(vector), threshold, 50);
+    }
+
+    private List<Long> searchIdsByVectorInSources(String query, List<Long> sourceIds) {
+        float[] vector = llmProcessService.generateVector(query);
+        if (vector == null || vector.length == 0) {
+            log.warn("Vector generation failed, fallback to keyword search only");
+            return Collections.emptyList();
+        }
+        double threshold = Objects.requireNonNullElse(appConfig.getFeedSimilarityThreshold(), 0.3D);
+        return articleExtraRepository.searchIdsByVectorInSources(toPgVectorLiteral(vector), sourceIds, threshold, 50);
+    }
+
+    private List<Long> searchIdsByVectorInFavorites(String query, Long userId) {
+        float[] vector = llmProcessService.generateVector(query);
+        if (vector == null || vector.length == 0) {
+            log.warn("Vector generation failed, fallback to keyword search only");
+            return Collections.emptyList();
+        }
+        double threshold = Objects.requireNonNullElse(appConfig.getFeedSimilarityThreshold(), 0.3D);
+        return articleExtraRepository.searchIdsByVectorInFavorites(toPgVectorLiteral(vector), userId, threshold, 50);
     }
 
     @Transactional(readOnly = true)

@@ -4,7 +4,6 @@ import com.jingwei.rsswithai.application.dto.ArticleDetailDTO;
 import com.jingwei.rsswithai.application.dto.ArticleExtraDTO;
 import com.jingwei.rsswithai.application.dto.ArticleFeedDTO;
 import com.jingwei.rsswithai.application.service.ArticleService;
-import com.jingwei.rsswithai.application.service.SubscriptionService;
 import com.jingwei.rsswithai.domain.model.AnalysisStatus;
 import com.jingwei.rsswithai.interfaces.context.UserContext;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,6 @@ import java.util.List;
 public class FrontArticleController {
 
     private final ArticleService articleService;
-    private final SubscriptionService subscriptionService;
 
     @GetMapping("/{id}")
     public ResponseEntity<ArticleDetailDTO> getArticle(@PathVariable Long id) {
@@ -48,6 +46,25 @@ public class FrontArticleController {
         return ResponseEntity.ok(results);
     }
 
+    @PostMapping("/{id}/favorite")
+    public ResponseEntity<Void> favoriteArticle(@PathVariable Long id) {
+        articleService.favoriteArticle(UserContext.currentUserId(), id);
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{id}/favorite")
+    public ResponseEntity<Void> unfavoriteArticle(@PathVariable Long id) {
+        articleService.unfavoriteArticle(UserContext.currentUserId(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/favorites")
+    public ResponseEntity<Page<ArticleFeedDTO>> listFavoriteArticles(
+            @PageableDefault(size = 10, sort = "pubDate", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<ArticleFeedDTO> page = articleService.listFavoriteArticles(UserContext.currentUserId(), pageable);
+        return ResponseEntity.ok(page);
+    }
+
     @GetMapping("/{id}/recommendations")
     public ResponseEntity<List<ArticleFeedDTO>> recommendArticles(@PathVariable Long id) {
         List<ArticleFeedDTO> results = articleService.recommendArticles(id);
@@ -64,6 +81,7 @@ public class FrontArticleController {
 
     public enum SearchScope {
         ALL,
-        SUBSCRIBED
+        SUBSCRIBED,
+        FAVORITE
     }
 }

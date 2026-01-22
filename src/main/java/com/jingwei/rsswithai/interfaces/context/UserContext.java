@@ -11,15 +11,11 @@ public final class UserContext {
     private UserContext() {
     }
 
-    public static long requireUserId() {
+    public static long currentUserId() {
         return USER_ID.orElseThrow(() -> new RuntimeException("Unauthorized"));
     }
 
-    public static String requireUsername() {
+    public static String currentUsername() {
         return USERNAME.orElseThrow(() -> new RuntimeException("Unauthorized"));
-    }
-
-    public static Long currentUserId() {
-        return USER_ID.orElse(null);
     }
 }

@@ -35,6 +35,12 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     @Query(value = "SELECT id FROM articles WHERE source_id IN (:sourceIds) AND (title ILIKE CONCAT('%', :likePattern, '%') OR author ILIKE CONCAT('%', :likePattern, '%') OR source_name ILIKE CONCAT('%', :likePattern, '%')) ORDER BY pub_date DESC LIMIT :limit", nativeQuery = true)
     List<Long> searchIdsByFuzzyInSources(@Param("likePattern") String likePattern, @Param("sourceIds") List<Long> sourceIds, @Param("limit") int limit);
 
+        @Query(value = "SELECT a.id FROM articles a JOIN article_favorites af ON a.id = af.article_id " +
+            "WHERE af.user_id = :userId AND (a.title ILIKE CONCAT('%', :likePattern, '%') " +
+            "OR a.author ILIKE CONCAT('%', :likePattern, '%') OR a.source_name ILIKE CONCAT('%', :likePattern, '%')) " +
+            "ORDER BY a.pub_date DESC LIMIT :limit", nativeQuery = true)
+        List<Long> searchIdsByFuzzyInFavorites(@Param("likePattern") String likePattern, @Param("userId") Long userId, @Param("limit") int limit);
+
     @Query(value = "SELECT CAST(created_at AS DATE), COUNT(*) FROM articles WHERE created_at >= :startDate GROUP BY CAST(created_at AS DATE)", nativeQuery = true)
     List<Object[]> countDailyNewArticles(@Param("startDate") LocalDateTime startDate);
 
