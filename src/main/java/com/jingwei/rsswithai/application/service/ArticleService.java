@@ -139,14 +139,7 @@ public class ArticleService {
         return merged.stream()
                 .map(articleMap::get)
                 .filter(Objects::nonNull)
-                .map(article -> ArticleFeedDTO.of(
-                        article.getId(),
-                        article.getSource() != null ? article.getSource().getId() : null,
-                        article.getSourceName(),
-                        article.getTitle(),
-                        article.getCoverImage(),
-                        article.getPubDate()
-                ))
+                .map(ArticleFeedDTO::from)
                 .toList();
     }
 
@@ -186,15 +179,8 @@ public class ArticleService {
         Map<Long, Article> articleMap = toArticleMap(similarIds);
         return similarIds.stream()
                 .map(articleMap::get)
-                .filter(article -> article != null)
-                .map(article -> ArticleFeedDTO.of(
-                        article.getId(),
-                        article.getSource() != null ? article.getSource().getId() : null,
-                        article.getSourceName(),
-                        article.getTitle(),
-                        article.getCoverImage(),
-                        article.getPubDate()
-                ))
+                .filter(Objects::nonNull)
+                .map(ArticleFeedDTO::from)
                 .toList();
     }
 
@@ -245,14 +231,7 @@ public class ArticleService {
      */
     public Page<ArticleFeedDTO> getArticleFeedsBySource(Long sourceId, Pageable pageable) {
         return articleRepository.findBySourceIdOrderByPubDateDesc(sourceId, pageable)
-                .map(article -> ArticleFeedDTO.of(
-                        article.getId(),
-                        article.getSource() != null ? article.getSource().getId() : null,
-                        article.getSourceName(),
-                        article.getTitle(),
-                        article.getCoverImage(),
-                        article.getPubDate()
-                ));
+                .map(ArticleFeedDTO::from);
     }
 
     private boolean hasVector(Long articleId) {

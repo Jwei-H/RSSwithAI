@@ -1,18 +1,8 @@
 package com.jingwei.rsswithai.application.service;
 
-import com.jingwei.rsswithai.application.dto.CreateSubscriptionRequest;
-import com.jingwei.rsswithai.application.dto.CreateTopicRequest;
-import com.jingwei.rsswithai.application.dto.ArticleFeedDTO;
-import com.jingwei.rsswithai.application.dto.SubscriptionDTO;
-import com.jingwei.rsswithai.application.dto.TopicDTO;
-import com.jingwei.rsswithai.application.dto.UserRssSourceDTO;
+import com.jingwei.rsswithai.application.dto.*;
 import com.jingwei.rsswithai.config.AppConfig;
-import com.jingwei.rsswithai.domain.model.RssSource;
-import com.jingwei.rsswithai.domain.model.SourceCategory;
-import com.jingwei.rsswithai.domain.model.SourceStatus;
-import com.jingwei.rsswithai.domain.model.Subscription;
-import com.jingwei.rsswithai.domain.model.SubscriptionType;
-import com.jingwei.rsswithai.domain.model.Topic;
+import com.jingwei.rsswithai.domain.model.*;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
 import com.jingwei.rsswithai.domain.repository.SubscriptionRepository;
 import com.jingwei.rsswithai.domain.repository.TopicRepository;
@@ -31,12 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -223,7 +208,7 @@ public class SubscriptionService {
                                                    int size) {
         List<String> branches = new ArrayList<>();
         if (!sourceIds.isEmpty()) {
-            branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.cover_image, a.pub_date " +
+            branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.cover_image, a.pub_date, a.word_count " +
                     "FROM articles a WHERE a.source_id IN (:sourceIds) " +
                     "AND (a.pub_date < :cursorTime OR (a.pub_date = :cursorTime AND a.id < :cursorId))");
         }
@@ -231,7 +216,7 @@ public class SubscriptionService {
             String vectorConditions = IntStream.range(0, topicVectors.size())
                     .mapToObj(i -> "(ae.vector <=> CAST(:vector" + i + " AS vector)) < :threshold")
                     .collect(Collectors.joining(" OR "));
-            branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.cover_image, a.pub_date " +
+            branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.cover_image, a.pub_date, a.word_count " +
                     "FROM articles a JOIN article_extra ae ON a.id = ae.article_id WHERE (" + vectorConditions + ") " +
                     "AND (a.pub_date < :cursorTime OR (a.pub_date = :cursorTime AND a.id < :cursorId))");
         }
@@ -241,7 +226,7 @@ public class SubscriptionService {
         }
 
         String sql = "SELECT * FROM (" + String.join(" UNION ", branches) + ") AS feed " +
-            "ORDER BY pub_date DESC, id DESC";
+                "ORDER BY pub_date DESC, id DESC";
 
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("cursorTime", Timestamp.valueOf(cursorTime));
@@ -293,6 +278,7 @@ public class SubscriptionService {
         String sourceName = row[2] != null ? row[2].toString() : null;
         String title = row[3] != null ? row[3].toString() : null;
         String coverImage = row[4] != null ? row[4].toString() : null;
+
         LocalDateTime pubDate = null;
         Object dateObj = row[5];
         if (dateObj instanceof Timestamp timestamp) {
@@ -300,7 +286,10 @@ public class SubscriptionService {
         } else if (dateObj instanceof LocalDateTime time) {
             pubDate = time;
         }
-        return ArticleFeedDTO.of(id, sourceId, sourceName, title, coverImage, pubDate);
+
+        Long wordCount = row.length > 6 && row[6] != null ? ((Number) row[6]).longValue() : null;
+
+        return ArticleFeedDTO.of(id, sourceId, sourceName, title, coverImage, pubDate, wordCount);
     }
 
     private String toPgVectorLiteral(float[] vector) {

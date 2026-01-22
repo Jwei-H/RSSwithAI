@@ -204,7 +204,8 @@ Entity (Subscription / Topic / RssSource / Article / ArticleExtra)
   "sourceName": "科技新闻",
   "title": "...",
   "coverImage": "http://...",
-  "pubDate": "2026-01-12T10:00:00"
+  "pubDate": "2026-01-12T10:00:00",
+  "wordCount": 1200
 }
 ```
 
