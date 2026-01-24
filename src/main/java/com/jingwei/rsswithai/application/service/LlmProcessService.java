@@ -212,14 +212,13 @@ public class LlmProcessService {
             // 生成内容
             ArticleExtra articleExtra = generateContent(article);
 
-            // 生成向量
-            if (articleExtra.getOverview() != null && !articleExtra.getOverview().isBlank()) {
-                String vectorText = articleExtra.getOverview() + "\n" +
-                        String.join("\n", articleExtra.getKeyInformation());
-                articleExtra.setVector(generateVector(vectorText));
-            } else {
-                articleExtra.setVector(generateVector(article.getTitle()));
-            }
+            // 生成向量：标题 + overview（overview为空则仅标题）
+            String overview = articleExtra.getOverview();
+            String title = article.getTitle();
+            String vectorText = (overview != null && !overview.isBlank())
+                    ? title + "\n" + overview
+                    : title;
+            articleExtra.setVector(generateVector(vectorText));
 
             // 保存结果
             articleExtraRepository.save(articleExtra);
@@ -348,13 +347,13 @@ public class LlmProcessService {
             }
             ArticleExtra articleExtra = generateContent(article);
 
-            if (articleExtra.getOverview() != null && !articleExtra.getOverview().isBlank()) {
-                String vectorText = articleExtra.getOverview() + "\n" +
-                        String.join("\n", articleExtra.getKeyInformation());
-                articleExtra.setVector(generateVector(vectorText));
-            } else {
-                articleExtra.setVector(generateVector(article.getTitle()));
-            }
+            // 生成向量：标题 + overview（overview为空则仅标题）
+            String overview = articleExtra.getOverview();
+            String title = article.getTitle();
+            String vectorText = (overview != null && !overview.isBlank())
+                    ? title + "\n" + overview
+                    : title;
+            articleExtra.setVector(generateVector(vectorText));
 
             articleExtraRepository.save(articleExtra);
             log.info("Article {} regeneration completed successfully", articleId);
