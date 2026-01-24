@@ -5,10 +5,12 @@ import { authApi } from '../services/frontApi'
 import { useSessionStore } from '../stores/session'
 import { useToastStore } from '../stores/toast'
 import { useRouter } from 'vue-router'
+import { useThemeStore } from '../stores/theme'
 
 const session = useSessionStore()
 const toast = useToastStore()
 const router = useRouter()
+const theme = useThemeStore()
 
 const username = ref(session.state.profile?.username ?? '')
 const newPassword = ref('')
@@ -104,6 +106,38 @@ const logout = () => {
             更新密码
           </button>
         </div>
+      </div>
+
+      <div class="rounded-2xl border border-border bg-card p-6">
+        <h3 class="text-sm font-semibold text-foreground">偏好设置</h3>
+        <p class="mt-2 text-xs text-muted-foreground">主题将影响全部页面与卡片</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button
+            class="rounded-xl border border-border px-3 py-2 text-xs transition"
+            :class="theme.state.mode === 'system' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-foreground hover:bg-muted'"
+            @click="theme.setMode('system')"
+          >
+            跟随系统
+          </button>
+          <button
+            class="rounded-xl border border-border px-3 py-2 text-xs transition"
+            :class="theme.state.mode === 'light' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-foreground hover:bg-muted'"
+            @click="theme.setMode('light')"
+          >
+            浅色
+          </button>
+          <button
+            class="rounded-xl border border-border px-3 py-2 text-xs transition"
+            :class="theme.state.mode === 'dark' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-foreground hover:bg-muted'"
+            @click="theme.setMode('dark')"
+          >
+            深色
+          </button>
+        </div>
+        <p class="mt-3 text-xs text-muted-foreground">
+          当前模式：{{ theme.effectiveMode === 'dark' ? '深色' : '浅色' }}
+          <span v-if="theme.state.mode === 'system'">（跟随系统）</span>
+        </p>
       </div>
     </template>
 

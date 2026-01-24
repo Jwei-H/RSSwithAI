@@ -44,6 +44,7 @@
 }
 
 :root {
+  color-scheme: light;
   --radius: 0.75rem;
   --background: oklch(0.985 0.01 250.5);
   --foreground: oklch(0.2 0.05 264.7);
@@ -79,6 +80,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
@@ -230,6 +232,10 @@
 
 .hljs {
   @apply bg-blue-50/70 p-3 text-xs overflow-auto;
+}
+
+.dark .hljs {
+  @apply bg-slate-900/70 text-slate-100;
 }
 
 .overview-strong {
