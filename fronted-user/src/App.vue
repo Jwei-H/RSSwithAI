@@ -4,12 +4,21 @@ import IconRail from './components/layout/IconRail.vue'
 import ArticleDetailOverlay from './components/articles/ArticleDetailOverlay.vue'
 import ToastHost from './components/common/ToastHost.vue'
 import { useUiStore } from './stores/ui'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 
 const ui = useUiStore()
 const route = useRoute()
 const showShell = computed(() => !route.meta.public)
-const showOverlay = computed(() => ui.detailOpen && !route.path.startsWith('/subscriptions'))
+const showOverlay = computed(() => ui.detailOpen && !route.path.startsWith('/subscriptions') && !route.path.startsWith('/discover'))
+
+watch(
+  () => route.path,
+  () => {
+    if (ui.detailOpen) {
+      ui.closeDetail()
+    }
+  }
+)
 </script>
 
 <template>

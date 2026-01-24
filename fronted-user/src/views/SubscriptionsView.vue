@@ -131,6 +131,7 @@ const loadMore = () => {
 const { sentinel } = useInfiniteScroll(loadMore, listContainer)
 
 const onSelectSubscription = (id: number | null) => {
+  ui.closeDetail()
   activeSubscriptionId.value = id
   resetFeed()
   loadFeed()

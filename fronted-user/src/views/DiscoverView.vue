@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import PageShell from '../components/layout/PageShell.vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import ArticleCard from '../components/articles/ArticleCard.vue'
+import ArticleDetailPane from '../components/articles/ArticleDetailPane.vue'
 import HotEventsList from '../components/trends/HotEventsList.vue'
 import RssSourceCard from '../components/discover/RssSourceCard.vue'
 import SourcePreviewDialog from '../components/discover/SourcePreviewDialog.vue'
@@ -47,6 +47,8 @@ const previewSource = ref<RssSource | null>(null)
 const previewOpen = ref(false)
 
 const listContainer = ref<HTMLElement | null>(null)
+
+const detailOpen = computed(() => ui.detailOpen)
 
 const loadHotEvents = async () => {
   hotLoading.value = true
@@ -144,6 +146,7 @@ const onPreview = (source: RssSource) => {
 }
 
 const onOpenArticle = (id: number) => {
+  previewOpen.value = false
   ui.openDetail(id, listContainer.value)
 }
 
@@ -167,8 +170,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <PageShell :showRight="false">
-    <template #sidebar>
+  <div
+    class="grid h-screen gap-6 px-6 py-6"
+    :class="detailOpen ? 'grid-cols-[200px_1fr]' : 'grid-cols-[280px_1fr]'"
+  >
+    <section class="flex h-full flex-col gap-4 overflow-hidden">
       <div class="rounded-2xl border border-border bg-card p-4">
         <h2 class="text-sm font-semibold text-foreground">频道广场</h2>
         <p class="mt-2 text-xs text-muted-foreground">探索新 RSS 源与热点事件</p>
@@ -192,78 +198,85 @@ onMounted(() => {
         </button>
       </div>
       <HotEventsList :items="hotEvents" :onSubscribe="onSubscribeHot" />
-    </template>
+    </section>
 
-    <template #main>
-      <div class="rounded-2xl border border-border bg-card p-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <Search class="h-4 w-4 text-primary" />
-            <h2 class="text-sm font-semibold text-foreground">搜索</h2>
+    <section class="flex h-full flex-col gap-4 overflow-hidden">
+      <ArticleDetailPane
+        v-if="detailOpen"
+        :articleId="ui.detailArticleId"
+        :onClose="ui.closeDetail"
+        :onOpenArticle="(id) => ui.openDetail(id, listContainer.value)"
+      />
+      <template v-else>
+        <div class="rounded-2xl border border-border bg-card p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <Search class="h-4 w-4 text-primary" />
+              <h2 class="text-sm font-semibold text-foreground">搜索</h2>
+            </div>
+            <span class="text-xs text-muted-foreground">全站范围</span>
           </div>
-          <span class="text-xs text-muted-foreground">全站范围</span>
-        </div>
-        <div class="mt-4 flex items-center gap-3">
-          <input
-            v-model="searchQuery"
-            placeholder="搜索关键字"
-            class="flex-1 rounded-xl border border-border px-3 py-2 text-sm"
-          />
-          <button
-            class="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
-            :disabled="searchLoading"
-            @click="search"
-          >
-            搜索
-          </button>
-        </div>
-      </div>
-
-      <div ref="listContainer" class="flex-1 overflow-y-auto scrollbar-thin">
-        <div v-if="searchQuery" class="space-y-3">
-          <ArticleCard v-for="item in searchResults" :key="item.id" :article="item" @open="onOpenArticle" />
-          <EmptyState v-if="!searchResults.length && !searchLoading" title="暂无搜索结果" />
+          <div class="mt-4 flex items-center gap-3">
+            <input
+              v-model="searchQuery"
+              placeholder="搜索关键字"
+              class="flex-1 rounded-xl border border-border px-3 py-2 text-sm"
+            />
+            <button
+              class="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
+              :disabled="searchLoading"
+              @click="search"
+            >
+              搜索
+            </button>
+          </div>
         </div>
 
-        <div v-else class="space-y-4">
-          <div class="rounded-2xl border border-border bg-card p-4">
-            <h3 class="text-sm font-semibold text-foreground">RSS 源分类</h3>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <button
-                v-for="item in categories"
-                :key="item.value"
-                class="rounded-full border border-border px-3 py-1 text-xs"
-                :class="activeCategory === item.value ? 'bg-primary text-primary-foreground' : 'bg-card'"
-                @click="activeCategory = item.value"
-              >
-                {{ item.label }}
-              </button>
+        <div ref="listContainer" class="flex-1 overflow-y-auto scrollbar-thin">
+          <div v-if="searchQuery" class="space-y-3">
+            <ArticleCard v-for="item in searchResults" :key="item.id" :article="item" @open="onOpenArticle" />
+            <EmptyState v-if="!searchResults.length && !searchLoading" title="暂无搜索结果" />
+          </div>
+
+          <div v-else class="space-y-4">
+            <div class="rounded-2xl border border-border bg-card p-4">
+              <h3 class="text-sm font-semibold text-foreground">RSS 源分类</h3>
+              <div class="mt-3 flex flex-wrap gap-2">
+                <button
+                  v-for="item in categories"
+                  :key="item.value"
+                  class="rounded-full border border-border px-3 py-1 text-xs"
+                  :class="activeCategory === item.value ? 'bg-primary text-primary-foreground' : 'bg-card'"
+                  @click="activeCategory = item.value"
+                >
+                  {{ item.label }}
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <RssSourceCard
+                v-for="source in sources"
+                :key="source.id"
+                :source="source"
+                :onToggleSubscribe="onToggleSubscribe"
+                :onPreview="onPreview"
+              />
+            </div>
+
+            <LoadingState v-if="sourcesLoading && !sources.length" />
+            <div ref="sentinel" class="h-6" />
+            <div v-if="sourcesLoading && sources.length" class="text-center text-xs text-muted-foreground">
+              加载更多 RSS 源...
+            </div>
+            <div v-if="last && sources.length" class="text-center text-xs text-muted-foreground">
+              已经到底了
             </div>
           </div>
-
-          <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <RssSourceCard
-              v-for="source in sources"
-              :key="source.id"
-              :source="source"
-              :onToggleSubscribe="onToggleSubscribe"
-              :onPreview="onPreview"
-            />
-          </div>
-
-          <LoadingState v-if="sourcesLoading && !sources.length" />
-          <div ref="sentinel" class="h-6" />
-          <div v-if="sourcesLoading && sources.length" class="text-center text-xs text-muted-foreground">
-            加载更多 RSS 源...
-          </div>
-          <div v-if="last && sources.length" class="text-center text-xs text-muted-foreground">
-            已经到底了
-          </div>
         </div>
-      </div>
-    </template>
-
-  </PageShell>
+      </template>
+    </section>
+  </div>
 
   <SourcePreviewDialog
     :open="previewOpen"
@@ -272,3 +285,4 @@ onMounted(() => {
     :onOpenArticle="onOpenArticle"
   />
 </template>
+

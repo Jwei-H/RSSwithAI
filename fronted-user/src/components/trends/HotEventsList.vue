@@ -13,7 +13,7 @@ defineProps<{
       <h3 class="text-sm font-semibold text-foreground">热点事件</h3>
       <span class="text-xs text-muted-foreground">Top 10</span>
     </div>
-    <ul class="mt-4 max-h-64 space-y-2 overflow-y-auto pr-1 scrollbar-thin">
+    <ul class="mt-4 space-y-2 overflow-y-auto pr-1 scrollbar-thin">
       <li
         v-for="(item, index) in items"
         :key="`${item.event}-${index}`"
