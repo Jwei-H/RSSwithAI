@@ -212,8 +212,24 @@
   @apply rounded-md border border-border bg-muted/70 px-1.5 py-0.5 text-[13px] text-foreground;
 }
 
+.md-codeblock {
+  @apply my-4 rounded-lg border border-border bg-card overflow-hidden;
+}
+
+.md-codeblock__header {
+  @apply flex items-center justify-between border-b border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground;
+}
+
+.md-codeblock__lang {
+  @apply font-medium text-foreground;
+}
+
+.md-codeblock__copy {
+  @apply rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted;
+}
+
 .hljs {
-  @apply rounded-lg border border-border bg-blue-50/70 p-3 text-xs overflow-auto;
+  @apply bg-blue-50/70 p-3 text-xs overflow-auto;
 }
 
 .overview-strong {

@@ -1,22 +1,48 @@
 import MarkdownIt from 'markdown-it'
 import mila from 'markdown-it-katex'
-import hljs from 'highlight.js'
+import hljs from 'highlight.js/lib/common'
 
 const md = new MarkdownIt({
   html: false,
   linkify: true,
   typographer: true,
-  breaks: true,
-  highlight: (code, language) => {
-    const validLang = !!(language && hljs.getLanguage(language))
-    const highlighted = validLang
-      ? hljs.highlight(code, { language }).value
-      : hljs.highlightAuto(code).value
-    return `<pre><code class="hljs ${validLang ? 'language-' + language : ''}">${highlighted}</code></pre>`
-  }
+  breaks: true
 })
 
 md.use(mila)
+
+const renderCodeBlock = (code: string, language?: string) => {
+  const lang = (language || '').trim()
+  const hasLang = !!lang
+  const validLang = !!(lang && hljs.getLanguage(lang))
+  const highlighted = validLang ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value
+  const encoded = encodeURIComponent(code)
+  return `
+    <div class="md-codeblock">
+      <div class="md-codeblock__header" style="margin: 0; padding: 0px 6px;">
+        ${hasLang ? `<span class="md-codeblock__lang">${lang}</span>` : '<span></span>'}
+        <button
+          type="button"
+          class="md-codeblock__copy"
+          data-code="${encoded}"
+          onclick="navigator.clipboard?.writeText(decodeURIComponent(this.dataset.code || ''))"
+        >复制</button>
+      </div>
+      <pre><code class="hljs ${validLang ? 'language-' + lang : ''}">${highlighted}</code></pre>
+    </div>
+  `.trim()
+}
+
+md.renderer.rules.fence = (tokens, idx) => {
+  const token = tokens[idx]
+  const info = token.info ? token.info.trim().split(/\s+/)[0] : ''
+  return renderCodeBlock(token.content, info)
+}
+
+md.renderer.rules.code_block = (tokens, idx) => {
+  const token = tokens[idx]
+  return renderCodeBlock(token.content)
+}
 
 const defaultLinkOpen = md.renderer.rules.link_open || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options))
 md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
