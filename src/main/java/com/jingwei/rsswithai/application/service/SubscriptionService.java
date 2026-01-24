@@ -60,10 +60,6 @@ public class SubscriptionService {
         if (content.isBlank()) {
             throw new IllegalArgumentException("Topic content cannot be blank");
         }
-        if (content.length() > 30) {
-            throw new IllegalArgumentException("Topic content length must be within 20 characters");
-        }
-
         return topicRepository.findByContent(content)
                 .map(TopicDTO::from)
                 .orElseGet(() -> createNewTopic(content));

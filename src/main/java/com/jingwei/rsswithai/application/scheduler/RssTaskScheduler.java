@@ -39,7 +39,7 @@ public class RssTaskScheduler {
      * 定时任务：每分钟检查需要抓取的源
      * 实际抓取由各源的fetchIntervalMinutes控制
      */
-    @Scheduled(fixedRate = 1000) // 每秒检查一次，实际执行频率由配置控制
+    @Scheduled(fixedRate = 10000) // 每10秒检查一次，实际执行频率由配置控制
     public void scheduledFetch() {
         long interval = appConfig.getCollectorFetchInterval();
         if (System.currentTimeMillis() - lastRunTime < interval) {

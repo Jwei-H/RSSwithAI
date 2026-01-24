@@ -1,5 +1,6 @@
 package com.jingwei.rsswithai.interfaces.front;
 
+import com.jingwei.rsswithai.interfaces.context.UserContext;
 import com.jingwei.rsswithai.utils.JwtUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

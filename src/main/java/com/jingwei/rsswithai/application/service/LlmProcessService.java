@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * LLM处理服务
@@ -53,7 +54,8 @@ public class LlmProcessService {
     private final AppConfig appConfig;
     private final ObjectMapper objectMapper;
     private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
-    private Semaphore semaphore;
+    private final AtomicInteger currentLimit = new AtomicInteger();
+    private ResizableSemaphore semaphore;
     private OpenAiChatModel chatModel;
     private OpenAiEmbeddingModel embeddingModel;
 
@@ -62,7 +64,9 @@ public class LlmProcessService {
      */
     @PostConstruct
     public void init() {
-        semaphore = new Semaphore(appConfig.getConcurrentLimit());
+        int limit = appConfig.getConcurrentLimit();
+        currentLimit.set(limit);
+        semaphore = new ResizableSemaphore(limit);
         initializeOpenAiClient();
     }
 
@@ -71,18 +75,24 @@ public class LlmProcessService {
      */
     private void initializeOpenAiClient() {
         try {
-            OpenAiApi openAiApi = OpenAiApi.builder()
+            OpenAiApi chatOpenAiApi = OpenAiApi.builder()
                     .apiKey(appConfig.getLlmApiKey())
                     .baseUrl(appConfig.getLlmBaseUrl())
                     .build();
 
             OpenAiChatOptions options = buildChatOptions();
             this.chatModel = OpenAiChatModel.builder()
-                    .openAiApi(openAiApi)
+                    .openAiApi(chatOpenAiApi)
                     .defaultOptions(options)
                     .build();
+
+            OpenAiApi embeddingOpenAiApi = OpenAiApi.builder()
+                    .apiKey(resolveEmbeddingApiKey())
+                    .baseUrl(resolveEmbeddingBaseUrl())
+                    .build();
+
             this.embeddingModel = new OpenAiEmbeddingModel(
-                    openAiApi,
+                    embeddingOpenAiApi,
                     MetadataMode.EMBED,
                     OpenAiEmbeddingOptions.builder()
                             .model(appConfig.getEmbeddingModel())
@@ -94,6 +104,20 @@ public class LlmProcessService {
         } catch (Exception e) {
             log.error("Failed to initialize OpenAI client", e);
         }
+    }
+
+    private String resolveEmbeddingBaseUrl() {
+        String embeddingBaseUrl = appConfig.getEmbeddingBaseUrl();
+        return (embeddingBaseUrl == null || embeddingBaseUrl.isBlank())
+                ? appConfig.getLlmBaseUrl()
+                : embeddingBaseUrl;
+    }
+
+    private String resolveEmbeddingApiKey() {
+        String embeddingApiKey = appConfig.getEmbeddingApiKey();
+        return (embeddingApiKey == null || embeddingApiKey.isBlank())
+                ? appConfig.getLlmApiKey()
+                : embeddingApiKey;
     }
 
     /**
@@ -148,18 +172,13 @@ public class LlmProcessService {
 
         // 调整信号量大小
         int newLimit = appConfig.getConcurrentLimit();
-        int currentPermits = semaphore.availablePermits();
-        int diff = newLimit - (newLimit - currentPermits);
+        int oldLimit = currentLimit.getAndSet(newLimit);
+        int delta = newLimit - oldLimit;
 
-        if (diff > 0) {
-            semaphore.release(diff);
-        } else if (diff < 0) {
-            try {
-                semaphore.acquire(-diff);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.error("Interrupted while adjusting semaphore", e);
-            }
+        if (delta > 0) {
+            semaphore.release(delta);
+        } else if (delta < 0) {
+            semaphore.reduce(-delta);
         }
 
         log.info("Concurrent limit updated to: {}", newLimit);
@@ -206,6 +225,7 @@ public class LlmProcessService {
             articleExtraRepository.save(articleExtra);
             log.info("Article {} processing completed successfully", articleId);
 
+            Thread.sleep(6000);
         } catch (Exception e) {
             log.error("Error processing article {}", articleId, e);
             saveFailedResult(articleId, e.getMessage());
@@ -342,6 +362,16 @@ public class LlmProcessService {
         } catch (Exception e) {
             log.error("Error regenerating article {}", articleId, e);
             saveFailedResult(articleId, e.getMessage());
+        }
+    }
+
+    static final class ResizableSemaphore extends Semaphore {
+        ResizableSemaphore(int permits) {
+            super(permits);
+        }
+
+        void reduce(int reduction) {
+            super.reducePermits(reduction);
         }
     }
 }

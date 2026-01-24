@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 
 public record CreateTopicRequest(
         @NotBlank(message = "content cannot be blank")
-        @Size(max = 20, message = "content must be within 20 characters")
+        @Size(max = 50, message = "content must be within 50 characters")
         String content
 ) {
 }

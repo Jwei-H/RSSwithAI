@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @Slf4j
@@ -22,7 +23,7 @@ public class ArticleRetryScheduler {
     /**
      * 每小时检查一次过去7天内没有生成extra数据的文章，并重新触发处理事件
      */
-    @Scheduled(cron = "0 0 * * * ?")
+    @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.HOURS)
     public void retryMissingArticleExtras() {
         log.info("Starting scheduled check for articles missing extra data...");
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);

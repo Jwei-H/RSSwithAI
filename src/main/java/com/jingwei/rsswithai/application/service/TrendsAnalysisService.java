@@ -221,9 +221,11 @@ public class TrendsAnalysisService {
                         .collect(Collectors.joining("\n"));
 
                 String eventsJson = fetchEventsFromLlm(articlesOverview);
+                log.info("Source {}: Extracted events JSON: {}", sourceId, eventsJson);
                 if (!eventsJson.isBlank() && !eventsJson.equals("[]")) {
                     allEventsJson.add(eventsJson);
                 }
+                Thread.sleep(10000);
             }
 
             if (allEventsJson.isEmpty()) {
@@ -237,6 +239,8 @@ public class TrendsAnalysisService {
             // Better to parse each and combine into one big list string
 
             String globalEvents = fetchGlobalEventsFromLlm(combinedEvents);
+
+            log.info("Global reduced events JSON: {}", globalEvents);
 
             // 3. Save
             saveTrendsData(0L, "HOT_EVENTS",

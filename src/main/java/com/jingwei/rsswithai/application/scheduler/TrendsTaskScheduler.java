@@ -47,6 +47,7 @@ public class TrendsTaskScheduler {
             for (Long sourceId : sourceIds) {
                 try {
                     trendsAnalysisService.generateWordCloudForSource(sourceId);
+                    Thread.sleep(10000);
                 } catch (Exception e) {
                     log.error("Failed to generate word cloud for source {}", sourceId, e);
                 }
