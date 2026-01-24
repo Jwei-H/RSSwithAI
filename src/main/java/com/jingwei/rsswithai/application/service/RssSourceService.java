@@ -6,6 +6,7 @@ import com.jingwei.rsswithai.application.dto.RssSourceStatsDTO;
 import com.jingwei.rsswithai.application.dto.UpdateRssSourceRequest;
 import com.jingwei.rsswithai.domain.model.FetchStatus;
 import com.jingwei.rsswithai.domain.model.RssSource;
+import com.jingwei.rsswithai.domain.model.SourceCategory;
 import com.jingwei.rsswithai.domain.model.SourceStatus;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
@@ -33,6 +34,7 @@ public class RssSourceService {
 
     private final RssSourceRepository rssSourceRepository;
     private final ArticleRepository articleRepository;
+    private final RssFetcherService rssFetcherService;
 
     @Value("${collector.fetch.interval:30}")
     private int defaultFetchInterval;
@@ -49,15 +51,22 @@ public class RssSourceService {
                 .url(request.url())
                 .type(request.type())
                 .description(request.description())
-                .icon(request.icon())
+                .link(request.link())
                 .fetchIntervalMinutes(request.fetchIntervalMinutes() != null
                         ? request.fetchIntervalMinutes()
                         : defaultFetchInterval)
-                .category(request.category() != null ? request.category() : com.jingwei.rsswithai.domain.model.SourceCategory.OTHER)
+                .category(request.category() != null ? request.category() : SourceCategory.OTHER)
                 .status(SourceStatus.ENABLED)
                 .build();
 
         RssSource saved = rssSourceRepository.save(source);
+
+        if (request.name() == null || request.name().isBlank()) {
+            log.info("RSS源名称为空，尝试抓取获取元信息: id={}", saved.getId());
+            // 使用虚拟线程异步执行抓取，避免阻塞
+            Thread.startVirtualThread(() -> rssFetcherService.fetchSource(saved));
+        }
+
         log.info("RSS源创建成功: id={}, name={}", saved.getId(), saved.getName());
         return RssSourceDTO.from(saved);
     }
@@ -86,8 +95,8 @@ public class RssSourceService {
         if (request.description() != null) {
             source.setDescription(request.description());
         }
-        if (request.icon() != null) {
-            source.setIcon(request.icon());
+        if (request.link() != null) {
+            source.setLink(request.link());
         }
         if (request.fetchIntervalMinutes() != null) {
             source.setFetchIntervalMinutes(request.fetchIntervalMinutes());

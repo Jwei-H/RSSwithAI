@@ -10,9 +10,8 @@ import jakarta.validation.constraints.NotNull;
  * 创建RSS源请求
  */
 public record CreateRssSourceRequest(
-    @NotBlank(message = "名称不能为空")
-    String name,
-    
+    String name,  // 可选，如果为空则从RSS源中提取
+
     @NotBlank(message = "URL不能为空")
     String url,
 
@@ -20,12 +19,12 @@ public record CreateRssSourceRequest(
     SourceType type,
 
     String description,
-    
-    String icon,
-    
+
+    String link,
+
     @Min(value = 1, message = "抓取间隔至少为1分钟")
     Integer fetchIntervalMinutes,
-    
+
     SourceCategory category
 ) {
 }

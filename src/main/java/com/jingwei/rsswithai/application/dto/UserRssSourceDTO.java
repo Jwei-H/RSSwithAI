@@ -6,7 +6,7 @@ import com.jingwei.rsswithai.domain.model.SourceCategory;
 public record UserRssSourceDTO(
         Long id,
         String name,
-        String icon,
+        String link,
         SourceCategory category,
         boolean isSubscribed,
         Long subscriptionId
@@ -15,7 +15,7 @@ public record UserRssSourceDTO(
         return new UserRssSourceDTO(
                 source.getId(),
                 source.getName(),
-                source.getIcon(),
+                source.getLink(),
                 source.getCategory(),
                 subscriptionId != null,
                 subscriptionId

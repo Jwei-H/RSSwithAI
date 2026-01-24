@@ -92,8 +92,8 @@ public class RssSource {
     /**
      * RSS源图标URL（非必须）
      */
-    @Column(length = 2000)
-    private String icon;
+    @Column(length = 256)
+    private String link;
 
     /**
      * RSS源分类

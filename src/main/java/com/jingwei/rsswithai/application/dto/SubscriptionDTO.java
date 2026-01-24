@@ -13,7 +13,7 @@ public record SubscriptionDTO(
         SubscriptionType type,
         Long targetId,
         String name,
-        String icon,
+        String link,
         SourceCategory category,
         String content,
         LocalDateTime createdAt
@@ -26,7 +26,7 @@ public record SubscriptionDTO(
                     SubscriptionType.RSS,
                     source != null ? source.getId() : null,
                     source != null ? source.getName() : null,
-                    source != null ? source.getIcon() : null,
+                    source != null ? source.getLink() : null,
                     source != null ? source.getCategory() : null,
                     null,
                     subscription.getCreatedAt()

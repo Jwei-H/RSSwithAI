@@ -10,20 +10,20 @@ import jakarta.validation.constraints.Min;
  */
 public record UpdateRssSourceRequest(
     String name,
-    
+
     String url,
 
     SourceType type,
 
     String description,
-    
-    String icon,
-    
+
+    String link,
+
     @Min(value = 1, message = "抓取间隔至少为1分钟")
     Integer fetchIntervalMinutes,
-    
+
     SourceStatus status,
-    
+
     SourceCategory category
 ) {
 }

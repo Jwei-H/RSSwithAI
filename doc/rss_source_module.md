@@ -17,7 +17,7 @@ RSS源管理模块负责管理RSS订阅源的配置、调度抓取任务、监�
 
 管理员可以通过REST API进行以下操作：
 
-1. **创建RSS源**：设置名称、URL、类型、描述、抓取间隔、分类（默认为OTHER）
+1. **创建RSS源**：设置URL、类型、抓取间隔、分类（默认为OTHER）。名称为可选，如果为空则系统会在首次抓取时自动从RSS源中提取title、description、link等元信息
 2. **查询RSS源**：查看列表、详情、统计信息
 3. **更新RSS源**：修改配置信息或启用/禁用状态、分类
 4. **删除RSS源**：移除不需要的源
@@ -92,23 +92,23 @@ Entity (RssSource)
 
 ### 4.1 RssSource
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | Long | 主键ID |
-| name | String | RSS源名称 |
-| url | String | RSS源URL |
-| type | SourceType | 源类型（ORIGIN/RSSHUB） |
-| description | String | 描述 |
-| icon | String | 图标URL |
-| fetchIntervalMinutes | Integer | 抓取间隔（分钟） |
-| status | SourceStatus | 源状态（ENABLED/DISABLED） |
-| category | SourceCategory | 源分类（NEWS/TECH/SOCIETY/FINANCE/LIFESTYLE/OTHER） |
-| lastFetchStatus | FetchStatus | 最后抓取状态 |
-| lastFetchTime | LocalDateTime | 最后抓取时间 |
-| lastFetchError | String | 最后抓取错误 |
-| failureCount | Integer | 失败次数 |
-| createdAt | LocalDateTime | 创建时间 |
-| updatedAt | LocalDateTime | 更新时间 |
+| 字段                   | 类型 | 说明                                             |
+|----------------------|------|------------------------------------------------|
+| id                   | Long | 主键ID                                           |
+| name                 | String | RSS源名称                                         |
+| url                  | String | RSS源URL                                        |
+| type                 | SourceType | 源类型（ORIGIN/RSSHUB）                             |
+| description          | String | 描述                                             |
+| link                 | String | 原始链接                                           |
+| fetchIntervalMinutes | Integer | 抓取间隔（分钟）                                       |
+| status               | SourceStatus | 源状态（ENABLED/DISABLED）                          |
+| category             | SourceCategory | 源分类（NEWS/TECH/SOCIETY/FINANCE/LIFESTYLE/OTHER） |
+| lastFetchStatus      | FetchStatus | 最后抓取状态                                         |
+| lastFetchTime        | LocalDateTime | 最后抓取时间                                         |
+| lastFetchError       | String | 最后抓取错误                                         |
+| failureCount         | Integer | 失败次数                                           |
+| createdAt            | LocalDateTime | 创建时间                                           |
+| updatedAt            | LocalDateTime | 更新时间                                           |
 
 ### 4.2 枚举类型
 

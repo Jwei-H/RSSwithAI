@@ -3,6 +3,7 @@ package com.jingwei.rsswithai.application.service;
 import com.jingwei.rsswithai.application.Event.ArticleProcessEvent;
 import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.Article;
+import com.jingwei.rsswithai.domain.model.FetchStatus;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.model.SourceType;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
@@ -55,6 +56,7 @@ public class RssFetcherService {
      * @return 新抓取的文章数量
      */
     public int fetchSource(RssSource source) {
+        boolean isFirstFetch = source.getLastFetchStatus() == FetchStatus.NEVER;
         // 如果返回 0，说明该源已经在 NEW/FETCHING 状态（被其他线程或节点处理中），直接跳过
         int updatedRows = rssSourceRepository.compareAndSetFetching(source.getId());
         if (updatedRows == 0) {
@@ -76,6 +78,25 @@ public class RssFetcherService {
                 try {
                     String fetchUrl = getFetchUrl(source);
                     String content = fetchRssContent(fetchUrl);
+
+                    // 如果是首次抓取且源名称为空，则尝试从RSS中提取元信息
+                    if (isFirstFetch) {
+                        RssUtils.ChannelInfo channelInfo = RssUtils.parseChannelInfo(content);
+                        if (channelInfo != null) {
+                            if (channelInfo.title() != null && !channelInfo.title().isBlank() && (source.getName() == null || source.getName().isBlank())) {
+                                source.setName(channelInfo.title());
+                                log.info("从RSS中提取到源名称: {}", channelInfo.title());
+                            }
+                            if (channelInfo.description() != null && !channelInfo.description().isBlank()) {
+                                source.setDescription(channelInfo.description());
+                                log.info("从RSS中提取到源描述: {}", channelInfo.description());
+                            }
+                            if (channelInfo.link() != null && !channelInfo.link().isBlank()) {
+                                source.setLink(channelInfo.link());
+                                log.info("从RSS中提取到源链接: {}", channelInfo.link());
+                            }
+                        }
+                    }
 
                     List<Article> articles = RssUtils.parseContent(content, source);
 

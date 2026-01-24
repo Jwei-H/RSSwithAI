@@ -46,6 +46,77 @@ public final class RssUtils {
     }
 
     /**
+     * Channel元信息记录类
+     */
+    public record ChannelInfo(String title, String description, String link) {}
+
+    /**
+     * 解析RSS/Atom的Channel元信息（title、description、link）
+     * 
+     * @param xmlContent XML内容字符串
+     * @return Channel元信息，如果解析失败返回null
+     */
+    public static ChannelInfo parseChannelInfo(String xmlContent) {
+        if (xmlContent == null || xmlContent.isBlank()) {
+            return null;
+        }
+
+        try {
+            Document doc = parseXmlDocument(xmlContent);
+            FeedFormat format = detectFeedFormat(doc);
+            Element root = doc.getDocumentElement();
+
+            String title = null;
+            String description = null;
+            String link = null;
+
+            if (format == FeedFormat.ATOM) {
+                // Atom格式: <feed><title>、<subtitle>、<link>
+                title = getElementText(root, "title");
+                description = getElementText(root, "subtitle");
+                // Atom的link可能有多个，取rel="alternate"或第一个
+                NodeList linkNodes = root.getElementsByTagName("link");
+                for (int i = 0; i < linkNodes.getLength(); i++) {
+                    Element linkEl = (Element) linkNodes.item(i);
+                    String href = linkEl.getAttribute("href");
+                    String rel = linkEl.getAttribute("rel");
+                    if ("alternate".equals(rel) || isBlank(rel)) {
+                        link = href;
+                        break;
+                    }
+                }
+                if (link == null && linkNodes.getLength() > 0) {
+                    Element linkEl = (Element) linkNodes.item(0);
+                    link = linkEl.getAttribute("href");
+                }
+            } else {
+                // RSS格式: <rss><channel><title>、<description>、<link>
+                NodeList channelNodes = doc.getElementsByTagName("channel");
+                if (channelNodes.getLength() > 0) {
+                    Element channel = (Element) channelNodes.item(0);
+                    title = getElementText(channel, "title");
+                    description = getElementText(channel, "description");
+                    link = getElementText(channel, "link");
+                }
+            }
+
+            // 清理HTML标签
+            if (title != null) {
+                title = cleanHtml(title);
+            }
+            if (description != null) {
+                description = cleanHtml(description);
+            }
+
+            return new ChannelInfo(title, description, link);
+
+        } catch (Exception e) {
+            log.error("解析Channel元信息失败: error={}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * 统一解析入口：解析XML字符串，返回Article列表
      * 自动检测RSS/Atom格式，调用者无需关心具体格式
      *

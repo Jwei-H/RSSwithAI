@@ -402,7 +402,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
       "url": "https://example.com/rss",
       "type": "ORIGIN",
       "description": "科技新闻源",
-      "icon": "https://example.com/icon.png",
+      "link": "https://example.com",
       "fetchIntervalMinutes": 30,
       "status": "ENABLED",
       "category": "TECH",
@@ -464,15 +464,15 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 
 **请求参数：**
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| name | String | 是 | RSS 源名称 |
+| 字段 | 类型 | 必填 | 说明                    |
+|------|------|------|-----------------------|
+| name | String | 否 | RSS 源名称，如果为空则从RSS源中自动提取 |
 | url | String | 是 | RSS 源 URL 或 RSSHub 路由 |
-| type | SourceType | 是 | 源类型（ORIGIN 或 RSSHUB） |
-| description | String | 否 | 描述 |
-| icon | String | 否 | RSS 源图标 URL |
-| fetchIntervalMinutes | Integer | 否 | 抓取间隔（分钟），默认 30 |
-| category | SourceCategory | 否 | 源分类，默认 OTHER |
+| type | SourceType | 是 | 源类型（ORIGIN 或 RSSHUB）  |
+| description | String | 否 | 描述                    |
+| link | String | 否 | 原始链接                  |
+| fetchIntervalMinutes | Integer | 否 | 抓取间隔（分钟），默认 30        |
+| category | SourceCategory | 否 | 源分类，默认 OTHER          |
 
 **SourceType 枚举值：**
 
@@ -488,15 +488,18 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 - `LIFESTYLE`：生活
 - `OTHER`：其他（默认）
 
+**功能说明：**
+
+- 如果创建时未提供 `name` 字段或 `name` 为空，系统会在首次抓取时自动从RSS feed的 `<title>` 或 `<feed><title>` 中提取作为名称
+- 同时会自动提取 `description` 和 `link` 字段（如果RSS中存在的话）
+- 创建时会异步触发一次抓取以获取元信息
+
 **请求示例：**
 
 ```json
 {
-  "name": "Tech News",
   "url": "https://example.com/rss",
   "type": "ORIGIN",
-  "description": "科技新闻源",
-  "icon": "https://example.com/icon.png",
   "fetchIntervalMinutes": 30,
   "category": "TECH"
 }
@@ -507,11 +510,11 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 ```json
 {
   "id": 1,
-  "name": "Tech News",
+  "name": "临时名称-1234567890",
   "url": "https://example.com/rss",
   "type": "ORIGIN",
-  "description": "科技新闻源",
-  "icon": "https://example.com/icon.png",
+  "description": null,
+  "link": null,
   "fetchIntervalMinutes": 30,
   "status": "ENABLED",
   "category": "TECH",
@@ -523,6 +526,8 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "updatedAt": "2025-12-27T10:00:00"
 }
 ```
+
+**说明：** 响应中的 `name` 字段会在首次抓取完成后自动更新为从RSS源提取的实际名称。
 
 **状态码：**
 
@@ -542,16 +547,16 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 
 **请求参数：**
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| name | String | 否 | RSS 源名称 |
-| url | String | 否 | RSS 源 URL |
-| type | SourceType | 否 | 源类型 |
-| description | String | 否 | 描述 |
-| icon | String | 否 | RSS 源图标 URL |
-| fetchIntervalMinutes | Integer | 否 | 抓取间隔（分钟） |
+| 字段 | 类型 | 必填 | 说明                      |
+|------|------|------|-------------------------|
+| name | String | 否 | RSS 源名称                 |
+| url | String | 否 | RSS 源 URL               |
+| type | SourceType | 否 | 源类型                     |
+| description | String | 否 | 描述                      |
+| link | String | 否 | 原始链接                    |
+| fetchIntervalMinutes | Integer | 否 | 抓取间隔（分钟）                |
 | status | SourceStatus | 否 | 源状态（ENABLED 或 DISABLED） |
-| category | SourceCategory | 否 | 源分类 |
+| category | SourceCategory | 否 | 源分类                     |
 
 **SourceStatus 枚举值：**
 
@@ -578,7 +583,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "url": "https://example.com/rss",
   "type": "ORIGIN",
   "description": "更新后的描述",
-  "icon": "https://example.com/icon.png",
+  "link": "https://example.com",
   "fetchIntervalMinutes": 30,
   "status": "ENABLED",
   "category": "TECH",
