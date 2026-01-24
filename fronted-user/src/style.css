@@ -1,0 +1,235 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "katex/dist/katex.min.css";
+@import "highlight.js/styles/github.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.985 0.01 250.5);
+  --foreground: oklch(0.2 0.05 264.7);
+  --card: oklch(0.995 0.004 247.8);
+  --card-foreground: oklch(0.2 0.05 264.7);
+  --popover: oklch(0.995 0.004 247.8);
+  --popover-foreground: oklch(0.2 0.05 264.7);
+  --primary: oklch(0.6 0.15 255.5);
+  --primary-foreground: oklch(0.98 0.01 240.2);
+  --secondary: oklch(0.95 0.02 250.3);
+  --secondary-foreground: oklch(0.23 0.06 264.7);
+  --muted: oklch(0.95 0.02 250.3);
+  --muted-foreground: oklch(0.55 0.06 257.4);
+  --accent: oklch(0.94 0.04 250.3);
+  --accent-foreground: oklch(0.23 0.06 264.7);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.9 0.02 255.5);
+  --input: oklch(0.9 0.02 255.5);
+  --ring: oklch(0.7 0.06 256.8);
+  --chart-1: oklch(0.62 0.16 255.5);
+  --chart-2: oklch(0.55 0.11 215.7);
+  --chart-3: oklch(0.42 0.08 230.9);
+  --chart-4: oklch(0.78 0.13 200.2);
+  --chart-5: oklch(0.7 0.12 185.2);
+  --sidebar: oklch(0.975 0.01 250.5);
+  --sidebar-foreground: oklch(0.2 0.05 264.7);
+  --sidebar-primary: oklch(0.6 0.15 255.5);
+  --sidebar-primary-foreground: oklch(0.98 0.01 240.2);
+  --sidebar-accent: oklch(0.94 0.04 250.3);
+  --sidebar-accent-foreground: oklch(0.23 0.06 264.7);
+  --sidebar-border: oklch(0.9 0.02 255.5);
+  --sidebar-ring: oklch(0.7 0.06 256.8);
+}
+
+.dark {
+  --background: oklch(0.129 0.042 264.695);
+  --foreground: oklch(0.984 0.003 247.858);
+  --card: oklch(0.208 0.042 265.755);
+  --card-foreground: oklch(0.984 0.003 247.858);
+  --popover: oklch(0.208 0.042 265.755);
+  --popover-foreground: oklch(0.984 0.003 247.858);
+  --primary: oklch(0.929 0.013 255.508);
+  --primary-foreground: oklch(0.208 0.042 265.755);
+  --secondary: oklch(0.279 0.041 260.031);
+  --secondary-foreground: oklch(0.984 0.003 247.858);
+  --muted: oklch(0.279 0.041 260.031);
+  --muted-foreground: oklch(0.704 0.04 256.788);
+  --accent: oklch(0.279 0.041 260.031);
+  --accent-foreground: oklch(0.984 0.003 247.858);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.551 0.027 264.364);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.208 0.042 265.755);
+  --sidebar-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-accent: oklch(0.279 0.041 260.031);
+  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.551 0.027 264.364);
+}
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer base {
+  body {
+    font-family: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+  }
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+  border-radius: 999px;
+}
+
+.markdown-body {
+  @apply text-base leading-7 text-foreground;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+  @apply mt-6 mb-3 font-semibold text-foreground;
+}
+
+.markdown-body h1 {
+  @apply text-2xl;
+}
+
+.markdown-body h2 {
+  @apply text-xl;
+}
+
+.markdown-body h3 {
+  @apply text-lg;
+}
+
+.markdown-body h4 {
+  @apply mt-5 mb-2 text-base font-semibold text-foreground;
+}
+
+.markdown-body h5 {
+  @apply mt-4 mb-2 text-sm font-semibold text-foreground;
+}
+
+.markdown-body h6 {
+  @apply mt-4 mb-2 text-sm font-medium text-muted-foreground;
+}
+
+.markdown-body p {
+  @apply my-3;
+}
+
+.markdown-body ul {
+  @apply list-disc pl-6 my-3;
+}
+
+.markdown-body table {
+  @apply my-4 w-full border-collapse text-sm;
+}
+
+.markdown-body th,
+.markdown-body td {
+  @apply border border-border px-3 py-2 align-top;
+}
+
+.markdown-body th {
+  @apply bg-muted/60 text-foreground;
+}
+
+.markdown-body blockquote {
+  @apply border-l-4 border-border pl-4 text-muted-foreground my-3 italic;
+}
+
+.markdown-body img {
+  @apply rounded-lg border border-border my-3;
+}
+
+.markdown-body a,
+.markdown-body .md-link {
+  @apply text-primary underline underline-offset-4;
+}
+
+.markdown-body code:not(pre code) {
+  @apply rounded-md border border-border bg-muted/70 px-1.5 py-0.5 text-[13px] text-foreground;
+}
+
+.hljs {
+  @apply rounded-lg border border-border bg-blue-50/70 p-3 text-xs overflow-auto;
+}
+
+.overview-strong {
+  @apply font-semibold text-primary;
+}
+
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
