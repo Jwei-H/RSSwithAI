@@ -197,7 +197,7 @@ public class ArticleService {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
         }
-        double threshold = Objects.requireNonNullElse(appConfig.getFeedSimilarityThreshold(), 0.3D);
+        double threshold = 0.3D;
 
         return articleExtraRepository.searchIdsByVector(toPgVectorLiteral(vector), threshold, 50);
     }
@@ -208,7 +208,7 @@ public class ArticleService {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
         }
-        double threshold = Objects.requireNonNullElse(appConfig.getFeedSimilarityThreshold(), 0.3D);
+        double threshold = 0.3D;
         return articleExtraRepository.searchIdsByVectorInSources(toPgVectorLiteral(vector), sourceIds, threshold, 50);
     }
 
@@ -218,7 +218,7 @@ public class ArticleService {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
         }
-        double threshold = Objects.requireNonNullElse(appConfig.getFeedSimilarityThreshold(), 0.3D);
+        double threshold = 0.3D;
         return articleExtraRepository.searchIdsByVectorInFavorites(toPgVectorLiteral(vector), userId, threshold, 50);
     }
 

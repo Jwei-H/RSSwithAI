@@ -232,9 +232,7 @@ public class SubscriptionService {
             query.setParameter("sourceIds", sourceIds);
         }
         if (!topicVectors.isEmpty()) {
-            double threshold = appConfig.getFeedSimilarityThreshold() != null
-                    ? appConfig.getFeedSimilarityThreshold()
-                    : 0.3D;
+            double threshold = 0.4D;
             query.setParameter("threshold", threshold);
             for (int i = 0; i < topicVectors.size(); i++) {
                 query.setParameter("vector" + i, toPgVectorLiteral(topicVectors.get(i)));
