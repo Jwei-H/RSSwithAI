@@ -92,7 +92,7 @@ Entity (ArticleExtra)
 3. 检查文章是否已处理过
 4. 调用语言模型生成内容
 5. 解析JSON响应，提取概览、关键信息、标签
-6. 拼接标题和概览（overview 为空则仅标题），调用embedding模型生成向量
+6. 拼接概览和关键信息，调用embedding模型生成向量
 7. 保存结果到ArticleExtra表
 8. 释放信号量许可
 

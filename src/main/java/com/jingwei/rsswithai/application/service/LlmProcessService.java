@@ -191,7 +191,7 @@ public class LlmProcessService {
         try {
             // 获取许可，控制并发
             semaphore.acquire();
-//            log.debug("Acquired semaphore permit for article: {}", articleId);
+            // log.debug("Acquired semaphore permit for article: {}", articleId);
 
             // 检查是否已处理过
             if (articleExtraRepository.existsByArticleId(articleId)) {
@@ -212,13 +212,14 @@ public class LlmProcessService {
             // 生成内容
             ArticleExtra articleExtra = generateContent(article);
 
-            // 生成向量：标题 + overview（overview为空则仅标题）
-            String overview = articleExtra.getOverview();
-            String title = article.getTitle();
-            String vectorText = (overview != null && !overview.isBlank())
-                    ? title + "\n" + overview
-                    : title;
-            articleExtra.setVector(generateVector(vectorText));
+            // 生成向量
+            if (articleExtra.getOverview() != null && !articleExtra.getOverview().isBlank()) {
+                String vectorText = articleExtra.getOverview() + "\n" +
+                        String.join("\n", articleExtra.getKeyInformation());
+                articleExtra.setVector(generateVector(vectorText));
+            } else {
+                articleExtra.setVector(generateVector(article.getTitle()));
+            }
 
             // 保存结果
             articleExtraRepository.save(articleExtra);
@@ -230,7 +231,7 @@ public class LlmProcessService {
             saveFailedResult(articleId, e.getMessage());
         } finally {
             semaphore.release();
-//            log.debug("Released semaphore permit for article: {}", articleId);
+            // log.debug("Released semaphore permit for article: {}", articleId);
         }
     }
 
@@ -249,10 +250,11 @@ public class LlmProcessService {
             ChatResponse response = chatModel.call(prompt);
 
             String content = response.getResult().getOutput().getText();
-//            log.debug("AI response for article {}: {}", article.getId(), content);
+            // log.debug("AI response for article {}: {}", article.getId(), content);
 
             // 解析JSON响应
-            JsonNode jsonResponse = objectMapper.readTree(Objects.requireNonNull(content).replace("```json", "").replace("```", ""));
+            JsonNode jsonResponse = objectMapper
+                    .readTree(Objects.requireNonNull(content).replace("```json", "").replace("```", ""));
 
             String overview = jsonResponse.has("overview") ? jsonResponse.get("overview").asString() : "";
             List<String> keyInfoList = List.of();
@@ -260,16 +262,14 @@ public class LlmProcessService {
             if (jsonResponse.has("key_info") && jsonResponse.get("key_info").isArray()) {
                 keyInfoList = objectMapper.convertValue(
                         jsonResponse.get("key_info"),
-                        objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
-                );
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
             }
 
             if (jsonResponse.has("tags") && jsonResponse.get("tags").isArray()) {
                 // Jackson 3 API usage: convertValue and TypeFactory
                 tagsList = objectMapper.convertValue(
                         jsonResponse.get("tags"),
-                        objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
-                );
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
             }
 
             resultBuilder.overview(overview)
@@ -298,8 +298,7 @@ public class LlmProcessService {
         return new Prompt(promptTemplate.createMessage(Map.of(
                 "title", article.getTitle(),
                 "source", article.getSourceName(),
-                "content", article.getContent()
-        )));
+                "content", article.getContent())));
     }
 
     /**
@@ -347,13 +346,15 @@ public class LlmProcessService {
             }
             ArticleExtra articleExtra = generateContent(article);
 
-            // 生成向量：标题 + overview（overview为空则仅标题）
-            String overview = articleExtra.getOverview();
-            String title = article.getTitle();
-            String vectorText = (overview != null && !overview.isBlank())
-                    ? title + "\n" + overview
-                    : title;
-            articleExtra.setVector(generateVector(vectorText));
+            // 生成向量
+            if (articleExtra.getOverview() != null && !articleExtra.getOverview().isBlank()) {
+                String vectorText = articleExtra.getOverview() + "\n" +
+                        String.join("\n", articleExtra.getKeyInformation());
+                articleExtra.setVector(generateVector(vectorText));
+            } else {
+                articleExtra.setVector(generateVector(article.getTitle()));
+            }
+
 
             articleExtraRepository.save(articleExtra);
             log.info("Article {} regeneration completed successfully", articleId);
