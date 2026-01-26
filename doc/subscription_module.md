@@ -30,7 +30,7 @@
 
 | 配置键 | 默认值 | 说明 |
 |--------|--------|------|
-| feed_similarity_threshold | 0.3 | 主题语义匹配的距离阈值（使用 pgvector `<=>` 计算距离） |
+| feed_similarity_threshold | 0.45 | 主题语义匹配的距离阈值（使用 pgvector `<=>` 计算距离） |
 | subscription_limit | 30 | 单个用户订阅数量上限（包含RSS与主题） |
 
 > 以上配置项通过 `SettingsService` 从数据库 settings 表动态加载并可热更新。

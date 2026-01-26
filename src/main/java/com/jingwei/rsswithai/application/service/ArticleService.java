@@ -153,7 +153,8 @@ public class ArticleService {
     }
 
     private List<ArticleFeedDTO> searchInSubscriptions(String query, Long userId) {
-        List<Long> sourceIds = subscriptionRepository.findByUserIdAndTypeWithSource(userId, SubscriptionType.RSS).stream()
+        List<Long> sourceIds = subscriptionRepository.findByUserIdAndTypeWithSource(userId, SubscriptionType.RSS)
+                .stream()
                 .filter(sub -> sub.getSource() != null)
                 .map(sub -> sub.getSource().getId())
                 .toList();
@@ -173,14 +174,61 @@ public class ArticleService {
                 searchIdsByVectorInFavorites(query, userId));
     }
 
-    private List<ArticleFeedDTO> executeSearch(List<Long> fuzzyIds, List<Long> vectorIds) {
-        List<Long> merged = mergeHybridIds(fuzzyIds, vectorIds, 20);
-        Map<Long, Article> articleMap = toArticleMap(merged);
+    private List<ArticleFeedDTO> executeSearch(List<Long> fuzzyIds,
+            List<ArticleExtraRepository.IdWithDistance> vectorResults) {
+        Set<Long> allIds = new HashSet<>();
+        if (fuzzyIds != null)
+            allIds.addAll(fuzzyIds);
 
-        return merged.stream()
+        Map<Long, Double> vectorDistanceMap = new HashMap<>();
+        if (vectorResults != null) {
+            for (ArticleExtraRepository.IdWithDistance result : vectorResults) {
+                allIds.add(result.getArticleId());
+                vectorDistanceMap.put(result.getArticleId(), result.getDistance());
+            }
+        }
+
+        if (allIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Article> articleMap = toArticleMap(allIds);
+
+        return allIds.stream()
                 .map(articleMap::get)
                 .filter(Objects::nonNull)
-                .map(ArticleFeedDTO::from)
+                .map(article -> {
+                    double score = 0.0;
+
+                    // 1. Vector Score (Relevance): 1 - distance
+                    // OpenAI distance is 0..2 (Cosine Distance). We map it to score.
+                    // Lower distance = Higher score.
+                    Double distance = vectorDistanceMap.get(article.getId());
+                    if (distance != null) {
+                        // Weight=1.5 implies semantic match is very important
+                        score += (1.0 - distance) * 1.5;
+                    }
+
+                    // 2. Keyword Score (Exactness): Fixed bonus
+                    if (fuzzyIds != null && fuzzyIds.contains(article.getId())) {
+                        score += 1.0;
+                    }
+
+                    // 3. Time Decay (Freshness): Gaussian or Linear decay?
+                    // Let's use Simple Logic: Score = Score / (1 + age_in_days * 0.1)
+                    // 10 days old => score / 2.
+                    long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(article.getPubDate(),
+                            LocalDateTime.now());
+                    if (daysDiff < 0)
+                        daysDiff = 0; // Future articles treated as now
+
+                    double decay = 1.0 / (1.0 + daysDiff * 0.1);
+                    double finalScore = score * decay;
+
+                    return Map.entry(article, finalScore);
+                })
+                .sorted(Map.Entry.<Article, Double>comparingByValue().reversed())
+                .map(entry -> ArticleFeedDTO.from(entry.getKey()))
                 .toList();
     }
 
@@ -196,7 +244,7 @@ public class ArticleService {
         return articleRepository.searchIdsByFuzzyInFavorites(query, userId, 20);
     }
 
-    private List<Long> searchIdsByVectorAll(String query) {
+    private List<ArticleExtraRepository.IdWithDistance> searchIdsByVectorAll(String query) {
         float[] vector = llmProcessService.generateVector(query);
         if (vector == null || vector.length == 0) {
             log.warn("Vector generation failed, fallback to keyword search only");
@@ -207,7 +255,7 @@ public class ArticleService {
         return articleExtraRepository.searchIdsByVector(toPgVectorLiteral(vector), threshold, 50);
     }
 
-    private List<Long> searchIdsByVectorInSources(String query, List<Long> sourceIds) {
+    private List<ArticleExtraRepository.IdWithDistance> searchIdsByVectorInSources(String query, List<Long> sourceIds) {
         float[] vector = llmProcessService.generateVector(query);
         if (vector == null || vector.length == 0) {
             log.warn("Vector generation failed, fallback to keyword search only");
@@ -217,7 +265,7 @@ public class ArticleService {
         return articleExtraRepository.searchIdsByVectorInSources(toPgVectorLiteral(vector), sourceIds, threshold, 50);
     }
 
-    private List<Long> searchIdsByVectorInFavorites(String query, Long userId) {
+    private List<ArticleExtraRepository.IdWithDistance> searchIdsByVectorInFavorites(String query, Long userId) {
         float[] vector = llmProcessService.generateVector(query);
         if (vector == null || vector.length == 0) {
             log.warn("Vector generation failed, fallback to keyword search only");
@@ -258,7 +306,8 @@ public class ArticleService {
      */
     public ArticleStatsDTO getStats() {
         long total = articleRepository.count();
-        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(6).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(6).withHour(0).withMinute(0).withSecond(0)
+                .withNano(0);
         List<Object[]> dailyCountsRaw = articleRepository.countDailyNewArticles(sevenDaysAgo);
 
         Map<LocalDate, Long> countsMap = new HashMap<>();
@@ -313,36 +362,6 @@ public class ArticleService {
         }
         return articleRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Article::getId, article -> article));
-    }
-
-    private List<Long> mergeHybridIds(List<Long> fuzzyIds, List<Long> vectorIds, int limit) {
-        List<Long> fuzzyList = fuzzyIds == null ? List.of() : fuzzyIds;
-        List<Long> vectorList = vectorIds == null ? List.of() : vectorIds;
-
-        Set<Long> vectorSet = Set.copyOf(vectorList);
-        List<Long> intersection = fuzzyList.stream()
-                .filter(vectorSet::contains)
-                .toList();
-
-        Set<Long> intersectionSet = Set.copyOf(intersection);
-        List<Long> fuzzyOnly = fuzzyList.stream()
-                .filter(id -> !intersectionSet.contains(id))
-                .toList();
-
-        Set<Long> fuzzySet = Set.copyOf(fuzzyList);
-        List<Long> vectorOnly = vectorList.stream()
-                .filter(id -> !fuzzySet.contains(id))
-                .toList();
-
-        List<Long> merged = new ArrayList<>(intersection.size() + fuzzyOnly.size() + vectorOnly.size());
-        merged.addAll(intersection);
-        merged.addAll(fuzzyOnly);
-        merged.addAll(vectorOnly);
-
-        if (merged.size() > limit) {
-            return merged.subList(0, limit);
-        }
-        return merged;
     }
 
     private String toPgVectorLiteral(float[] vector) {

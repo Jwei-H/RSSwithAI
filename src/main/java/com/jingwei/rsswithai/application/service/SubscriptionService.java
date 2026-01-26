@@ -43,13 +43,15 @@ public class SubscriptionService {
     private EntityManager entityManager;
 
     public Page<UserRssSourceDTO> listRssSources(Long userId, SourceCategory category, Pageable pageable) {
-        Map<Long, Long> subscriptionMap = subscriptionRepository.findByUserIdAndTypeWithSource(userId, SubscriptionType.RSS).stream()
+        Map<Long, Long> subscriptionMap = subscriptionRepository
+                .findByUserIdAndTypeWithSource(userId, SubscriptionType.RSS).stream()
                 .filter(sub -> sub.getSource() != null)
-                .collect(Collectors.toMap(sub -> sub.getSource().getId(), Subscription::getId, (a, b) -> a, LinkedHashMap::new));
+                .collect(Collectors.toMap(sub -> sub.getSource().getId(), Subscription::getId, (a, b) -> a,
+                        LinkedHashMap::new));
 
         Page<RssSource> page = category != null
-            ? rssSourceRepository.findByStatusAndCategory(SourceStatus.ENABLED, category, pageable)
-            : rssSourceRepository.findByStatus(SourceStatus.ENABLED, pageable);
+                ? rssSourceRepository.findByStatusAndCategory(SourceStatus.ENABLED, category, pageable)
+                : rssSourceRepository.findByStatus(SourceStatus.ENABLED, pageable);
 
         return page.map(source -> UserRssSourceDTO.from(source, subscriptionMap.get(source.getId())));
     }
@@ -118,7 +120,8 @@ public class SubscriptionService {
             for (Subscription subscription : subscriptionRepository.findByUserIdWithDetails(userId)) {
                 if (subscription.getType() == SubscriptionType.RSS && subscription.getSource() != null) {
                     sourceIds.add(subscription.getSource().getId());
-                } else if (subscription.getType() == SubscriptionType.TOPIC && subscription.getTopic() != null && subscription.getTopic().getVector() != null) {
+                } else if (subscription.getType() == SubscriptionType.TOPIC && subscription.getTopic() != null
+                        && subscription.getTopic().getVector() != null) {
                     topicVectors.add(subscription.getTopic().getVector());
                 }
             }
@@ -129,7 +132,8 @@ public class SubscriptionService {
         }
 
         Set<Long> dedupSourceIds = new LinkedHashSet<>(sourceIds);
-        return executeHybridFeed(new ArrayList<>(dedupSourceIds), topicVectors, feedCursor.cursorTime(), feedCursor.cursorId(), pageSize);
+        return executeHybridFeed(new ArrayList<>(dedupSourceIds), topicVectors, feedCursor.cursorTime(),
+                feedCursor.cursorId(), pageSize);
     }
 
     private TopicDTO createNewTopic(String content) {
@@ -232,7 +236,7 @@ public class SubscriptionService {
             query.setParameter("sourceIds", sourceIds);
         }
         if (!topicVectors.isEmpty()) {
-            double threshold = 0.4D;
+            double threshold = 0.45D;
             query.setParameter("threshold", threshold);
             for (int i = 0; i < topicVectors.size(); i++) {
                 query.setParameter("vector" + i, toPgVectorLiteral(topicVectors.get(i)));
