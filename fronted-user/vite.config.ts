@@ -10,4 +10,8 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    // 允许所有 host，解决 "Blocked request" 问题
+    allowedHosts: true,
+  },
 })

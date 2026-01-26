@@ -98,6 +98,11 @@ const loadFeed = async () => {
 }
 
 const loadWordCloud = async () => {
+  if (activeSubscription.value?.type === 'TOPIC') {
+    wordCloud.value = []
+    wordCloudLoading.value = false
+    return
+  }
   wordCloudLoading.value = true
   try {
     wordCloud.value = await trendApi.wordCloud(activeSourceId.value)

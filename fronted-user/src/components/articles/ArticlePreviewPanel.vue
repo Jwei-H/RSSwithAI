@@ -22,7 +22,7 @@ const props = defineProps<{
     <p v-else class="text-xs text-muted-foreground">悬停文章以查看 AI 预览</p>
 
     <div class="border-t border-border pt-3">
-      <h5 class="text-xs font-semibold text-foreground">关键信息</h5>
+      <h4 class="text-sm font-semibold text-foreground">关键信息</h4>
       <ul v-if="extra?.keyInformation?.length" class="mt-2 list-decimal pl-4 text-[15px] leading-7 text-muted-foreground">
         <li v-for="(item, index) in extra.keyInformation" :key="`${item}-${index}`">{{ item }}</li>
       </ul>
