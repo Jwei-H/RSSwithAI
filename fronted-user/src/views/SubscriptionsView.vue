@@ -275,7 +275,7 @@ onMounted(async () => {
                     {{ item.type === 'RSS' ? item.name : item.content }}
                   </p>
                   <p class="text-[11px] text-muted-foreground">
-                    {{ item.type === 'RSS' ? item.category : '主题订阅' }}
+                    {{ item.type === 'RSS' ? item.category : 'TOPIC' }}
                   </p>
                 </div>
               </div>

@@ -82,7 +82,14 @@ export async function apiRequest<T>(
     return null as T
   }
 
-  return (await response.json()) as T
+  // 检查响应是否有内容
+  const contentType = response.headers.get('content-type')
+  if (contentType && contentType.includes('application/json')) {
+    return (await response.json()) as T
+  }
+
+  // 如果没有内容或不是JSON，返回null
+  return null as T
 }
 
 export function get<T>(path: string) {

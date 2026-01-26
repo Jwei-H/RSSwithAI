@@ -1,7 +1,6 @@
 package com.jingwei.rsswithai.application.service;
 
 import com.jingwei.rsswithai.application.dto.*;
-import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.ArticleFavorite;
 import com.jingwei.rsswithai.domain.model.SubscriptionType;
@@ -37,7 +36,6 @@ public class ArticleService {
     private final ArticleExtraRepository articleExtraRepository;
     private final ArticleFavoriteRepository articleFavoriteRepository;
     private final LlmProcessService llmProcessService;
-    private final AppConfig appConfig;
     private final SubscriptionRepository subscriptionRepository;
 
     /**
@@ -47,6 +45,13 @@ public class ArticleService {
         Article article = articleRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("文章不存在: " + id));
         return ArticleDetailDTO.from(article);
+    }
+
+    public ArticleDetailDTO getArticle(Long id, Long userId) {
+        Article article = articleRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("文章不存在: " + id));
+        boolean isFavorite = articleFavoriteRepository.existsByUserIdAndArticle_Id(userId, id);
+        return ArticleDetailDTO.from(article, isFavorite);
     }
 
     /**
@@ -197,7 +202,7 @@ public class ArticleService {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
         }
-        double threshold = 0.3D;
+        double threshold = 0.45D;
 
         return articleExtraRepository.searchIdsByVector(toPgVectorLiteral(vector), threshold, 50);
     }
@@ -208,7 +213,7 @@ public class ArticleService {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
         }
-        double threshold = 0.3D;
+        double threshold = 0.45D;
         return articleExtraRepository.searchIdsByVectorInSources(toPgVectorLiteral(vector), sourceIds, threshold, 50);
     }
 
@@ -218,7 +223,7 @@ public class ArticleService {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
         }
-        double threshold = 0.3D;
+        double threshold = 0.45D;
         return articleExtraRepository.searchIdsByVectorInFavorites(toPgVectorLiteral(vector), userId, threshold, 50);
     }
 

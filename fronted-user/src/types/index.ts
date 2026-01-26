@@ -45,6 +45,7 @@ export type ArticleDetail = ArticleFeed & {
   content: string
   author?: string | null
   categories?: string | null
+  isFavorite?: boolean
   fetchedAt?: string
   createdAt?: string
 }
@@ -61,6 +62,7 @@ export type ArticleExtra = {
 export type HotEvent = {
   event: string
   score: number
+  isSubscribed?: boolean
 }
 
 export type PagedResponse<T> = {

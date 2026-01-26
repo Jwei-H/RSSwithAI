@@ -9,7 +9,13 @@ import { computed, watch } from 'vue'
 const ui = useUiStore()
 const route = useRoute()
 const showShell = computed(() => !route.meta.public)
-const showOverlay = computed(() => ui.detailOpen && !route.path.startsWith('/subscriptions') && !route.path.startsWith('/discover'))
+const showOverlay = computed(
+  () =>
+    ui.detailOpen &&
+    !route.path.startsWith('/subscriptions') &&
+    !route.path.startsWith('/discover') &&
+    !route.path.startsWith('/favorites')
+)
 
 watch(
   () => route.path,

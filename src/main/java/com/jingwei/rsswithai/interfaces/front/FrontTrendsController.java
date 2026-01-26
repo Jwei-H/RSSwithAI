@@ -29,7 +29,8 @@ public class FrontTrendsController {
 
     @GetMapping("/hotevents")
     public ResponseEntity<List<HotEventDTO>> getHotEvents() {
-        List<HotEventDTO> result = trendsService.getHotEvents();
+        long userId = UserContext.currentUserId();
+        List<HotEventDTO> result = trendsService.getHotEvents(userId);
         return ResponseEntity.ok(result);
     }
 }

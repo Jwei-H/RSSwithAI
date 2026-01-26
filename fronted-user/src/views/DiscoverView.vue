@@ -90,9 +90,14 @@ const search = async () => {
 }
 
 const onSubscribeHot = async (item: HotEvent) => {
+  if (item.isSubscribed) {
+    toast.push('已订阅该热点', 'success')
+    return
+  }
   try {
     const topic = await subscriptionApi.createTopic({ content: item.event })
     await subscriptionApi.create({ type: 'TOPIC', targetId: topic.id })
+    item.isSubscribed = true
     toast.push('热点已订阅', 'success')
   } catch (error: any) {
     toast.push(error?.message || '订阅失败', 'error')

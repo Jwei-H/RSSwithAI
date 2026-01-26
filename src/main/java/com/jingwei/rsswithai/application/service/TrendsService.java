@@ -3,9 +3,12 @@ package com.jingwei.rsswithai.application.service;
 import com.jingwei.rsswithai.application.dto.HotEventDTO;
 import com.jingwei.rsswithai.application.dto.WordCloudItemDTO;
 import com.jingwei.rsswithai.domain.model.Subscription;
+import com.jingwei.rsswithai.domain.model.Topic;
 import com.jingwei.rsswithai.domain.repository.SubscriptionRepository;
+import com.jingwei.rsswithai.domain.repository.TopicRepository;
 import com.jingwei.rsswithai.domain.model.TrendsData;
 import com.jingwei.rsswithai.domain.repository.TrendsDataRepository;
+import com.jingwei.rsswithai.domain.model.SubscriptionType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ public class TrendsService {
 
     private final TrendsDataRepository trendsDataRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final TopicRepository topicRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
@@ -50,9 +54,9 @@ public class TrendsService {
     }
 
     @Transactional(readOnly = true)
-    public List<HotEventDTO> getHotEvents() {
+    public List<HotEventDTO> getHotEvents(Long userId) {
         return trendsDataRepository.findBySourceIdAndType(0L, "HOT_EVENTS")
-                .map(this::parseHotEventList)
+                .map(data -> parseHotEventList(data, userId))
                 .orElse(Collections.emptyList());
     }
 
@@ -71,19 +75,33 @@ public class TrendsService {
         }
     }
 
-    private List<HotEventDTO> parseHotEventList(TrendsData trendsData) {
+    private List<HotEventDTO> parseHotEventList(TrendsData trendsData, Long userId) {
         try {
             List<Map<String, Object>> rawList = objectMapper.readValue(trendsData.getData(), new TypeReference<>() {
             });
             return rawList.stream()
                     .map(m -> new HotEventDTO(
                             (String) m.get("event"),
-                            ((Number) m.get("score")).intValue()))
+                            ((Number) m.get("score")).intValue(),
+                            isSubscribed((String) m.get("event"), userId)))
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Failed to parse hot events data for id {}", trendsData.getId(), e);
             return Collections.emptyList();
         }
+    }
+
+    private boolean isSubscribed(String event, Long userId) {
+        if (userId == null || event == null || event.isBlank()) {
+            return false;
+        }
+        Optional<Topic> topic = topicRepository.findByContent(event);
+        if (topic.isEmpty()) {
+            return false;
+        }
+        return subscriptionRepository
+                .findByUserIdAndTypeAndTopic_Id(userId, SubscriptionType.TOPIC, topic.get().getId())
+                .isPresent();
     }
 
     private List<WordCloudItemDTO> aggregateWordClouds(List<TrendsData> trendsDataList) {

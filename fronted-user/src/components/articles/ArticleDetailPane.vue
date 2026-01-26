@@ -37,6 +37,7 @@ const load = async () => {
   recommendations.value = []
   try {
     article.value = await feedApi.detail(props.articleId)
+    favorite.value = article.value?.isFavorite ?? false
   } catch {
     toast.push('文章加载失败，请稍后重试', 'error')
   } finally {
@@ -69,7 +70,8 @@ const toggleFavorite = async () => {
       favorite.value = true
       toast.push('已加入收藏', 'success')
     }
-  } catch {
+  } catch (error) {
+    console.error('收藏操作错误:', error)
     toast.push('收藏操作失败', 'error')
   }
 }
@@ -115,10 +117,23 @@ onUnmounted(() => {
       </button>
       <div class="flex items-center gap-3">
         <button
-          class="rounded-lg border border-border px-3 py-1 text-xs"
-          :class="favorite ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'"
+          class="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
           @click="toggleFavorite"
+          :title="favorite ? '取消收藏' : '收藏'"
         >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            :fill="favorite ? 'currentColor' : 'none'"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="h-4 w-4 transition-colors"
+            :class="favorite ? 'fill-yellow-500 stroke-yellow-500' : ''"
+          >
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
           {{ favorite ? '已收藏' : '收藏' }}
         </button>
         <div class="text-sm text-muted-foreground">文章详情</div>

@@ -25,7 +25,7 @@ public class FrontArticleController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ArticleDetailDTO> getArticle(@PathVariable Long id) {
-        ArticleDetailDTO article = articleService.getArticle(id);
+        ArticleDetailDTO article = articleService.getArticle(id, UserContext.currentUserId());
         return ResponseEntity.ok(article);
     }
 

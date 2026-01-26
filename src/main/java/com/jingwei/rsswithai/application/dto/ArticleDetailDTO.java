@@ -17,9 +17,9 @@ public record ArticleDetailDTO(
         String categories,
         Long wordCount,
         String coverImage,
+        Boolean isFavorite,
         LocalDateTime fetchedAt,
-        LocalDateTime createdAt)
-{
+        LocalDateTime createdAt) {
     public static ArticleDetailDTO from(Article article) {
         return new ArticleDetailDTO(
                 article.getId(),
@@ -34,6 +34,27 @@ public record ArticleDetailDTO(
                 article.getCategories(),
                 article.getWordCount(),
                 article.getCoverImage(),
+                null,
+                article.getFetchedAt(),
+                article.getCreatedAt()
+        );
+    }
+
+    public static ArticleDetailDTO from(Article article, Boolean isFavorite) {
+        return new ArticleDetailDTO(
+                article.getId(),
+                article.getSource().getId(),
+                article.getSourceName(),
+                article.getTitle(),
+                article.getLink(),
+                article.getDescription(),
+                article.getContent(),
+                article.getAuthor(),
+                article.getPubDate(),
+                article.getCategories(),
+                article.getWordCount(),
+                article.getCoverImage(),
+                isFavorite,
                 article.getFetchedAt(),
                 article.getCreatedAt()
         );

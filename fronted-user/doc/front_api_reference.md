@@ -755,6 +755,7 @@ Invalid token
   "categories": "AI,科技",
   "wordCount": 1500,
   "coverImage": "https://example.com/cover.jpg",
+  "isFavorite": false,
   "fetchedAt": "2026-01-12T10:05:00",
   "createdAt": "2026-01-12T10:05:00"
 }
@@ -1090,23 +1091,27 @@ Invalid token
 [
   {
     "event": "OpenAI发布Sora",
-    "score": 10
+    "score": 10,
+    "isSubscribed": false
   },
   {
     "event": "Java 25发布",
-    "score": 9
+    "score": 9,
+    "isSubscribed": true
   },
   {
     "event": "Google推出Gemini 2.0",
-    "score": 8
+    "score": 8,
+    "isSubscribed": false
   }
 ]
 ```
 
 **业务规则**:
-- 返回全网热点事件榜单（不区分用户）
+- 返回全网热点事件榜单
 - 热点事件由后台定时任务生成（使用 Map-Reduce 架构）
 - 事件按热度打分排序（1-10分）
+- `isSubscribed` 表示当前用户是否已订阅该事件（基于 Topic 订阅）
 - 如果没有数据，返回空列表
 
 ---
