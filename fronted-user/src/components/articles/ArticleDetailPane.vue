@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { feedApi } from '../../services/frontApi'
 import { formatRelativeTime } from '../../utils/time'
 import { extractHeadings, renderMarkdown } from '../../utils/markdown'
@@ -27,6 +27,8 @@ const leftPaneRef = ref<HTMLElement | null>(null)
 
 const leftWidth = ref(60)
 const isDragging = ref(false)
+const activeHeadingId = ref<string | null>(null)
+const scrollRafId = ref<number | null>(null)
 
 const dividerStyle = computed(() => ({
   width: `${100 - leftWidth.value}%`
@@ -53,6 +55,41 @@ const escapeSelector = (value: string) => {
   return value.replace(/([ #;?%&,.+*~'":!^$\[\]()=>|\/])/g, '\\$1')
 }
 
+const getHeadingElements = () => {
+  if (!leftPaneRef.value) return []
+  return Array.from(leftPaneRef.value.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')).filter(
+    (el) => !!el.id
+  )
+}
+
+const updateActiveHeading = () => {
+  if (!leftPaneRef.value) return
+  const headings = getHeadingElements()
+  if (!headings.length) {
+    activeHeadingId.value = null
+    return
+  }
+  const container = leftPaneRef.value
+  const marker = container.scrollTop + container.clientHeight * 0.25
+  let current = headings[0]
+  for (const heading of headings) {
+    if (heading.offsetTop <= marker) {
+      current = heading
+    } else {
+      break
+    }
+  }
+  activeHeadingId.value = current.id
+}
+
+const onLeftPaneScroll = () => {
+  if (scrollRafId.value !== null) return
+  scrollRafId.value = window.requestAnimationFrame(() => {
+    scrollRafId.value = null
+    updateActiveHeading()
+  })
+}
+
 const scrollToHeading = (id: string) => {
   if (!leftPaneRef.value) return
   const target = leftPaneRef.value.querySelector<HTMLElement>(`#${escapeSelector(id)}`)
@@ -63,6 +100,7 @@ const scrollToHeading = (id: string) => {
     top: Math.max(0, target.offsetTop - offset),
     behavior: 'smooth'
   })
+  activeHeadingId.value = id
 }
 
 const load = async () => {
@@ -130,6 +168,14 @@ watch(
   }
 )
 
+watch(
+  () => article.value?.content,
+  async () => {
+    await nextTick()
+    updateActiveHeading()
+  }
+)
+
 onMounted(() => {
   load()
   window.addEventListener('mousemove', onMouseMove)
@@ -137,6 +183,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (scrollRafId.value !== null) {
+    window.cancelAnimationFrame(scrollRafId.value)
+  }
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('mouseup', onMouseUp)
 })
@@ -144,9 +193,9 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-full flex-col">
-    <header class="flex items-center justify-between border-b border-border px-8 py-2">
+    <header class="flex items-center justify-between border-b border-border px-6 py-2">
       <button
-        class="rounded-lg border border-border px-3 py-1 text-sm text-muted-foreground hover:bg-muted"
+        class="rounded-lg border border-border px-0 py-1 text-sm text-muted-foreground hover:bg-muted"
         @click="onClose"
       >
         返回
@@ -177,9 +226,10 @@ onUnmounted(() => {
 
     <div class="flex flex-1 overflow-hidden">
       <section
-        class="h-full overflow-y-auto border-r border-border px-8 py-6 scrollbar-thin"
+        class="h-full overflow-y-auto border-r border-border px-2 py-6 scrollbar-thin"
         :style="{ width: `${leftWidth}%` }"
         ref="leftPaneRef"
+        @scroll.passive="onLeftPaneScroll"
       >
         <div v-if="loading" class="text-sm text-muted-foreground">加载中...</div>
         <div v-else-if="article" class="space-y-4">
@@ -236,17 +286,21 @@ onUnmounted(() => {
             </ul>
             <p v-else class="mt-2 text-sm text-muted-foreground">暂无关键信息</p>
           </div>
-
-          <div v-if="tocItems.length" class="rounded-2xl border border-border bg-card p-4">
+            <div v-if="tocItems.length" class="rounded-2xl border border-border bg-card p-4">
             <div class="flex items-center gap-2">
               <ListTree class="h-4 w-4 text-primary" />
               <h3 class="text-sm font-semibold text-foreground">目录</h3>
             </div>
-            <ul class="mt-3 space-y-2 text-xs text-muted-foreground/70">
+            <ul class="mt-3 space-y-2 text-sm text-muted-foreground/70">
               <li v-for="item in tocItems" :key="item.id" :style="{ paddingLeft: `${(item.level - 1) * 12}px` }">
                 <button
                   type="button"
-                  class="line-clamp-1 text-left text-muted-foreground/70 underline-offset-4 hover:text-sky-600 hover:underline"
+                  class="line-clamp-1 w-full text-left underline-offset-4 hover:text-sky-600 hover:underline"
+                  :class="
+                    activeHeadingId === item.id
+                      ? 'font-semibold text-sky-600'
+                      : 'text-muted-foreground/70'
+                  "
                   :title="item.text"
                   @click="scrollToHeading(item.id)"
                 >
@@ -254,7 +308,7 @@ onUnmounted(() => {
                 </button>
               </li>
             </ul>
-          </div>
+            </div>
 
           <div class="rounded-2xl border border-border bg-card p-4">
             <div class="flex items-center gap-2">

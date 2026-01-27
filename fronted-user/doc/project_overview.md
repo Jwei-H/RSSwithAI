@@ -276,6 +276,11 @@ src/
 - 订阅搜索：searchScope=SUBSCRIBED
 - 收藏搜索：searchScope=FAVORITE
 
+### 5. 静态资源 URL 重写
+- 为避免部分图片防盗链导致加载失败，对图片 URL 进行重写
+- 规则配置位置：`src/utils/url-rewrites.ts`
+- 应用范围：文章正文图片（Markdown 渲染）与文章卡片封面
+
 ---
 
 ## 文档参考

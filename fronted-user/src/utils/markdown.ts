@@ -1,6 +1,8 @@
 import MarkdownIt from 'markdown-it'
 import mila from 'markdown-it-katex'
 import hljs from 'highlight.js/lib/common'
+import { rewriteUrl } from './url-rewrites'
+import { unescapeUrl } from './text'
 
 const md = new MarkdownIt({
   html: false,
@@ -84,10 +86,10 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
   const src = token.attrGet('src') || ''
   const alt = token.content
   const title = token.attrGet('title') || ''
-  
-  // You could add URL rewriting logic here if needed
-  
-  return `<img src="${src}" alt="${alt}" title="${title}" loading="lazy" referrerpolicy="no-referrer" class="rounded-lg shadow-sm max-w-full h-auto my-4 mx-auto block" />`
+
+  const normalizedSrc = rewriteUrl(unescapeUrl(src), true)
+
+  return `<img src="${normalizedSrc}" alt="${alt}" title="${title}" loading="lazy" referrerpolicy="no-referrer" class="rounded-lg shadow-sm max-w-full h-auto my-4 mx-auto block" />`
 }
 
 export function renderMarkdown(content: string) {

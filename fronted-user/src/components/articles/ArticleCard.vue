@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ArticleFeed } from '../../types'
 import { unescapeUrl } from '../../utils/text'
+import { rewriteUrl } from '../../utils/url-rewrites'
 import { formatRelativeTime } from '../../utils/time'
 
 defineProps<{
@@ -22,7 +23,7 @@ defineEmits<{
     @click="$emit('open', article.id)"
   >
     <div v-if="article.coverImage" class="h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-border">
-      <img :src="unescapeUrl(article.coverImage)" :alt="article.title" class="h-full w-full object-cover" loading="lazy" referrerpolicy="no-referrer" />
+      <img :src="rewriteUrl(unescapeUrl(article.coverImage))" :alt="article.title" class="h-full w-full object-cover" loading="lazy" referrerpolicy="no-referrer" />
     </div>
     <div class="flex min-w-0 flex-1 flex-col gap-2">
       <div class="flex items-start justify-between gap-4">
