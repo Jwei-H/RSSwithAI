@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ArticleCard from '../components/articles/ArticleCard.vue'
 import ArticleDetailPane from '../components/articles/ArticleDetailPane.vue'
 import EmptyState from '../components/common/EmptyState.vue'
@@ -9,6 +10,8 @@ import { useInfiniteScroll } from '../composables/useInfiniteScroll'
 import { useUiStore } from '../stores/ui'
 
 const ui = useUiStore()
+const route = useRoute()
+const router = useRouter()
 
 const listContainer = ref<HTMLElement | null>(null)
 const favorites = ref<ArticleFeed[]>([])
@@ -52,16 +55,50 @@ const search = async () => {
 }
 
 const onOpenArticle = (id: number) => {
+  // 更新 URL 查询参数
+  const query = { ...route.query, articleId: String(id) }
+  router.push({ path: route.path, query }).catch(() => {
+    // 忽略导航被中止的错误
+  })
+  
   ui.openDetail(id, listContainer.value)
 }
 
 watch(searchQuery, () => {
   if (searchQuery.value.trim()) {
+    // 更新 URL 查询参数
+    const query = { ...route.query, q: searchQuery.value.trim() }
+    router.push({ path: route.path, query }).catch(() => {
+      // 忽略导航被中止的错误
+    })
     search()
+  } else {
+    // 清除搜索参数
+    const query = { ...route.query }
+    delete query.q
+    router.push({ path: route.path, query }).catch(() => {
+      // 忽略导航被中止的错误
+    })
+    searchResults.value = []
   }
 })
 
-onMounted(loadMore)
+onMounted(async () => {
+  // 从 URL 查询参数恢复状态
+  const searchQ = route.query.q
+  const articleId = route.query.articleId
+
+  if (searchQ) {
+    searchQuery.value = String(searchQ)
+  }
+
+  await loadMore()
+
+  // 恢复文章详情状态
+  if (articleId && parseInt(String(articleId), 10) > 0) {
+    ui.restoreDetailFromUrl(parseInt(String(articleId), 10))
+  }
+})
 </script>
 
 <template>

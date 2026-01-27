@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ArticleCard from '../components/articles/ArticleCard.vue'
 import ArticleDetailPane from '../components/articles/ArticleDetailPane.vue'
 import HotEventsList from '../components/trends/HotEventsList.vue'
@@ -16,6 +17,8 @@ import { Search, Sparkles } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
+const route = useRoute()
+const router = useRouter()
 
 const searchQuery = ref('')
 const searchResults = ref<ArticleFeed[]>([])
@@ -148,10 +151,24 @@ const onToggleSubscribe = async (source: RssSource) => {
 const onPreview = (source: RssSource) => {
   previewSource.value = source
   previewOpen.value = true
+  
+  // 更新 URL 查询参数
+  const query = { ...route.query, previewSourceId: String(source.id) }
+  router.push({ path: route.path, query }).catch(() => {
+    // 忽略导航被中止的错误
+  })
 }
 
 const onOpenArticle = (id: number) => {
   previewOpen.value = false
+  
+  // 更新 URL 查询参数
+  const query = { ...route.query, articleId: String(id) }
+  delete query.previewSourceId
+  router.push({ path: route.path, query }).catch(() => {
+    // 忽略导航被中止的错误
+  })
+  
   ui.openDetail(id, listContainer.value)
 }
 
@@ -159,18 +176,72 @@ watch(activeCategory, () => {
   sources.value = []
   page.value = 0
   last.value = false
+  
+  // 更新 URL 查询参数
+  const query = { ...route.query }
+  if (activeCategory.value) {
+    query.category = activeCategory.value
+  } else {
+    delete query.category
+  }
+  router.push({ path: route.path, query }).catch(() => {
+    // 忽略导航被中止的错误
+  })
+  
   loadSources()
 })
 
 watch(searchQuery, () => {
   if (searchQuery.value.trim()) {
+    // 更新 URL 查询参数
+    const query = { ...route.query, q: searchQuery.value.trim() }
+    router.push({ path: route.path, query }).catch(() => {
+      // 忽略导航被中止的错误
+    })
     search()
+  } else {
+    // 清除搜索参数
+    const query = { ...route.query }
+    delete query.q
+    router.push({ path: route.path, query }).catch(() => {
+      // 忽略导航被中止的错误
+    })
   }
 })
 
 onMounted(() => {
+  // 从 URL 查询参数恢复状态
+  const category = route.query.category
+  const searchQ = route.query.q
+  const previewSourceId = route.query.previewSourceId
+  const articleId = route.query.articleId
+
+  if (category) {
+    activeCategory.value = String(category)
+  }
+
+  if (searchQ) {
+    searchQuery.value = String(searchQ)
+  }
+
   loadHotEvents()
   loadSources()
+
+  // 恢复预览源状态和文章详情状态
+  if (previewSourceId && parseInt(String(previewSourceId), 10) > 0) {
+    const sourceId = parseInt(String(previewSourceId), 10)
+    // 这里在加载源之后设置预览
+    setTimeout(() => {
+      const source = sources.value.find(s => s.id === sourceId)
+      if (source) {
+        onPreview(source)
+      }
+    }, 500)
+  }
+
+  if (articleId && parseInt(String(articleId), 10) > 0) {
+    ui.restoreDetailFromUrl(parseInt(String(articleId), 10))
+  }
 })
 </script>
 

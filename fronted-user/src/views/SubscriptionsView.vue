@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ArticleCard from '../components/articles/ArticleCard.vue'
 import ArticlePreviewPanel from '../components/articles/ArticlePreviewPanel.vue'
 import ArticleDetailPane from '../components/articles/ArticleDetailPane.vue'
@@ -16,6 +17,8 @@ import { CalendarDays, Search } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
+const route = useRoute()
+const router = useRouter()
 
 const subscriptions = ref<Subscription[]>([])
 const loadingSubscriptions = ref(false)
@@ -138,6 +141,18 @@ const { sentinel } = useInfiniteScroll(loadMore, listContainer)
 const onSelectSubscription = (id: number | null) => {
   ui.closeDetail()
   activeSubscriptionId.value = id
+  
+  // 更新 URL 查询参数
+  const query = { ...route.query }
+  if (id !== null) {
+    query.subscriptionId = String(id)
+  } else {
+    delete query.subscriptionId
+  }
+  router.push({ path: route.path, query }).catch(() => {
+    // 忽略导航被中止的错误
+  })
+  
   resetFeed()
   loadFeed()
   loadWordCloud()
@@ -205,16 +220,46 @@ watch(activeSubscriptionId, () => {
 
 watch(searchQuery, () => {
   if (searchQuery.value.trim()) {
+    // 更新 URL 中的搜索查询参数
+    const query = { ...route.query, q: searchQuery.value.trim() }
+    router.push({ path: route.path, query }).catch(() => {
+      // 忽略导航被中止的错误
+    })
     search()
   } else {
+    // 清除搜索参数
+    const query = { ...route.query }
+    delete query.q
+    router.push({ path: route.path, query }).catch(() => {
+      // 忽略导航被中止的错误
+    })
     searchResults.value = []
   }
 })
 
 onMounted(async () => {
+  // 从 URL 查询参数恢复状态
+  const subscriptionId = route.query.subscriptionId
+  const articleId = route.query.articleId
+  const searchQ = route.query.q
+
   await loadSubscriptions()
+
+  if (subscriptionId) {
+    activeSubscriptionId.value = parseInt(String(subscriptionId), 10)
+  }
+
+  if (searchQ) {
+    searchQuery.value = String(searchQ)
+  }
+
   loadFeed()
   loadWordCloud()
+
+  // 恢复文章详情状态
+  if (articleId && parseInt(String(articleId), 10) > 0) {
+    ui.restoreDetailFromUrl(parseInt(String(articleId), 10))
+  }
 })
 </script>
 
