@@ -3,6 +3,7 @@ package com.jingwei.rsswithai.application.service;
 import com.jingwei.rsswithai.application.dto.*;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.ArticleFavorite;
+import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.model.SubscriptionType;
 import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 import com.jingwei.rsswithai.domain.repository.ArticleFavoriteRepository;
@@ -333,7 +334,11 @@ public class ArticleService {
 
     @Transactional
     public Article saveArticleIfNotExists(Article article) {
-        if (articleRepository.existsByGuidOrLink(article.getGuid(), article.getLink())) {
+        boolean exists = Optional.ofNullable(article.getSource())
+                .map(RssSource::getId)
+                .map(sourceId -> articleRepository.existsBySourceIdAndGuidOrLink(sourceId, article.getGuid(), article.getLink()))
+                .orElse(false);
+        if (exists) {
             return null;
         }
         try {

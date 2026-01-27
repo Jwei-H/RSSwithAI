@@ -15,8 +15,8 @@ import java.util.List;
 @Repository
 public interface ArticleRepository extends JpaRepository<Article, Long> {
 
-    @Query("SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END FROM Article a WHERE a.guid = :guid OR a.link = :link")
-    boolean existsByGuidOrLink(@Param("guid") String guid, @Param("link") String link);
+    @Query("SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END FROM Article a WHERE a.source.id = :sourceId AND (a.guid = :guid OR a.link = :link)")
+    boolean existsBySourceIdAndGuidOrLink(@Param("sourceId") Long sourceId, @Param("guid") String guid, @Param("link") String link);
 
     Page<Article> findBySourceIdOrderByPubDateDesc(Long sourceId, Pageable pageable);
 
