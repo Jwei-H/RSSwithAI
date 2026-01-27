@@ -132,7 +132,6 @@ onMounted(async () => {
         <div class="rounded-2xl border border-border bg-card p-4">
           <div class="flex items-center justify-between">
             <h2 class="text-sm font-semibold text-foreground">收藏列表</h2>
-            <span class="text-xs text-muted-foreground">时间线</span>
           </div>
           <div class="mt-4 flex items-center gap-3">
             <input

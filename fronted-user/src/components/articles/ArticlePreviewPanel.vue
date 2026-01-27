@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ArticleExtra } from '../../types'
 import { formatOverview } from '../../utils/text'
+import { FileText, ListChecks } from 'lucide-vue-next'
 
 const props = defineProps<{
   extra: ArticleExtra | null
@@ -11,7 +12,10 @@ const props = defineProps<{
 
 <template>
   <div class="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
-    <h4 class="text-sm font-semibold text-foreground">精华速览</h4>
+    <div class="flex items-center gap-2">
+      <FileText class="h-4 w-4 text-primary" />
+      <h4 class="text-sm font-semibold text-foreground">精华速览</h4>
+    </div>
     <div v-if="loading" class="text-xs text-muted-foreground">加载中...</div>
     <div v-else-if="error" class="text-xs text-rose-600">{{ error }}</div>
     <p
@@ -22,7 +26,10 @@ const props = defineProps<{
     <p v-else class="text-xs text-muted-foreground">悬停文章以查看 AI 预览</p>
 
     <div class="border-t border-border pt-3">
-      <h4 class="text-sm font-semibold text-foreground">关键信息</h4>
+      <div class="flex items-center gap-2">
+        <ListChecks class="h-4 w-4 text-primary" />
+        <h4 class="text-sm font-semibold text-foreground">关键信息</h4>
+      </div>
       <ul v-if="extra?.keyInformation?.length" class="mt-2 list-decimal pl-4 text-[15px] leading-7 text-muted-foreground">
         <li v-for="(item, index) in extra.keyInformation" :key="`${item}-${index}`">{{ item }}</li>
       </ul>

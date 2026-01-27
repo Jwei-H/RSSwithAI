@@ -2,6 +2,7 @@
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import 'echarts-wordcloud'
+import { Cloud } from 'lucide-vue-next'
 
 const props = defineProps<{
   data: { text: string; value: number }[]
@@ -96,7 +97,10 @@ watch(
 
 <template>
   <div class="rounded-2xl border border-border bg-card p-4">
-    <h4 class="text-sm font-semibold text-foreground">词云</h4>
+    <div class="flex items-center gap-2">
+      <Cloud class="h-4 w-4 text-primary" />
+      <h4 class="text-sm font-semibold text-foreground">词云</h4>
+    </div>
     <div v-if="loading" class="mt-4 text-xs text-muted-foreground">加载中...</div>
     <div v-else-if="!data.length" class="mt-4 text-xs text-muted-foreground">暂无词云</div>
     <div v-else ref="chartEl" class="mt-4 h-24 w-full" />

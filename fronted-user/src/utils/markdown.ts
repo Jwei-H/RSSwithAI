@@ -52,6 +52,32 @@ md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
   return defaultLinkOpen(tokens, idx, options, env, self)
 }
 
+const createSlugger = () => {
+  const counts = new Map<string, number>()
+  return (value: string) => {
+    const base = value
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w\u4e00-\u9fa5-]/g, '')
+    const slug = base || 'section'
+    const count = counts.get(slug) ?? 0
+    counts.set(slug, count + 1)
+    return count ? `${slug}-${count}` : slug
+  }
+}
+
+const defaultHeadingOpen =
+  md.renderer.rules.heading_open || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options))
+md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
+  const token = tokens[idx]
+  const inlineToken = tokens[idx + 1]
+  const text = inlineToken?.type === 'inline' ? inlineToken.content : ''
+  const slugger = (env as { slugger?: (value: string) => string })?.slugger ?? createSlugger()
+  token.attrSet('id', slugger(text))
+  return defaultHeadingOpen(tokens, idx, options, env, self)
+}
+
 // Custom image rendering for styling and anti-hotlinking
 md.renderer.rules.image = (tokens, idx, options, env, self) => {
   const token = tokens[idx]
@@ -66,5 +92,35 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
 
 export function renderMarkdown(content: string) {
   const normalized = content.replace(/\*\*(.+?)\*\*/g, '**\u200b$1\u200b**')
-  return md.render(normalized)
+  const env = { slugger: createSlugger() }
+  return md.render(normalized, env)
+}
+
+export type MarkdownHeading = {
+  id: string
+  text: string
+  level: number
+}
+
+export function extractHeadings(content: string): MarkdownHeading[] {
+  const normalized = content.replace(/\*\*(.+?)\*\*/g, '**\u200b$1\u200b**')
+  const slugger = createSlugger()
+  const tokens = md.parse(normalized, {})
+  const headings: MarkdownHeading[] = []
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i]
+    if (token.type === 'heading_open') {
+      const inlineToken = tokens[i + 1]
+      const text = inlineToken?.type === 'inline' ? inlineToken.content : ''
+      const level = Number(token.tag.replace('h', ''))
+      if (text) {
+        headings.push({
+          id: slugger(text),
+          text,
+          level
+        })
+      }
+    }
+  }
+  return headings
 }

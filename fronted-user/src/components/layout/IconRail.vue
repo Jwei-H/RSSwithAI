@@ -8,9 +8,10 @@ const route = useRoute()
 const items = computed(() => [
   { label: '订阅', to: '/subscriptions', icon: Rss },
   { label: '频道广场', to: '/discover', icon: Grid2X2 },
-  { label: '收藏', to: '/favorites', icon: Bookmark },
-  { label: '个人中心', to: '/profile', icon: UserRound }
+  { label: '收藏', to: '/favorites', icon: Bookmark }
 ])
+
+const profileItem = computed(() => ({ label: '个人中心', to: '/profile', icon: UserRound }))
 </script>
 
 <template>
@@ -33,6 +34,16 @@ const items = computed(() => [
         <component :is="item.icon" class="h-5 w-5" />
       </RouterLink>
     </nav>
-    <div class="text-xs text-muted-foreground">RSSwithAI</div>
+    <RouterLink
+      :to="profileItem.to"
+      class="flex h-11 w-11 items-center justify-center rounded-2xl transition"
+      :class="
+        route.path.startsWith(profileItem.to)
+          ? 'bg-primary text-primary-foreground shadow'
+          : 'text-muted-foreground hover:bg-muted'
+      "
+    >
+      <component :is="profileItem.icon" class="h-5 w-5" />
+    </RouterLink>
   </aside>
 </template>

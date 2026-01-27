@@ -2,10 +2,11 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { feedApi } from '../../services/frontApi'
 import { formatRelativeTime } from '../../utils/time'
-import { renderMarkdown } from '../../utils/markdown'
+import { extractHeadings, renderMarkdown } from '../../utils/markdown'
 import { formatOverview } from '../../utils/text'
 import type { ArticleDetail, ArticleExtra, ArticleFeed } from '../../types'
 import { useToastStore } from '../../stores/toast'
+import { FileText, ListChecks, ListTree, ThumbsUp } from 'lucide-vue-next'
 
 const props = defineProps<{
   articleId: number | null
@@ -22,12 +23,47 @@ const loading = ref(true)
 const extraError = ref<string | null>(null)
 const favorite = ref(false)
 
+const leftPaneRef = ref<HTMLElement | null>(null)
+
 const leftWidth = ref(60)
 const isDragging = ref(false)
 
 const dividerStyle = computed(() => ({
   width: `${100 - leftWidth.value}%`
 }))
+
+const tocItems = computed(() => {
+  if (!article.value?.content) return []
+  const raw = extractHeadings(article.value.content).map((item) => ({
+    ...item,
+    text: item.text.replace(/\*\*/g, '')
+  }))
+  if (!raw.length) return []
+  const minLevel = Math.min(...raw.map((item) => item.level))
+  return raw.map((item) => ({
+    ...item,
+    level: item.level - minLevel + 1
+  }))
+})
+
+const escapeSelector = (value: string) => {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(value)
+  }
+  return value.replace(/([ #;?%&,.+*~'":!^$\[\]()=>|\/])/g, '\\$1')
+}
+
+const scrollToHeading = (id: string) => {
+  if (!leftPaneRef.value) return
+  const target = leftPaneRef.value.querySelector<HTMLElement>(`#${escapeSelector(id)}`)
+  if (!target) return
+  const container = leftPaneRef.value
+  const offset = Math.round(container.clientHeight * 0.25)
+  container.scrollTo({
+    top: Math.max(0, target.offsetTop - offset),
+    behavior: 'smooth'
+  })
+}
 
 const load = async () => {
   if (!props.articleId) return
@@ -108,7 +144,7 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-full flex-col">
-    <header class="flex items-center justify-between border-b border-border px-8 py-4">
+    <header class="flex items-center justify-between border-b border-border px-8 py-2">
       <button
         class="rounded-lg border border-border px-3 py-1 text-sm text-muted-foreground hover:bg-muted"
         @click="onClose"
@@ -136,7 +172,6 @@ onUnmounted(() => {
           </svg>
           {{ favorite ? '已收藏' : '收藏' }}
         </button>
-        <div class="text-sm text-muted-foreground">文章详情</div>
       </div>
     </header>
 
@@ -144,6 +179,7 @@ onUnmounted(() => {
       <section
         class="h-full overflow-y-auto border-r border-border px-8 py-6 scrollbar-thin"
         :style="{ width: `${leftWidth}%` }"
+        ref="leftPaneRef"
       >
         <div v-if="loading" class="text-sm text-muted-foreground">加载中...</div>
         <div v-else-if="article" class="space-y-4">
@@ -171,10 +207,13 @@ onUnmounted(() => {
 
       <div class="w-1 cursor-col-resize bg-border" @mousedown="() => (isDragging = true)" />
 
-      <section class="h-full flex-1 overflow-y-auto px-8 py-6 scrollbar-thin" :style="dividerStyle">
-        <div class="space-y-4">
+      <section class="h-full flex-1 overflow-y-auto px-8 pb-6 pt-2 scrollbar-thin" :style="dividerStyle">
+        <div class="space-y-2">
           <div class="rounded-2xl border border-border bg-card p-4">
-            <h3 class="text-sm font-semibold text-foreground">精华速览</h3>
+            <div class="flex items-center gap-2">
+              <FileText class="h-4 w-4 text-primary" />
+              <h3 class="text-sm font-semibold text-foreground">精华速览</h3>
+            </div>
             <p
               v-if="extra"
               class="mt-3 text-[15px] leading-7 text-muted-foreground"
@@ -183,7 +222,10 @@ onUnmounted(() => {
             <p v-else class="mt-2 text-sm text-muted-foreground">{{ extraError || '暂无内容' }}</p>
           </div>
           <div class="rounded-2xl border border-border bg-card p-4">
-            <h3 class="text-sm font-semibold text-foreground">关键信息</h3>
+            <div class="flex items-center gap-2">
+              <ListChecks class="h-4 w-4 text-primary" />
+              <h3 class="text-sm font-semibold text-foreground">关键信息</h3>
+            </div>
             <ul
               v-if="extra?.keyInformation?.length"
               class="mt-3 list-decimal pl-4 text-[15px] leading-7 text-muted-foreground"
@@ -195,8 +237,30 @@ onUnmounted(() => {
             <p v-else class="mt-2 text-sm text-muted-foreground">暂无关键信息</p>
           </div>
 
+          <div v-if="tocItems.length" class="rounded-2xl border border-border bg-card p-4">
+            <div class="flex items-center gap-2">
+              <ListTree class="h-4 w-4 text-primary" />
+              <h3 class="text-sm font-semibold text-foreground">目录</h3>
+            </div>
+            <ul class="mt-3 space-y-2 text-xs text-muted-foreground/70">
+              <li v-for="item in tocItems" :key="item.id" :style="{ paddingLeft: `${(item.level - 1) * 12}px` }">
+                <button
+                  type="button"
+                  class="line-clamp-1 text-left text-muted-foreground/70 underline-offset-4 hover:text-sky-600 hover:underline"
+                  :title="item.text"
+                  @click="scrollToHeading(item.id)"
+                >
+                  {{ item.text }}
+                </button>
+              </li>
+            </ul>
+          </div>
+
           <div class="rounded-2xl border border-border bg-card p-4">
-            <h3 class="text-sm font-semibold text-foreground">相似推荐</h3>
+            <div class="flex items-center gap-2">
+              <ThumbsUp class="h-4 w-4 text-primary" />
+              <h3 class="text-sm font-semibold text-foreground">相似推荐</h3>
+            </div>
             <div v-if="!recommendations.length" class="mt-2 text-sm text-muted-foreground">暂无推荐</div>
             <button
               v-for="item in recommendations"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HotEvent } from '../../types'
+import { Flame } from 'lucide-vue-next'
 
 defineProps<{
   items: HotEvent[]
@@ -10,7 +11,10 @@ defineProps<{
 <template>
   <div class="rounded-2xl border border-border bg-card p-3">
     <div class="flex items-center justify-between">
-      <h3 class="text-sm font-semibold text-foreground">热点事件</h3>
+      <div class="flex items-center gap-2">
+        <Flame class="h-4 w-4 text-primary" />
+        <h3 class="text-sm font-semibold text-foreground">热点事件</h3>
+      </div>
       <span class="text-xs text-muted-foreground">Top 10</span>
     </div>
     <ul class="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1 scrollbar-thin">

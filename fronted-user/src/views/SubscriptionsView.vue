@@ -13,7 +13,7 @@ import type { ArticleExtra, ArticleFeed, Subscription } from '../types'
 import { useInfiniteScroll } from '../composables/useInfiniteScroll'
 import { useUiStore } from '../stores/ui'
 import { useToastStore } from '../stores/toast'
-import { CalendarDays, Search } from 'lucide-vue-next'
+import { CalendarDays, Rss, Search } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
@@ -271,7 +271,10 @@ onMounted(async () => {
     <section class="flex h-full flex-col gap-4 overflow-hidden">
       <div class="rounded-2xl border border-border bg-card p-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-foreground">订阅</h2>
+          <div class="flex items-center gap-2">
+            <Rss class="h-4 w-4 text-primary" />
+            <h2 class="text-sm font-semibold text-foreground">订阅</h2>
+          </div>
         </div>
         <button
           class="mt-4 w-full rounded-xl border border-border px-3 py-2 text-sm"

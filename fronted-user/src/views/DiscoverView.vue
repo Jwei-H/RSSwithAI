@@ -13,7 +13,7 @@ import type { ArticleFeed, HotEvent, RssSource } from '../types'
 import { useToastStore } from '../stores/toast'
 import { useUiStore } from '../stores/ui'
 import { useInfiniteScroll } from '../composables/useInfiniteScroll'
-import { Search, Sparkles } from 'lucide-vue-next'
+import { Compass, Search, Sparkles } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
@@ -252,7 +252,10 @@ onMounted(() => {
   >
     <section class="flex h-full flex-col gap-4 overflow-hidden">
       <div class="rounded-2xl border border-border bg-card p-4">
-        <h2 class="text-sm font-semibold text-foreground">频道广场</h2>
+        <div class="flex items-center gap-2">
+          <Compass class="h-4 w-4 text-primary" />
+          <h2 class="text-sm font-semibold text-foreground">频道广场</h2>
+        </div>
         <p class="mt-2 text-xs text-muted-foreground">探索新 RSS 源与热点事件</p>
       </div>
       <div class="rounded-2xl border border-border bg-card p-4">
@@ -316,7 +319,7 @@ onMounted(() => {
 
           <div v-else class="space-y-4">
             <div class="rounded-2xl border border-border bg-card p-4">
-              <h3 class="text-sm font-semibold text-foreground">RSS 源分类</h3>
+              <h3 class="text-sm font-semibold text-foreground">RSS 源</h3>
               <div class="mt-3 flex flex-wrap gap-2">
                 <button
                   v-for="item in categories"
