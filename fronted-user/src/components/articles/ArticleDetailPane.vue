@@ -195,7 +195,7 @@ onUnmounted(() => {
   <div class="flex h-full flex-col">
     <header class="flex items-center justify-between border-b border-border px-6 py-2">
       <button
-        class="rounded-lg border border-border px-0 py-1 text-sm text-muted-foreground hover:bg-muted"
+        class="rounded-lg border border-border px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
         @click="onClose"
       >
         返回
