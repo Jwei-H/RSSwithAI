@@ -107,7 +107,7 @@ Entity (ArticleExtra)
 ### 3.3 向量生成流程
 
 1. **构建丰富向量化文本**：
-   - 拼接逻辑：`Title` + `\n` + `Tags` + `\n` + `Summary` (概览) + `\n` + `Key Points` (关键信息)
+   - 拼接逻辑：`Summary` (概览) + `\n` + `Key Points` (关键信息)
    - 目的：增加关键论据和实体词权重，提升语义密度
 2. 调用embedding模型
 3. 生成1024维向量

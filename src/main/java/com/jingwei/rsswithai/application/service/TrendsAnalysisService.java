@@ -225,7 +225,6 @@ public class TrendsAnalysisService {
                 if (!eventsJson.isBlank() && !eventsJson.equals("[]")) {
                     allEventsJson.add(eventsJson);
                 }
-                Thread.sleep(10000);
             }
 
             if (allEventsJson.isEmpty()) {
@@ -260,14 +259,13 @@ public class TrendsAnalysisService {
         if (candidates.isEmpty())
             return Collections.emptyList();
 
-        LocalDateTime threeDaysAgo = LocalDateTime.now().minusDays(3);
         List<Article> recent = candidates.stream()
-                .filter(a -> a.getPubDate() != null && a.getPubDate().isAfter(threeDaysAgo))
+                .filter(a -> a.getPubDate() != null && a.getPubDate().isAfter(LocalDateTime.now().minusDays(5)))
                 .collect(Collectors.toList());
 
-        if (recent.size() < 5) { // policy says 10, but fallback logic
-            return candidates.subList(0, Math.min(candidates.size(), 10));
-        }
+//        if (recent.size() < 5) {
+//            return candidates.subList(0, Math.min(candidates.size(), 10));
+//        }
         return recent;
     }
 

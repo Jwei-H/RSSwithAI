@@ -225,7 +225,6 @@ public class LlmProcessService {
             articleExtraRepository.save(articleExtra);
             log.info("Article {} processing completed successfully", articleId);
 
-            Thread.sleep(6000);
         } catch (Exception e) {
             log.error("Error processing article {}", articleId, e);
             saveFailedResult(articleId, e.getMessage());
@@ -245,13 +244,9 @@ public class LlmProcessService {
 
         try {
             Prompt prompt = buildPrompt(article);
-            log.debug("Generated prompt for article {}", article.getId());
-
             ChatResponse response = chatModel.call(prompt);
 
             String content = response.getResult().getOutput().getText();
-            // log.debug("AI response for article {}: {}", article.getId(), content);
-
             // 解析JSON响应
             JsonNode jsonResponse = objectMapper
                     .readTree(Objects.requireNonNull(content).replace("```json", "").replace("```", ""));
