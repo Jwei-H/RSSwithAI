@@ -151,7 +151,7 @@ const onToggleSubscribe = async (source: RssSource) => {
 const onPreview = (source: RssSource) => {
   previewSource.value = source
   previewOpen.value = true
-  
+
   // 更新 URL 查询参数
   const query = { ...route.query, previewSourceId: String(source.id) }
   router.push({ path: route.path, query }).catch(() => {
@@ -161,14 +161,14 @@ const onPreview = (source: RssSource) => {
 
 const onOpenArticle = (id: number) => {
   previewOpen.value = false
-  
+
   // 更新 URL 查询参数
   const query = { ...route.query, articleId: String(id) }
   delete query.previewSourceId
   router.push({ path: route.path, query }).catch(() => {
     // 忽略导航被中止的错误
   })
-  
+
   ui.openDetail(id, listContainer.value)
 }
 
@@ -176,7 +176,7 @@ watch(activeCategory, () => {
   sources.value = []
   page.value = 0
   last.value = false
-  
+
   // 更新 URL 查询参数
   const query = { ...route.query }
   if (activeCategory.value) {
@@ -187,7 +187,7 @@ watch(activeCategory, () => {
   router.push({ path: route.path, query }).catch(() => {
     // 忽略导航被中止的错误
   })
-  
+
   loadSources()
 })
 
@@ -246,11 +246,16 @@ onMounted(() => {
 </script>
 
 <template>
-  <div
-    class="grid h-screen gap-6 px-6 py-6"
-    :class="detailOpen ? 'grid-cols-[200px_1fr]' : 'grid-cols-[280px_1fr]'"
-  >
-    <section class="flex h-full flex-col gap-4 overflow-hidden">
+  <!-- 移动端文章详情覆盖层 -->
+  <div v-if="detailOpen" class="fixed inset-0 z-[60] flex flex-col bg-background md:hidden">
+    <ArticleDetailPane :articleId="ui.detailArticleId" :onClose="ui.closeDetail"
+      :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
+  </div>
+
+  <div class="flex h-screen flex-col gap-4 px-4 py-4 md:grid md:gap-6 md:px-6 md:py-6"
+    :class="detailOpen ? 'md:grid-cols-[200px_1fr]' : 'md:grid-cols-[280px_1fr]'">
+    <!-- 桌面端侧边栏 -->
+    <section class="hidden h-full flex-col gap-4 overflow-hidden md:flex">
       <div class="rounded-2xl border border-border bg-card p-4">
         <div class="flex items-center gap-2">
           <Compass class="h-4 w-4 text-primary" />
@@ -263,49 +268,52 @@ onMounted(() => {
           <Sparkles class="h-4 w-4 text-primary" />
           <h3 class="text-sm font-semibold text-foreground">订阅主题</h3>
         </div>
-        <input
-          v-model="topicInput"
-          class="mt-3 w-full rounded-xl border border-border px-3 py-2 text-sm"
-          placeholder="输入 30 字以内主题"
-        />
-        <button
-          class="mt-3 w-full rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground"
-          :disabled="topicLoading"
-          @click="onCreateTopic"
-        >
+        <input v-model="topicInput" class="mt-3 w-full rounded-xl border border-border px-3 py-2 text-sm"
+          placeholder="输入 30 字以内主题" />
+        <button class="mt-3 w-full rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground"
+          :disabled="topicLoading" @click="onCreateTopic">
           {{ topicLoading ? '创建中...' : '创建并订阅' }}
         </button>
       </div>
       <HotEventsList :items="hotEvents" :onSubscribe="onSubscribeHot" />
     </section>
 
-    <section class="flex h-full flex-col gap-4 overflow-hidden">
-      <ArticleDetailPane
-        v-if="detailOpen"
-        :articleId="ui.detailArticleId"
-        :onClose="ui.closeDetail"
-        :onOpenArticle="(id) => ui.openDetail(id, listContainer.value)"
-      />
-      <template v-else>
-        <div class="rounded-2xl border border-border bg-card p-4">
+    <!-- 主内容区域 -->
+    <section class="flex flex-1 flex-col gap-4 overflow-hidden">
+      <!-- 桌面端文章详情 -->
+      <ArticleDetailPane v-if="detailOpen" class="hidden md:flex" :articleId="ui.detailArticleId"
+        :onClose="ui.closeDetail" :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
+      <template v-if="!detailOpen">
+        <!-- 移动端：页面标题和主题创建入口 -->
+        <div class="rounded-2xl border border-border bg-card p-3 md:hidden">
+          <div class="flex items-center gap-2">
+            <Compass class="h-4 w-4 text-primary" />
+            <h2 class="text-sm font-semibold text-foreground">频道广场</h2>
+          </div>
+          <div class="mt-3 flex items-center gap-2">
+            <input v-model="topicInput" class="flex-1 rounded-xl border border-border px-3 py-2 text-sm"
+              placeholder="输入主题订阅" />
+            <button class="rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground" :disabled="topicLoading"
+              @click="onCreateTopic">
+              {{ topicLoading ? '...' : '订阅' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- 搜索栏 -->
+        <div class="rounded-2xl border border-border bg-card p-3 md:p-4">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
               <Search class="h-4 w-4 text-primary" />
               <h2 class="text-sm font-semibold text-foreground">搜索</h2>
             </div>
-            <span class="text-xs text-muted-foreground">全站范围</span>
+            <span class="hidden text-xs text-muted-foreground md:inline">全站范围</span>
           </div>
-          <div class="mt-4 flex items-center gap-3">
-            <input
-              v-model="searchQuery"
-              placeholder="搜索关键字"
-              class="flex-1 rounded-xl border border-border px-3 py-2 text-sm"
-            />
-            <button
-              class="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
-              :disabled="searchLoading"
-              @click="search"
-            >
+          <div class="mt-3 flex items-center gap-2 md:mt-4 md:gap-3">
+            <input v-model="searchQuery" placeholder="搜索关键字"
+              class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" />
+            <button class="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
+              :disabled="searchLoading" @click="search">
               搜索
             </button>
           </div>
@@ -318,29 +326,61 @@ onMounted(() => {
           </div>
 
           <div v-else class="space-y-4">
-            <div class="rounded-2xl border border-border bg-card p-4">
+            <!-- 移动端热点事件（可折叠，默认展开） -->
+            <details open class="rounded-2xl border border-border bg-card md:hidden">
+              <summary class="flex cursor-pointer items-center gap-2 p-4 text-sm font-semibold text-foreground">
+                <Sparkles class="h-4 w-4 text-primary" />
+                热点事件
+                <span class="ml-auto text-xs font-normal text-muted-foreground">
+                  {{ hotLoading ? '加载中...' : `Top ${hotEvents.length}` }}
+                </span>
+              </summary>
+              <ul class="border-t border-border p-3 space-y-2">
+                <!-- 加载中 -->
+                <li v-if="hotLoading" class="text-center text-sm text-muted-foreground py-4">
+                  加载中...
+                </li>
+                <!-- 有数据时循环显示 -->
+                <template v-else-if="hotEvents.length">
+                  <li v-for="(item, index) in hotEvents" :key="`mobile-hot-${index}`"
+                    class="flex items-center justify-between rounded-xl py-2 text-xs">
+                    <div class="flex items-center gap-2">
+                      <span class="h-6 w-6 flex-shrink-0 rounded-full bg-muted text-center leading-6 text-foreground">
+                        {{ index + 1 }}
+                      </span>
+                      <span class="line-clamp-2 text-sm text-foreground">{{ item.event }}</span>
+                    </div>
+                    <button class="ml-2 flex-shrink-0 rounded-lg border border-border px-2 py-1 text-[11px]"
+                      :class="item.isSubscribed ? 'bg-muted text-muted-foreground' : 'text-muted-foreground'"
+                      :disabled="item.isSubscribed" @click="onSubscribeHot(item)">
+                      {{ item.isSubscribed ? '✓' : '订阅' }}
+                    </button>
+                  </li>
+                </template>
+                <!-- 无数据 -->
+                <li v-else class="text-center text-sm text-muted-foreground py-4">
+                  暂无热点事件
+                </li>
+              </ul>
+            </details>
+
+            <!-- RSS 源分类 -->
+            <div class="rounded-2xl border border-border bg-card p-3 md:p-4">
               <h3 class="text-sm font-semibold text-foreground">RSS 源</h3>
               <div class="mt-3 flex flex-wrap gap-2">
-                <button
-                  v-for="item in categories"
-                  :key="item.value"
+                <button v-for="item in categories" :key="item.value"
                   class="rounded-full border border-border px-3 py-1 text-xs"
                   :class="activeCategory === item.value ? 'bg-primary text-primary-foreground' : 'bg-card'"
-                  @click="activeCategory = item.value"
-                >
+                  @click="activeCategory = item.value">
                   {{ item.label }}
                 </button>
               </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <RssSourceCard
-                v-for="source in sources"
-                :key="source.id"
-                :source="source"
-                :onToggleSubscribe="onToggleSubscribe"
-                :onPreview="onPreview"
-              />
+            <!-- RSS 源卡片网格 -->
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-1 xl:grid-cols-2">
+              <RssSourceCard v-for="source in sources" :key="source.id" :source="source"
+                :onToggleSubscribe="onToggleSubscribe" :onPreview="onPreview" />
             </div>
 
             <LoadingState v-if="sourcesLoading && !sources.length" />
@@ -357,11 +397,6 @@ onMounted(() => {
     </section>
   </div>
 
-  <SourcePreviewDialog
-    :open="previewOpen"
-    :source="previewSource"
-    :onClose="() => (previewOpen = false)"
-    :onOpenArticle="onOpenArticle"
-  />
+  <SourcePreviewDialog :open="previewOpen" :source="previewSource" :onClose="() => (previewOpen = false)"
+    :onOpenArticle="onOpenArticle" />
 </template>
-

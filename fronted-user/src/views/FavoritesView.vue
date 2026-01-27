@@ -60,7 +60,7 @@ const onOpenArticle = (id: number) => {
   router.push({ path: route.path, query }).catch(() => {
     // 忽略导航被中止的错误
   })
-  
+
   ui.openDetail(id, listContainer.value)
 }
 
@@ -102,11 +102,16 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div
-    class="grid h-screen gap-6 px-6 py-6"
-    :class="detailOpen ? 'grid-cols-[200px_1fr]' : 'grid-cols-[280px_1fr]'"
-  >
-    <section class="flex h-full flex-col gap-4 overflow-hidden">
+  <!-- 移动端文章详情覆盖层 -->
+  <div v-if="detailOpen" class="fixed inset-0 z-[60] flex flex-col bg-background md:hidden">
+    <ArticleDetailPane :articleId="ui.detailArticleId" :onClose="ui.closeDetail"
+      :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
+  </div>
+
+  <div class="flex h-screen flex-col gap-4 px-4 py-4 md:grid md:gap-6 md:px-6 md:py-6"
+    :class="detailOpen ? 'md:grid-cols-[200px_1fr]' : 'md:grid-cols-[280px_1fr]'">
+    <!-- 桌面端侧边栏 -->
+    <section class="hidden h-full flex-col gap-4 overflow-hidden md:flex">
       <div class="rounded-2xl border border-border bg-card p-4">
         <h2 class="text-sm font-semibold text-foreground">收藏</h2>
         <p class="mt-2 text-xs text-muted-foreground">保存的重要文章都在这里</p>
@@ -121,29 +126,21 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="flex h-full flex-col gap-4 overflow-hidden">
-      <ArticleDetailPane
-        v-if="detailOpen"
-        :articleId="ui.detailArticleId"
-        :onClose="ui.closeDetail"
-        :onOpenArticle="(id) => ui.openDetail(id, listContainer.value)"
-      />
-      <template v-else>
-        <div class="rounded-2xl border border-border bg-card p-4">
+    <!-- 主内容区域 -->
+    <section class="flex flex-1 flex-col gap-4 overflow-hidden">
+      <!-- 桌面端文章详情 -->
+      <ArticleDetailPane v-if="detailOpen" class="hidden md:flex" :articleId="ui.detailArticleId"
+        :onClose="ui.closeDetail" :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
+      <template v-if="!detailOpen">
+        <div class="rounded-2xl border border-border bg-card p-3 md:p-4">
           <div class="flex items-center justify-between">
             <h2 class="text-sm font-semibold text-foreground">收藏列表</h2>
           </div>
-          <div class="mt-4 flex items-center gap-3">
-            <input
-              v-model="searchQuery"
-              placeholder="搜索收藏"
-              class="flex-1 rounded-xl border border-border px-3 py-2 text-sm"
-            />
-            <button
-              class="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
-              :disabled="searchLoading"
-              @click="search"
-            >
+          <div class="mt-3 flex items-center gap-2 md:mt-4 md:gap-3">
+            <input v-model="searchQuery" placeholder="搜索收藏"
+              class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" />
+            <button class="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
+              :disabled="searchLoading" @click="search">
               搜索
             </button>
           </div>

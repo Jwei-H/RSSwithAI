@@ -50,10 +50,11 @@ watch(
 
 <template>
   <div v-if="open" class="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-    <div class="flex h-[80vh] w-[80vw] flex-col rounded-3xl bg-background shadow">
-      <header class="flex items-center justify-between border-b border-border px-6 py-4">
+    <!-- 移动端全屏，桌面端居中弹窗 -->
+    <div class="flex h-full w-full flex-col bg-background md:h-[80vh] md:w-[80vw] md:rounded-3xl md:shadow">
+      <header class="flex items-center justify-between border-b border-border px-4 py-3 md:px-6 md:py-4">
         <div class="flex items-center gap-3">
-          <div class="h-10 w-10 overflow-hidden rounded-xl border border-border bg-muted">
+          <div class="h-8 w-8 overflow-hidden rounded-xl border border-border bg-muted md:h-10 md:w-10">
             <img v-if="source?.icon" :src="source.icon" :alt="source?.name" class="h-full w-full object-cover" />
           </div>
           <div>
@@ -63,7 +64,7 @@ watch(
         </div>
         <button class="text-xs text-muted-foreground hover:text-foreground" @click="onClose">关闭</button>
       </header>
-      <div ref="container" class="flex-1 overflow-y-auto p-6 scrollbar-thin">
+      <div ref="container" class="flex-1 overflow-y-auto p-3 scrollbar-thin md:p-6">
         <div v-if="loading && !list.length" class="space-y-3">
           <LoadingState />
         </div>

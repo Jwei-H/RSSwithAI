@@ -193,44 +193,30 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-full flex-col">
-    <header class="flex items-center justify-between border-b border-border px-6 py-2">
-      <button
-        class="rounded-lg border border-border px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
-        @click="onClose"
-      >
+    <header class="flex items-center justify-between border-b border-border px-4 py-2 md:px-6">
+      <button class="rounded-lg border border-border px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
+        @click="onClose">
         返回
       </button>
       <div class="flex items-center gap-3">
         <button
           class="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
-          @click="toggleFavorite"
-          :title="favorite ? '取消收藏' : '收藏'"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            :fill="favorite ? 'currentColor' : 'none'"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="h-4 w-4 transition-colors"
-            :class="favorite ? 'fill-yellow-500 stroke-yellow-500' : ''"
-          >
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          @click="toggleFavorite" :title="favorite ? '取消收藏' : '收藏'">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" :fill="favorite ? 'currentColor' : 'none'"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="h-4 w-4 transition-colors" :class="favorite ? 'fill-yellow-500 stroke-yellow-500' : ''">
+            <polygon
+              points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
           {{ favorite ? '已收藏' : '收藏' }}
         </button>
       </div>
     </header>
 
-    <div class="flex flex-1 overflow-hidden">
-      <section
-        class="h-full overflow-y-auto border-r border-border px-2 py-6 scrollbar-thin"
-        :style="{ width: `${leftWidth}%` }"
-        ref="leftPaneRef"
-        @scroll.passive="onLeftPaneScroll"
-      >
+    <!-- 桌面端：双栏分割布局 -->
+    <div class="hidden flex-1 overflow-hidden md:flex">
+      <section class="h-full overflow-y-auto border-r border-border px-2 py-6 scrollbar-thin"
+        :style="{ width: `${leftWidth}%` }" ref="leftPaneRef" @scroll.passive="onLeftPaneScroll">
         <div v-if="loading" class="text-sm text-muted-foreground">加载中...</div>
         <div v-else-if="article" class="space-y-4">
           <div>
@@ -241,16 +227,11 @@ onUnmounted(() => {
               <span v-if="article.author">作者：{{ article.author }}</span>
               <span v-if="article.wordCount">{{ article.wordCount }} 字</span>
             </div>
-            <a
-              v-if="article.link"
-              :href="article.link"
-              target="_blank"
-              class="mt-2 inline-flex text-sm text-primary underline-offset-4 hover:underline"
-            >
+            <a v-if="article.link" :href="article.link" target="_blank"
+              class="mt-2 inline-flex text-sm text-primary underline-offset-4 hover:underline">
               打开原文
             </a>
           </div>
-
           <div class="markdown-body" v-html="renderMarkdown(article.content)" />
         </div>
       </section>
@@ -264,11 +245,8 @@ onUnmounted(() => {
               <FileText class="h-4 w-4 text-primary" />
               <h3 class="text-sm font-semibold text-foreground">精华速览</h3>
             </div>
-            <p
-              v-if="extra"
-              class="mt-3 text-[15px] leading-7 text-muted-foreground"
-              v-html="formatOverview(extra.overview)"
-            />
+            <p v-if="extra" class="mt-3 text-[15px] leading-7 text-muted-foreground"
+              v-html="formatOverview(extra.overview)" />
             <p v-else class="mt-2 text-sm text-muted-foreground">{{ extraError || '暂无内容' }}</p>
           </div>
           <div class="rounded-2xl border border-border bg-card p-4">
@@ -276,39 +254,31 @@ onUnmounted(() => {
               <ListChecks class="h-4 w-4 text-primary" />
               <h3 class="text-sm font-semibold text-foreground">关键信息</h3>
             </div>
-            <ul
-              v-if="extra?.keyInformation?.length"
-              class="mt-3 list-decimal pl-4 text-[15px] leading-7 text-muted-foreground"
-            >
+            <ul v-if="extra?.keyInformation?.length"
+              class="mt-3 list-decimal pl-4 text-[15px] leading-7 text-muted-foreground">
               <li v-for="(item, index) in extra.keyInformation" :key="`${item}-${index}`">
                 {{ item }}
               </li>
             </ul>
             <p v-else class="mt-2 text-sm text-muted-foreground">暂无关键信息</p>
           </div>
-            <div v-if="tocItems.length" class="rounded-2xl border border-border bg-card p-4">
+          <div v-if="tocItems.length" class="rounded-2xl border border-border bg-card p-4">
             <div class="flex items-center gap-2">
               <ListTree class="h-4 w-4 text-primary" />
               <h3 class="text-sm font-semibold text-foreground">目录</h3>
             </div>
             <ul class="mt-3 space-y-2 text-sm text-muted-foreground/70">
               <li v-for="item in tocItems" :key="item.id" :style="{ paddingLeft: `${(item.level - 1) * 12}px` }">
-                <button
-                  type="button"
-                  class="line-clamp-1 w-full text-left underline-offset-4 hover:text-sky-600 hover:underline"
-                  :class="
-                    activeHeadingId === item.id
-                      ? 'font-semibold text-sky-600'
-                      : 'text-muted-foreground/70'
-                  "
-                  :title="item.text"
-                  @click="scrollToHeading(item.id)"
-                >
+                <button type="button"
+                  class="line-clamp-1 w-full text-left underline-offset-4 hover:text-sky-600 hover:underline" :class="activeHeadingId === item.id
+                    ? 'font-semibold text-sky-600'
+                    : 'text-muted-foreground/70'
+                    " :title="item.text" @click="scrollToHeading(item.id)">
                   {{ item.text }}
                 </button>
               </li>
             </ul>
-            </div>
+          </div>
 
           <div class="rounded-2xl border border-border bg-card p-4">
             <div class="flex items-center gap-2">
@@ -316,12 +286,9 @@ onUnmounted(() => {
               <h3 class="text-sm font-semibold text-foreground">相似推荐</h3>
             </div>
             <div v-if="!recommendations.length" class="mt-2 text-sm text-muted-foreground">暂无推荐</div>
-            <button
-              v-for="item in recommendations"
-              :key="item.id"
+            <button v-for="item in recommendations" :key="item.id"
               class="mt-3 flex w-full items-start justify-between gap-3 rounded-xl border border-border px-3 py-3 text-left text-sm hover:bg-muted"
-              @click="props.onOpenArticle(item.id)"
-            >
+              @click="props.onOpenArticle(item.id)">
               <div class="flex-1">
                 <p class="line-clamp-2 text-foreground">{{ item.title }}</p>
                 <p class="mt-2 text-xs text-muted-foreground">{{ item.sourceName }}</p>
@@ -331,6 +298,75 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
+    </div>
+
+    <!-- 移动端：单栏垂直滚动布局 -->
+    <div class="flex-1 overflow-y-auto px-4 py-4 md:hidden">
+      <div v-if="loading" class="text-sm text-muted-foreground">加载中...</div>
+      <div v-else-if="article" class="space-y-4">
+        <!-- 1. 文章元信息 -->
+        <div class="rounded-2xl border border-border bg-card p-4">
+          <h1 class="text-lg font-semibold text-foreground">{{ article.title }}</h1>
+          <div class="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <span>{{ article.sourceName }}</span>
+            <span>{{ formatRelativeTime(article.pubDate) }}</span>
+            <span v-if="article.wordCount">{{ article.wordCount }} 字</span>
+          </div>
+          <a v-if="article.link" :href="article.link" target="_blank"
+            class="mt-3 inline-flex text-sm text-primary underline-offset-4 hover:underline">
+            打开原文 →
+          </a>
+        </div>
+
+        <!-- 2. 精华速览 -->
+        <div class="rounded-2xl border border-border bg-card p-4">
+          <div class="flex items-center gap-2">
+            <FileText class="h-4 w-4 text-primary" />
+            <h3 class="text-sm font-semibold text-foreground">精华速览</h3>
+          </div>
+          <p v-if="extra" class="mt-3 text-sm leading-6 text-muted-foreground"
+            v-html="formatOverview(extra.overview)" />
+          <p v-else class="mt-2 text-sm text-muted-foreground">{{ extraError || '加载中...' }}</p>
+        </div>
+
+        <!-- 3. 关键信息 -->
+        <div class="rounded-2xl border border-border bg-card p-4">
+          <div class="flex items-center gap-2">
+            <ListChecks class="h-4 w-4 text-primary" />
+            <h3 class="text-sm font-semibold text-foreground">关键信息</h3>
+          </div>
+          <ul v-if="extra?.keyInformation?.length"
+            class="mt-3 list-decimal pl-4 text-sm leading-6 text-muted-foreground">
+            <li v-for="(item, index) in extra.keyInformation" :key="`mobile-key-${index}`">
+              {{ item }}
+            </li>
+          </ul>
+          <p v-else class="mt-2 text-sm text-muted-foreground">暂无关键信息</p>
+        </div>
+
+        <!-- 4. 文章正文 -->
+        <div class="rounded-2xl border border-border bg-card p-4">
+          <div class="markdown-body" v-html="renderMarkdown(article.content)" />
+        </div>
+
+        <!-- 5. 相似推荐 -->
+        <div class="rounded-2xl border border-border bg-card p-4">
+          <div class="flex items-center gap-2">
+            <ThumbsUp class="h-4 w-4 text-primary" />
+            <h3 class="text-sm font-semibold text-foreground">相似推荐</h3>
+          </div>
+          <div v-if="!recommendations.length" class="mt-2 text-sm text-muted-foreground">暂无推荐</div>
+          <button v-for="item in recommendations" :key="`mobile-rec-${item.id}`"
+            class="mt-3 flex w-full items-start justify-between gap-3 rounded-xl border border-border px-3 py-3 text-left text-sm active:bg-muted"
+            @click="props.onOpenArticle(item.id)">
+            <div class="flex-1">
+              <p class="line-clamp-2 text-foreground">{{ item.title }}</p>
+              <p class="mt-1 text-xs text-muted-foreground">{{ item.sourceName }}</p>
+            </div>
+            <span class="text-xs text-muted-foreground">{{ formatRelativeTime(item.pubDate) }}</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
