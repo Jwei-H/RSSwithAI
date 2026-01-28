@@ -243,6 +243,25 @@ onMounted(() => {
     ui.restoreDetailFromUrl(parseInt(String(articleId), 10))
   }
 })
+
+// 监听路由变化，支持浏览器后退键
+watch(
+  () => route.query.articleId,
+  () => {
+    ui.syncWithRoute()
+  }
+)
+
+// 监听 previewSourceId 变化，支持后退键关闭预览对话框
+watch(
+  () => route.query.previewSourceId,
+  (newVal) => {
+    if (!newVal && previewOpen.value) {
+      previewOpen.value = false
+      previewSource.value = null
+    }
+  }
+)
 </script>
 
 <template>

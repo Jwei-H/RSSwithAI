@@ -277,6 +277,14 @@ onMounted(async () => {
     ui.restoreDetailFromUrl(parseInt(String(articleId), 10))
   }
 })
+
+// 监听路由变化，支持浏览器后退键
+watch(
+  () => route.query.articleId,
+  () => {
+    ui.syncWithRoute()
+  }
+)
 </script>
 
 <template>

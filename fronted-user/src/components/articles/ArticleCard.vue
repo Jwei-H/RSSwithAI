@@ -19,9 +19,9 @@ defineEmits<{
   <article
     class="group flex cursor-pointer gap-3 rounded-2xl border border-border bg-card p-3 transition hover:shadow md:gap-4 md:p-4"
     @mouseenter="$emit('hover', article.id)" @mouseleave="$emit('leave')" @click="$emit('open', article.id)">
-    <!-- 移动端隐藏封面 -->
+    <!-- 封面图 -->
     <div v-if="article.coverImage"
-      class="hidden h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-border md:block">
+      class="h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-border md:h-16 md:w-24">
       <img :src="rewriteUrl(unescapeUrl(article.coverImage))" :alt="article.title" class="h-full w-full object-cover"
         loading="lazy" referrerpolicy="no-referrer" />
     </div>

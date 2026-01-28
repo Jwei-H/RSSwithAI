@@ -57,6 +57,20 @@ export function useUiStore() {
     }
   }
 
+  // 监听路由变化，同步关闭状态（用于浏览器后退键）
+  const syncWithRoute = () => {
+    const articleId = route.query.articleId
+    if (!articleId && state.articleId !== null) {
+      // URL 中没有 articleId 但状态中有，说明用户点击了后退
+      state.articleId = null
+      state.fromContainer = null
+      state.fromScrollTop = 0
+    } else if (articleId && state.articleId === null) {
+      // URL 中有 articleId 但状态中没有，说明用户点击了前进
+      state.articleId = parseInt(String(articleId), 10)
+    }
+  }
+
   return {
     state,
     get detailOpen() {
@@ -67,7 +81,8 @@ export function useUiStore() {
     },
     openDetail,
     closeDetail,
-    restoreDetailFromUrl
+    restoreDetailFromUrl,
+    syncWithRoute
   }
 }
 
