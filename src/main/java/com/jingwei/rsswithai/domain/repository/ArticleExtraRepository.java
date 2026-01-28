@@ -67,6 +67,10 @@ public interface ArticleExtraRepository extends JpaRepository<ArticleExtra, Long
     List<IdWithDistance> searchIdsByVectorInFavorites(@Param("queryVector") String queryVector,
             @Param("userId") Long userId, @Param("threshold") double threshold, @Param("limit") int limit);
 
+    @Query("SELECT ae.articleId FROM ArticleExtra ae WHERE ae.status = :status AND ae.updatedAt >= :since")
+    List<Long> findArticleIdsByStatusSince(@Param("status") AnalysisStatus status,
+            @Param("since") LocalDateTime since);
+
     interface IdWithDistance {
         Long getArticleId();
 

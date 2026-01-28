@@ -331,6 +331,7 @@ public class LlmProcessService {
 
     public void regenerateArticleExtra(Long articleId) {
         try {
+            semaphore.acquire();
             articleExtraRepository.deleteByArticleId(articleId);
             log.info("Cleaned up existing article extra for article: {}", articleId);
 
@@ -357,6 +358,8 @@ public class LlmProcessService {
         } catch (Exception e) {
             log.error("Error regenerating article {}", articleId, e);
             saveFailedResult(articleId, e.getMessage());
+        } finally {
+            semaphore.release();
         }
     }
 

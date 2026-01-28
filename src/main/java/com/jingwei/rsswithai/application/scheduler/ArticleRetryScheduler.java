@@ -1,6 +1,9 @@
 package com.jingwei.rsswithai.application.scheduler;
 
 import com.jingwei.rsswithai.application.Event.ArticleProcessEvent;
+import com.jingwei.rsswithai.application.service.LlmProcessService;
+import com.jingwei.rsswithai.domain.model.AnalysisStatus;
+import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 public class ArticleRetryScheduler {
 
     private final ArticleRepository articleRepository;
+    private final ArticleExtraRepository articleExtraRepository;
+    private final LlmProcessService llmProcessService;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -28,13 +33,13 @@ public class ArticleRetryScheduler {
         log.info("Starting scheduled check for articles missing extra data...");
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
         List<Long> articleIds = articleRepository.findArticleIdsWithoutExtraSince(sevenDaysAgo);
+        List<Long> failedArticleIds = articleExtraRepository.findArticleIdsByStatusSince(
+                AnalysisStatus.FAILED, sevenDaysAgo);
 
-        if (articleIds.isEmpty()) {
+        if (articleIds.isEmpty() && failedArticleIds.isEmpty()) {
             log.info("No articles found missing extra data in the last 7 days.");
             return;
         }
-
-        log.info("Found {} articles without extra data in the last 7 days. Republishing events...", articleIds.size());
 
         for (Long articleId : articleIds) {
             try {
@@ -42,6 +47,16 @@ public class ArticleRetryScheduler {
                 log.debug("Republished ArticleProcessEvent for articleId: {}", articleId);
             } catch (Exception e) {
                 log.error("Failed to republish event for articleId: {}", articleId, e);
+            }
+        }
+
+
+        for (Long articleId : failedArticleIds) {
+            try {
+                llmProcessService.regenerateArticleExtra(articleId);
+                log.debug("Regenerated ArticleExtra for articleId: {}", articleId);
+            } catch (Exception e) {
+                log.error("Failed to regenerate ArticleExtra for articleId: {}", articleId, e);
             }
         }
     }
