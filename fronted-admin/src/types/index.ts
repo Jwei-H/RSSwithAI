@@ -69,7 +69,7 @@ export interface RssSource {
   url: string
   type: SourceType
   description?: string
-  icon?: string
+  link?: string
   fetchIntervalMinutes: number
   status: SourceStatus
   category: SourceCategory
@@ -222,7 +222,7 @@ export interface RssSourceRequest {
   url: string
   type: SourceType
   description?: string
-  icon?: string
+  link?: string
   fetchIntervalMinutes?: number
   status?: SourceStatus
   category?: SourceCategory

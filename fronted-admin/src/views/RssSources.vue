@@ -43,6 +43,7 @@ const currentSource = ref<Partial<RssSource>>({})
 const formData = ref({
   name: '',
   url: '',
+  link: '',
   type: 'ORIGIN' as SourceType,
   description: '',
   fetchIntervalMinutes: 30,
@@ -112,6 +113,7 @@ const handleCreate = () => {
   formData.value = {
     name: '',
     url: '',
+    link: '',
     type: 'ORIGIN',
     description: '',
     fetchIntervalMinutes: 30,
@@ -127,6 +129,7 @@ const handleEdit = async (source: RssSource) => {
   formData.value = {
     name: source.name,
     url: source.url,
+    link: source.link || '',
     type: source.type,
     description: source.description || '',
     fetchIntervalMinutes: source.fetchIntervalMinutes,
@@ -417,6 +420,14 @@ onMounted(() => {
           />
         </div>
         <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">原始链接</label>
+          <input
+            v-model="formData.link"
+            type="text"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+        <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">类型 <span class="text-red-500">*</span></label>
           <Select
             v-model="formData.type"
@@ -471,6 +482,10 @@ onMounted(() => {
             <div class="col-span-2">
               <div class="text-sm font-medium text-gray-500">URL</div>
               <div class="mt-1 text-sm text-gray-900 break-all">{{ currentSource.url }}</div>
+            </div>
+            <div class="col-span-2">
+              <div class="text-sm font-medium text-gray-500">原始链接</div>
+              <div class="mt-1 text-sm text-gray-900 break-all">{{ currentSource.link || '-' }}</div>
             </div>
             <div>
               <div class="text-sm font-medium text-gray-500">类型</div>
