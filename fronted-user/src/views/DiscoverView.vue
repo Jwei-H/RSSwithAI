@@ -12,11 +12,13 @@ import { feedApi, rssApi, subscriptionApi, trendApi } from '../services/frontApi
 import type { ArticleFeed, HotEvent, RssSource } from '../types'
 import { useToastStore } from '../stores/toast'
 import { useUiStore } from '../stores/ui'
+import { useCacheStore } from '../stores/cache'
 import { useInfiniteScroll } from '../composables/useInfiniteScroll'
-import { Compass, Search, Sparkles } from 'lucide-vue-next'
+import { Compass, Search, Sparkles, RefreshCw } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
+const cache = useCacheStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -53,23 +55,53 @@ const listContainer = ref<HTMLElement | null>(null)
 
 const detailOpen = computed(() => ui.detailOpen)
 
-const loadHotEvents = async () => {
+const loadHotEvents = async (forceRefresh = false) => {
+  // 尝试从缓存获取
+  if (!forceRefresh) {
+    const cached = cache.getHotEvents()
+    if (cached) {
+      hotEvents.value = cached
+      return
+    }
+  }
+
   hotLoading.value = true
   try {
     const list = await trendApi.hotEvents()
-    hotEvents.value = list.slice(0, 10)
+    const top10 = list.slice(0, 10)
+    hotEvents.value = top10
+    // 保存到缓存
+    cache.setHotEvents(top10)
   } finally {
     hotLoading.value = false
   }
 }
 
-const loadSources = async () => {
+const loadSources = async (forceRefresh = false) => {
   if (sourcesLoading.value || last.value) return
+
+  const category = activeCategory.value
+
+  // 尝试从缓存获取（仅当不是强制刷新且是第一页时）
+  if (!forceRefresh && page.value === 0) {
+    const cached = cache.getRssSources(category)
+    if (cached) {
+      sources.value = cached.sources
+      page.value = cached.page
+      last.value = cached.last
+      return
+    }
+  }
+
   sourcesLoading.value = true
   try {
-    const res = await rssApi.list({ page: page.value, size: 12, category: activeCategory.value || undefined })
+    const res = await rssApi.list({ page: page.value, size: 12, category: category || undefined })
     sources.value.push(...res.content)
     last.value = res.last
+
+    // 保存到缓存
+    cache.addRssSources(category, res.content, page.value, res.last)
+
     page.value += 1
   } finally {
     sourcesLoading.value = false
@@ -130,6 +162,22 @@ const onCreateTopic = async () => {
   }
 }
 
+const onRefresh = async () => {
+  // 清除缓存
+  cache.forceRefresh()
+
+  // 重置状态
+  sources.value = []
+  page.value = 0
+  last.value = false
+
+  // 重新加载数据
+  toast.push('正在刷新...', 'info')
+  await loadHotEvents(true)
+  await loadSources(true)
+  toast.push('刷新完成', 'success')
+}
+
 const onToggleSubscribe = async (source: RssSource) => {
   try {
     if (source.isSubscribed && source.subscriptionId) {
@@ -163,7 +211,7 @@ const onOpenArticle = (id: number) => {
   previewOpen.value = false
 
   // 更新 URL 查询参数
-  const query = { ...route.query, articleId: String(id) }
+  const query: Record<string, string> = { ...route.query, articleId: String(id) } as Record<string, string>
   delete query.previewSourceId
   router.push({ path: route.path, query }).catch(() => {
     // 忽略导航被中止的错误
@@ -188,7 +236,8 @@ watch(activeCategory, () => {
     // 忽略导航被中止的错误
   })
 
-  loadSources()
+  // 切换分类时尝试使用缓存
+  loadSources(false)
 })
 
 watch(searchQuery, () => {
@@ -276,9 +325,16 @@ watch(
     <!-- 桌面端侧边栏 -->
     <section class="hidden h-full flex-col gap-4 overflow-hidden md:flex">
       <div class="rounded-2xl border border-border bg-card p-4">
-        <div class="flex items-center gap-2">
-          <Compass class="h-4 w-4 text-primary" />
-          <h2 class="text-sm font-semibold text-foreground">频道广场</h2>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <Compass class="h-4 w-4 text-primary" />
+            <h2 class="text-sm font-semibold text-foreground">频道广场</h2>
+          </div>
+          <button
+            class="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            @click="onRefresh" title="刷新数据">
+            <RefreshCw class="h-4 w-4" />
+          </button>
         </div>
         <p class="mt-2 text-xs text-muted-foreground">探索新 RSS 源与热点事件</p>
       </div>
@@ -305,9 +361,16 @@ watch(
       <template v-if="!detailOpen">
         <!-- 移动端：页面标题和主题创建入口 -->
         <div class="rounded-2xl border border-border bg-card p-3 md:hidden">
-          <div class="flex items-center gap-2">
-            <Compass class="h-4 w-4 text-primary" />
-            <h2 class="text-sm font-semibold text-foreground">频道广场</h2>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <Compass class="h-4 w-4 text-primary" />
+              <h2 class="text-sm font-semibold text-foreground">频道广场</h2>
+            </div>
+            <button
+              class="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition active:bg-muted active:text-foreground"
+              @click="onRefresh">
+              <RefreshCw class="h-4 w-4" />
+            </button>
           </div>
           <div class="mt-3 flex items-center gap-2">
             <input v-model="topicInput" class="flex-1 rounded-xl border border-border px-3 py-2 text-sm"

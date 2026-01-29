@@ -4,20 +4,33 @@ import type { ArticleFeed, RssSource } from '../../types'
 import { feedApi } from '../../services/frontApi'
 import { formatRelativeTime } from '../../utils/time'
 
+import { useCacheStore } from '../../stores/cache'
+
 const props = defineProps<{
   source: RssSource
   onToggleSubscribe: (source: RssSource) => void
   onPreview: (source: RssSource) => void
 }>()
 
+const cache = useCacheStore()
 const recent = ref<ArticleFeed[]>([])
 const loading = ref(false)
 
 const loadRecent = async () => {
+  // 1. 尝试从缓存获取
+  const cached = cache.getSourceArticles(props.source.id)
+  if (cached) {
+    recent.value = cached
+    return
+  }
+
+  // 2. 缓存未命中，调用 APl
   loading.value = true
   try {
     const res = await feedApi.bySource(props.source.id, 0, 3)
     recent.value = res.content
+    // 3. 写入缓存
+    cache.setSourceArticles(props.source.id, res.content)
   } finally {
     loading.value = false
   }
@@ -38,11 +51,9 @@ onMounted(loadRecent)
           <p class="text-xs text-muted-foreground">{{ source.category }}</p>
         </div>
       </div>
-      <button
-        class="rounded-lg border border-border px-3 py-1 text-xs"
+      <button class="rounded-lg border border-border px-3 py-1 text-xs"
         :class="source.isSubscribed ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground'"
-        @click="onToggleSubscribe(source)"
-      >
+        @click="onToggleSubscribe(source)">
         {{ source.isSubscribed ? '已订阅' : '订阅' }}
       </button>
     </div>
