@@ -52,7 +52,7 @@ COPY nginx-unified.conf /etc/nginx/nginx.conf
 COPY start_services.sh /app/start_services.sh
 RUN chmod +x /app/start_services.sh
 
-# Expose ports: 8080 (API), 80 (User Web), 81 (Admin Web)
-EXPOSE 8080 80 81
+# Expose ports: 8080 (API), 5777 (User Web), 5173 (Admin Web)
+EXPOSE 8080 5777 5173
 
 ENTRYPOINT ["/app/start_services.sh"]

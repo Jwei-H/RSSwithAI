@@ -12,8 +12,8 @@ services:
       - JWT_SECRET=your_random_secret_key_at_least_32_chars
     
     ports:
-      - "8080:8080"  # 后端 API (Tauri 或外部调用)
-      - "5777:80"    # 用户端 Web (映射到容器内 80)
-      - "5173:81"    # 管理端 Web (映射到容器内 81)
+      - "9090:8080"  # 后端 API (Tauri 或外部调用, 内部8080暴露为9090)
+      - "5777:5777"  # 用户端 Web (映射到容器内 5777)
+      - "5173:5173"  # 管理端 Web (映射到容器内 5173)
 
     restart: always
