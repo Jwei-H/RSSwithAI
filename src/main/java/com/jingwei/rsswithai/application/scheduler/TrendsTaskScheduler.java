@@ -31,7 +31,7 @@ public class TrendsTaskScheduler {
         }
     }
 
-    @Scheduled(initialDelay = 12, fixedDelay = 12, timeUnit = TimeUnit.HOURS)
+    @Scheduled(initialDelay = 6, fixedDelay = 12, timeUnit = TimeUnit.HOURS)
     private void runHotEventsTask() {
         log.info("Triggering Hot Events Task");
         try {
