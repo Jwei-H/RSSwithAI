@@ -3,14 +3,15 @@ FROM maven:3.9-eclipse-temurin-25 AS build-backend
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
-# Skip tests to speed up build
-RUN mvn clean package -DskipTests
+# Skip tests to speed up build, adding retry to help with network flakes
+RUN mvn clean package -DskipTests -Dmaven.wagon.http.retryHandler.count=3
 
 # ========== Stage 2: Build User Frontend (Node) ==========
 FROM node:22-alpine AS build-user
 WORKDIR /app
-COPY fronted-user/package*.json ./
-RUN npm install
+COPY fronted-user/package.json ./
+# NOT copying package-lock.json to avoid registry lock issues (e.g. npmmirror vs official)
+RUN npm install --registry=https://registry.npmjs.org/
 COPY fronted-user/ .
 # Ensure VITE_API_BASE_URL is relative for web hosting, OR empty to default to code logic
 ENV VITE_API_BASE_URL=""
@@ -19,8 +20,9 @@ RUN npm run build
 # ========== Stage 3: Build Admin Frontend (Node) ==========
 FROM node:22-alpine AS build-admin
 WORKDIR /app
-COPY fronted-admin/package*.json ./
-RUN npm install
+COPY fronted-admin/package.json ./
+# NOT copying package-lock.json to avoid registry lock issues
+RUN npm install --registry=https://registry.npmjs.org/
 COPY fronted-admin/ .
 ENV VITE_API_BASE_URL=""
 RUN npm run build
