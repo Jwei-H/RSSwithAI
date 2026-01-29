@@ -21,12 +21,6 @@ export function useUiStore() {
     state.articleId = articleId
     state.fromContainer = container ?? null
     state.fromScrollTop = container?.scrollTop ?? 0
-
-    // 更新 URL 查询参数
-    const query = { ...route.query, articleId: String(articleId) }
-    router.push({ path: route.path, query }).catch(() => {
-      // 忽略导航被中止的错误
-    })
   }
 
   const closeDetail = () => {
@@ -36,12 +30,14 @@ export function useUiStore() {
     state.fromContainer = null
     state.fromScrollTop = 0
 
-    // 清除 URL 中的 articleId 参数
-    const query = { ...route.query }
-    delete query.articleId
-    router.push({ path: route.path, query }).catch(() => {
-      // 忽略导航被中止的错误
-    })
+    // 只有当 URL 中还有 articleId 时才清除（避免与浏览器后退冲突）
+    if (route.query.articleId) {
+      const query = { ...route.query }
+      delete query.articleId
+      router.push({ path: route.path, query }).catch(() => {
+        // 忽略导航被中止的错误
+      })
+    }
 
     if (container) {
       requestAnimationFrame(() => {

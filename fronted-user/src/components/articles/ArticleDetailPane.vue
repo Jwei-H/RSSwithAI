@@ -6,6 +6,7 @@ import { extractHeadings, renderMarkdown } from '../../utils/markdown'
 import { formatOverview } from '../../utils/text'
 import type { ArticleDetail, ArticleExtra, ArticleFeed } from '../../types'
 import { useToastStore } from '../../stores/toast'
+import { useHistoryStore } from '../../stores/history'
 import { FileText, ListChecks, ListTree, ThumbsUp } from 'lucide-vue-next'
 
 const props = defineProps<{
@@ -15,6 +16,7 @@ const props = defineProps<{
 }>()
 
 const toast = useToastStore()
+const historyStore = useHistoryStore()
 
 const article = ref<ArticleDetail | null>(null)
 const extra = ref<ArticleExtra | null>(null)
@@ -24,6 +26,7 @@ const extraError = ref<string | null>(null)
 const favorite = ref(false)
 
 const leftPaneRef = ref<HTMLElement | null>(null)
+const mobileScrollRef = ref<HTMLElement | null>(null)
 
 const leftWidth = ref(60)
 const isDragging = ref(false)
@@ -87,7 +90,45 @@ const onLeftPaneScroll = () => {
   scrollRafId.value = window.requestAnimationFrame(() => {
     scrollRafId.value = null
     updateActiveHeading()
+    updateReadingProgress()
   })
+}
+
+// 移动端触摸结束时更新进度
+const onMobileTouchEnd = () => {
+  // 延迟执行以等待滚动惯性结束
+  setTimeout(() => {
+    updateReadingProgress()
+  }, 150)
+}
+
+const updateReadingProgress = () => {
+  // 根据当前平台选择正确的容器
+  const isMobile = window.innerWidth < 768
+  const container = isMobile ? mobileScrollRef.value : leftPaneRef.value
+
+  if (!container || !props.articleId) return
+
+  const scrollTop = container.scrollTop
+  const clientHeight = container.clientHeight
+  const scrollHeight = container.scrollHeight
+  const maxScroll = scrollHeight - clientHeight
+
+  // 调试日志（可在生产环境移除）
+  // console.log('Progress update:', { scrollTop, clientHeight, scrollHeight, maxScroll, isMobile })
+
+  // 边界情况：内容不需要滚动（短文章），直接视为 100%
+  if (maxScroll <= 10) {
+    // 确保内容已渲染（scrollHeight 大于一个最小值）
+    if (scrollHeight > 100) {
+      historyStore.updateProgress(props.articleId, 1)
+    }
+    return
+  }
+
+  // 正常计算进度
+  const progress = Math.min(1, Math.max(0, scrollTop / maxScroll))
+  historyStore.updateProgress(props.articleId, progress)
 }
 
 const scrollToHeading = (id: string) => {
@@ -112,10 +153,24 @@ const load = async () => {
   try {
     article.value = await feedApi.detail(props.articleId)
     favorite.value = article.value?.isFavorite ?? false
+    // 记录阅读历史
+    if (article.value) {
+      historyStore.addReading({
+        articleId: article.value.id,
+        title: article.value.title,
+        sourceName: article.value.sourceName,
+        coverImage: article.value.coverImage,
+        pubDate: article.value.pubDate
+      })
+    }
   } catch {
     toast.push('文章加载失败，请稍后重试', 'error')
   } finally {
     loading.value = false
+    // 延迟初始化进度，等待 DOM 渲染完成
+    setTimeout(() => {
+      updateReadingProgress()
+    }, 300)
   }
 
   try {
@@ -301,7 +356,8 @@ onUnmounted(() => {
     </div>
 
     <!-- 移动端：单栏垂直滚动布局 -->
-    <div class="flex-1 overflow-y-auto px-4 py-4 md:hidden">
+    <div ref="mobileScrollRef" class="flex-1 overflow-y-auto px-4 py-4 md:hidden" @scroll.passive="onLeftPaneScroll"
+      @touchend.passive="onMobileTouchEnd">
       <div v-if="loading" class="text-sm text-muted-foreground">加载中...</div>
       <div v-else-if="article" class="space-y-4">
         <!-- 1. 文章元信息 -->

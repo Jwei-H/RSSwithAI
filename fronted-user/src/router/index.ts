@@ -33,6 +33,10 @@ const routes = [
     component: () => import('../views/ProfileView.vue')
   },
   {
+    path: '/history',
+    component: () => import('../views/HistoryView.vue')
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('../views/NotFound.vue'),
     meta: { public: true }

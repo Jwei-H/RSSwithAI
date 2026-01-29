@@ -6,6 +6,8 @@ import { formatRelativeTime } from '../../utils/time'
 
 defineProps<{
   article: ArticleFeed
+  isRead?: boolean
+  readProgress?: number
 }>()
 
 defineEmits<{
@@ -18,6 +20,7 @@ defineEmits<{
 <template>
   <article
     class="group flex cursor-pointer gap-3 rounded-2xl border border-border bg-card p-3 transition hover:shadow md:gap-4 md:p-4"
+    :class="{ 'opacity-60': isRead }"
     @mouseenter="$emit('hover', article.id)" @mouseleave="$emit('leave')" @click="$emit('open', article.id)">
     <!-- 封面图 -->
     <div v-if="article.coverImage"

@@ -14,10 +14,12 @@ import { useInfiniteScroll } from '../composables/useInfiniteScroll'
 import { useDevice } from '../composables/useDevice'
 import { useUiStore } from '../stores/ui'
 import { useToastStore } from '../stores/toast'
-import { CalendarDays, ChevronDown, Rss, Search, X } from 'lucide-vue-next'
+import { useHistoryStore } from '../stores/history'
+import { CalendarDays, ChevronDown, Eye, EyeOff, Rss, Search, X } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
+const historyStore = useHistoryStore()
 const route = useRoute()
 const router = useRouter()
 const { isMobile } = useDevice()
@@ -41,6 +43,8 @@ const hasMore = ref(true)
 const searchQuery = ref('')
 const searchLoading = ref(false)
 const searchResults = ref<ArticleFeed[]>([])
+
+const showUnreadOnly = ref(false)
 
 const wordCloud = ref<{ text: string; value: number }[]>([])
 const wordCloudLoading = ref(false)
@@ -195,6 +199,12 @@ const onLeaveArticle = () => {
 }
 
 const onOpenArticle = (id: number) => {
+  // 更新 URL 查询参数
+  const query = { ...route.query, articleId: String(id) }
+  router.push({ path: route.path, query }).catch(() => {
+    // 忽略导航被中止的错误
+  })
+
   ui.openDetail(id, listContainer.value)
 }
 
@@ -217,7 +227,10 @@ const onCancelSubscription = async (item: Subscription) => {
 const feedDisplay = computed(() => {
   const result: Array<{ type: 'separator'; date: string } | { type: 'article'; item: ArticleFeed }> = []
   let lastDate = ''
-  for (const item of feedList.value) {
+  const items = showUnreadOnly.value
+    ? feedList.value.filter(item => !historyStore.isRead(item.id))
+    : feedList.value
+  for (const item of items) {
     const date = item.pubDate.split('T')[0]
     if (date !== lastDate) {
       result.push({ type: 'separator', date })
@@ -423,6 +436,14 @@ watch(
           <input v-model="searchQuery" placeholder="在订阅中搜索"
             class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" />
           <button
+            class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs transition"
+            :class="showUnreadOnly ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'"
+            @click="showUnreadOnly = !showUnreadOnly">
+            <EyeOff v-if="showUnreadOnly" class="h-3.5 w-3.5" />
+            <Eye v-else class="h-3.5 w-3.5" />
+            <span class="hidden sm:inline">{{ showUnreadOnly ? '仅未读' : '全部' }}</span>
+          </button>
+          <button
             class="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
             :disabled="searchLoading" @click="search">
             <Search class="h-3.5 w-3.5" />
@@ -450,7 +471,7 @@ watch(
               <span class="rounded-full bg-muted px-3 py-1">{{ entry.date }}</span>
               <span class="h-px flex-1 bg-border" />
             </div>
-            <ArticleCard v-else :article="entry.item" @open="onOpenArticle" @hover="onHoverArticle"
+            <ArticleCard v-else :article="entry.item" :isRead="historyStore.isRead(entry.item.id)" @open="onOpenArticle" @hover="onHoverArticle"
               @leave="onLeaveArticle" />
           </template>
         </div>

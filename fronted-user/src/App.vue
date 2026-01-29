@@ -15,7 +15,8 @@ const showOverlay = computed(
     ui.detailOpen &&
     !route.path.startsWith('/subscriptions') &&
     !route.path.startsWith('/discover') &&
-    !route.path.startsWith('/favorites')
+    !route.path.startsWith('/favorites') &&
+    !route.path.startsWith('/history')
 )
 
 watch(
