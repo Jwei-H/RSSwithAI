@@ -1,8 +1,8 @@
 package com.jingwei.rsswithai.utils;
 
+import com.github.htmltomd.HtmlToMarkdownConverter;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.RssSource;
-import io.github.goldziher.htmltomarkdown.HtmlToMarkdown;
 import lombok.extern.slf4j.Slf4j;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -42,17 +42,14 @@ public final class RssUtils {
             DateTimeFormatter.ISO_OFFSET_DATE_TIME
     );
 
+    private static final HtmlToMarkdownConverter converter = new HtmlToMarkdownConverter();
+
     private RssUtils() {
     }
 
     /**
-     * Channel元信息记录类
-     */
-    public record ChannelInfo(String title, String description, String link) {}
-
-    /**
      * 解析RSS/Atom的Channel元信息（title、description、link）
-     * 
+     *
      * @param xmlContent XML内容字符串
      * @return Channel元信息，如果解析失败返回null
      */
@@ -354,7 +351,9 @@ public final class RssUtils {
 
         String markdownContent = null;
         if (rawContent != null && !rawContent.isBlank()) {
-            markdownContent = HtmlToMarkdown.convert(rawContent);
+            long begin = System.currentTimeMillis();
+            markdownContent = converter.convert(rawContent);
+            log.debug("HTML转Markdown耗时: {} ms", System.currentTimeMillis() - begin);
         }
 
         // 如果转换后的内容为空，则认为此条目无效（可能是视频或格式不正确），不创建文章
@@ -602,5 +601,11 @@ public final class RssUtils {
         RSS_1_0,    // RSS 1.0 / RDF (rdf:RDF/item)
         ATOM,       // Atom (feed/entry)
         UNKNOWN
+    }
+
+    /**
+     * Channel元信息记录类
+     */
+    public record ChannelInfo(String title, String description, String link) {
     }
 }
