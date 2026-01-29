@@ -797,8 +797,8 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "categories": "AI,Technology",
   "wordCount": 1500,
   "coverImage": "https://example.com/image.jpg",
-  "fetchedAt": "2025-12-27T10:00:00",
-  "createdAt": "2025-12-27T10:00:00"
+  "fetchedAt": "2025-12-27T10:05:00",
+  "createdAt": "2025-12-27T10:05:00"
 }
 ```
 
@@ -1689,6 +1689,8 @@ Map 结构，key 为配置键，value 为配置值。
 | llm_gen_prompt | String | 内容生成提示词模板 |
 | llm_gen_model_config | JsonNode | 模型参数配置 |
 | embedding_model_id | String | 向量模型 ID |
+| embedding_base_url | String | 可选，为向量模型配置独立的url和apikey |
+| embedding_api_key | String | 可选，为向量模型配置独立的url和apikey |
 | concurrent_limit | Integer | 并发处理限制，默认 5 |
 | admin_username | String | 管理员用户名 |
 | admin_password | String | 管理员密码 |

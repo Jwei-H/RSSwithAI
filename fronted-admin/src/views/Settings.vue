@@ -99,7 +99,7 @@ onMounted(() => {
         <h2 class="text-lg font-semibold text-gray-900 mb-4">采集器配置</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">抓取间隔（毫秒）</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">抓取间隔（秒）</label>
             <input
               v-model.number="settings['collector_fetch_interval']"
               type="number"
@@ -168,6 +168,23 @@ onMounted(() => {
               type="text"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">向量模型 API 基础 URL</label>
+            <input
+              v-model="settings['embedding_base_url']"
+              type="text"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">向量模型 API 密钥</label>
+            <input
+              v-model="settings['embedding_api_key']"
+              type="password"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            <p class="mt-1 text-xs text-gray-500">可选，为向量模型配置独立的url和apikey</p>
           </div>
         </div>
       </div>
