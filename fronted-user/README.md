@@ -1,5 +1,50 @@
-# Vue 3 + TypeScript + Vite
+# RSSwithAI 前台项目
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+基于 Vue 3 构建的现代化 AI 增强型 RSS 阅读器，旨在提供智能化的内容消费体验。
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+## ✨ 核心特性
+
+- **智能订阅**：支持标准 RSS 源订阅和基于语义的主题订阅。
+- **AI 增强**：自动生成文章概览和关键信息提取。
+- **混合时间线**：聚合 RSS 文章和个性化主题内容的统一流。
+- **热点趋势**：实时热点事件榜单和关键词云可视化。
+- **响应式设计**：移动端优先的自适应能力，流畅的卡片式布局。
+- **本地历史**：客户端本地存储阅读历史，支持阅读进度记忆。
+- **性能优化**：内置本地缓存策略和无限滚动加载优化。
+
+## 🛠 技术栈
+
+- **框架**：Vue 3 (Composition API) + TypeScript
+- **构建工具**：Vite 7
+- **UI 系统**：shadcn-vue + Tailwind CSS 4
+- **状态管理**：Pinia
+- **图标库**：Lucide Vue Next
+
+## 🚀 快速开始
+
+### 前置要求
+
+- Node.js 18+ (推荐: 20+)
+
+### 安装
+
+```bash
+npm install
+# 或
+pnpm install
+```
+
+### 开发
+
+```bash
+npm run dev
+```
+
+应用默认将在 `http://localhost:5173` 启动。
+
+## 📂 项目文档
+
+更多详细信息，请参阅 `doc/` 目录下的文档：
+
+- [项目概览 (Project Overview)](doc/project_overview.md)：架构与功能的完整指南。
+- [API 参考 (API Reference)](doc/front_api_reference.md)：详细的 API 接口文档。
