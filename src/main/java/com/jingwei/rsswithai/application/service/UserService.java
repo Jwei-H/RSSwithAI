@@ -43,8 +43,8 @@ public class UserService {
     @Transactional
     public UserDTO register(UserRegisterRequest request, String ipAddress) {
         long recentRegistrations = userRepository.countByRegistrationIpAndCreatedAtAfter(
-            ipAddress,
-            LocalDateTime.now().minusHours(24)
+                ipAddress,
+                LocalDateTime.now().minusHours(24)
         );
 
         if (recentRegistrations >= 10) {
@@ -55,11 +55,10 @@ public class UserService {
             throw new RuntimeException("Username already exists");
         }
 
-        String defaultAvatar = appConfig.getDefaultAvatar();
         User user = User.builder()
                 .username(request.username())
                 .password(md5(request.password()))
-                .avatarUrl(defaultAvatar != null ? defaultAvatar : "")
+                .avatarUrl("https://unavatar.io/lingowhale.com")
                 .registrationIp(ipAddress)
                 .build();
 

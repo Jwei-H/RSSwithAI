@@ -164,7 +164,6 @@ public class SubscriptionService {
         return subscriptionRepository.findByUserIdAndTypeAndSource_Id(userId, SubscriptionType.RSS, sourceId)
                 .map(SubscriptionDTO::from)
                 .orElseGet(() -> {
-                    ensureSubscriptionLimit(userId);
                     Subscription subscription = Subscription.builder()
                             .userId(userId)
                             .type(SubscriptionType.RSS)
@@ -181,7 +180,6 @@ public class SubscriptionService {
         return subscriptionRepository.findByUserIdAndTypeAndTopic_Id(userId, SubscriptionType.TOPIC, topicId)
                 .map(SubscriptionDTO::from)
                 .orElseGet(() -> {
-                    ensureSubscriptionLimit(userId);
                     Subscription subscription = Subscription.builder()
                             .userId(userId)
                             .type(SubscriptionType.TOPIC)
@@ -189,16 +187,6 @@ public class SubscriptionService {
                             .build();
                     return SubscriptionDTO.from(subscriptionRepository.save(subscription));
                 });
-    }
-
-    private void ensureSubscriptionLimit(Long userId) {
-        Integer limit = appConfig.getSubscriptionLimit();
-        if (limit != null && limit > 0) {
-            long count = subscriptionRepository.countByUserId(userId);
-            if (count >= limit) {
-                throw new IllegalArgumentException("Subscription limit reached: " + limit);
-            }
-        }
     }
 
     private List<ArticleFeedDTO> executeHybridFeed(List<Long> sourceIds,

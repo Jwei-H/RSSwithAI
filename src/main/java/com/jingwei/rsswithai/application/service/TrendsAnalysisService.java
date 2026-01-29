@@ -3,6 +3,7 @@ package com.jingwei.rsswithai.application.service;
 import com.jingwei.rsswithai.application.Event.ConfigUpdateEvent;
 import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.Article;
+import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.model.TrendsData;
 import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
@@ -18,6 +19,8 @@ import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.type.TypeReference;
@@ -55,7 +58,7 @@ public class TrendsAnalysisService {
 
             OpenAiChatOptions options = OpenAiChatOptions.builder()
                     .model(appConfig.getLanguageModel())
-                    .temperature(0.3) // Lower temperature for more deterministic tasks
+                    .temperature(0.3)
                     .build();
 
             this.chatModel = OpenAiChatModel.builder()
@@ -131,10 +134,6 @@ public class TrendsAnalysisService {
     }
 
     private List<Article> fetchArticlesForWordCloud(Long sourceId) {
-        // Logic: 7 days, min 20, max 50
-        // Since JPA/SQL complexity, retrieving last 50 and filtering in memory or using
-        // Pageable is simpler
-        // Let's get last 50 first
         org.springframework.data.domain.Pageable limit = org.springframework.data.domain.PageRequest.of(0, 50);
         List<Article> candidates = articleRepository.findBySourceIdOrderByPubDateDesc(sourceId, limit).getContent();
 
@@ -147,8 +146,6 @@ public class TrendsAnalysisService {
                 .collect(Collectors.toList());
 
         if (recent.size() < 20) {
-            // If less than 20 recent, use up to 20 from candidates (padding with older
-            // ones)
             return candidates.subList(0, Math.min(candidates.size(), 20));
         }
         return recent;
@@ -174,7 +171,6 @@ public class TrendsAnalysisService {
     private List<Map<String, Object>> mergeTags(Map<String, Integer> rawCounts, Map<String, List<String>> synonymMap) {
         Map<String, Integer> mergedCounts = new HashMap<>(rawCounts);
 
-        // Remove variants and add their counts to standard term
         Set<String> processedVariants = new HashSet<>();
 
         synonymMap.forEach((standard, variants) -> {
@@ -184,15 +180,13 @@ public class TrendsAnalysisService {
                     continue;
                 total += mergedCounts.getOrDefault(variant, 0);
                 if (!variant.equals(standard)) {
-                    mergedCounts.remove(variant); // Remove variant entry
+                    mergedCounts.remove(variant);
                     processedVariants.add(variant);
                 }
             }
-            // Update standard term count
             mergedCounts.put(standard, total > 0 ? total : mergedCounts.getOrDefault(standard, 0));
         });
 
-        // Convert to list format
         return mergedCounts.entrySet().stream()
                 .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
                 .limit(50)
@@ -207,21 +201,19 @@ public class TrendsAnalysisService {
         log.info("Starting Hot Events generation");
         try {
             // 1. Map Phase (Per Source)
-            List<Long> activeSourceIds = rssSourceRepository.findAllIds(); // Assuming method exists or use findAll
             List<String> allEventsJson = new ArrayList<>();
 
-            for (Long sourceId : activeSourceIds) {
-                List<Article> articles = fetchArticlesForHotEvents(sourceId);
+            for (RssSource source : rssSourceRepository.findAllEnabled()) {
+                List<Article> articles = fetchArticlesForHotEvents(source.getId());
                 if (articles.isEmpty())
                     continue;
 
                 String articlesOverview = articles.stream()
-                        .map(a -> "- " + a.getTitle()) // Simplifying to just title for token saving, or fetch overview
-                        // from extra
+                        .map(a -> "- " + a.getTitle())
                         .collect(Collectors.joining("\n"));
 
                 String eventsJson = fetchEventsFromLlm(articlesOverview);
-                log.info("Source {}: Extracted events JSON: {}", sourceId, eventsJson);
+                log.info("Source {}: Extracted events JSON: {}", source.getId(), eventsJson);
                 if (!eventsJson.isBlank() && !eventsJson.equals("[]")) {
                     allEventsJson.add(eventsJson);
                 }
@@ -233,9 +225,7 @@ public class TrendsAnalysisService {
             }
 
             // 2. Reduce Phase (Global)
-            String combinedEvents = String.join(",", allEventsJson); // Naive join, potentially malformed JSON array of
-            // arrays?
-            // Better to parse each and combine into one big list string
+            String combinedEvents = String.join(",", allEventsJson);
 
             String globalEvents = fetchGlobalEventsFromLlm(combinedEvents);
 
@@ -253,20 +243,15 @@ public class TrendsAnalysisService {
     }
 
     private List<Article> fetchArticlesForHotEvents(Long sourceId) {
-        org.springframework.data.domain.Pageable limit = org.springframework.data.domain.PageRequest.of(0, 10);
+        Pageable limit = PageRequest.of(0, 10);
         List<Article> candidates = articleRepository.findBySourceIdOrderByPubDateDesc(sourceId, limit).getContent();
 
         if (candidates.isEmpty())
             return Collections.emptyList();
 
-        List<Article> recent = candidates.stream()
+        return candidates.stream()
                 .filter(a -> a.getPubDate() != null && a.getPubDate().isAfter(LocalDateTime.now().minusDays(5)))
                 .collect(Collectors.toList());
-
-//        if (recent.size() < 5) {
-//            return candidates.subList(0, Math.min(candidates.size(), 10));
-//        }
-        return recent;
     }
 
     private String fetchEventsFromLlm(String articlesDetails) {

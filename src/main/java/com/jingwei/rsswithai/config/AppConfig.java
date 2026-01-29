@@ -9,7 +9,7 @@ import tools.jackson.databind.JsonNode;
 public class AppConfig {
 
     @SettingKey("collector_fetch_interval")
-    private Long collectorFetchInterval = 60000L;
+    private Integer collectorFetchInterval = 60;
 
     @SettingKey("collector_fetch_timeout")
     private Integer collectorFetchTimeout = 30;
@@ -47,23 +47,11 @@ public class AppConfig {
     @SettingKey("concurrent_limit")
     private Integer concurrentLimit = 5;
 
-    @SettingKey("subscription_limit")
-    private Integer subscriptionLimit = 20;
-
     @SettingKey("admin_username")
     private String adminUsername;
 
     @SettingKey("admin_password")
     private String adminPassword;
-
-    @SettingKey("default_avatar")
-    private String defaultAvatar;
-
-    @SettingKey("trends_word_cloud_frequency_hours")
-    private Integer trendsWordCloudFrequencyHours = 6;
-
-    @SettingKey("trends_hot_events_frequency_hours")
-    private Integer trendsHotEventsFrequencyHours = 4;
 
     @SettingKey("trends_word_cloud_prompt")
     private String trendsWordCloudPrompt = """

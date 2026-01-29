@@ -28,9 +28,6 @@ public interface RssSourceRepository extends JpaRepository<RssSource, Long> {
     Page<RssSource> findByStatus(SourceStatus status, Pageable pageable);
 
     Page<RssSource> findByStatusAndCategory(SourceStatus status, SourceCategory category, Pageable pageable);
-
-    Page<RssSource> findByCategory(SourceCategory category, Pageable pageable);
-
     /**
      * 获取所有启用的RSS源
      */
@@ -46,7 +43,4 @@ public interface RssSourceRepository extends JpaRepository<RssSource, Long> {
     @Query("UPDATE RssSource s SET s.lastFetchStatus = 'FETCHING', s.updatedAt = CURRENT_TIMESTAMP " +
             "WHERE s.id = :id AND s.lastFetchStatus != 'FETCHING'")
     int compareAndSetFetching(@Param("id") Long id);
-
-    @Query("SELECT s.id FROM RssSource s")
-    List<Long> findAllIds();
 }

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -39,9 +40,9 @@ public class RssTaskScheduler {
      * 定时任务：每分钟检查需要抓取的源
      * 实际抓取由各源的fetchIntervalMinutes控制
      */
-    @Scheduled(fixedRate = 10000) // 每10秒检查一次，实际执行频率由配置控制
+    @Scheduled(fixedDelay = 1,timeUnit = TimeUnit.SECONDS)
     public void scheduledFetch() {
-        long interval = appConfig.getCollectorFetchInterval();
+        long interval = appConfig.getCollectorFetchInterval() * 1000;
         if (System.currentTimeMillis() - lastRunTime < interval) {
             return;
         }

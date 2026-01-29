@@ -26,8 +26,8 @@
 ### 1.3.1 采集器配置
 
 | 配置键 | 默认值 | 说明 |
-|--------|--------|------|
-| collector_fetch_interval | 60000 | 抓取间隔（毫秒） |
+|--------|-----|------|
+| collector_fetch_interval | 60 | 抓取间隔（秒） |
 | collector_fetch_timeout | 30 | 抓取超时（秒） |
 | collector_fetch_max_retries | 3 | 最大重试次数 |
 | rsshub_host | http://rsshub.app | RSSHub主机地址 |
