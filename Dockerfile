@@ -12,7 +12,8 @@ FROM node:22-alpine AS build-user
 WORKDIR /app
 COPY fronted-user/package.json ./
 # Use Aliyun mirror for faster install in China
-RUN npm install --registry=https://registry.npmmirror.com/
+RUN npm config set registry https://registry.npmmirror.com/
+RUN npm install
 COPY fronted-user/ .
 # Ensure VITE_API_BASE_URL is relative for web hosting, OR empty to default to code logic
 ENV VITE_API_BASE_URL=""
@@ -23,7 +24,8 @@ FROM node:22-alpine AS build-admin
 WORKDIR /app
 COPY fronted-admin/package.json ./
 # Use Aliyun mirror for faster install in China
-RUN npm install --registry=https://registry.npmmirror.com/
+RUN npm config set registry https://registry.npmmirror.com/
+RUN npm install
 COPY fronted-admin/ .
 ENV VITE_API_BASE_URL=""
 RUN npm run build
