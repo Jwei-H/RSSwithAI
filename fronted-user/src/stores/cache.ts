@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import type { ArticleFeed, HotEvent, RssSource } from '../types'
+import type { ArticleFeed, HotEvent, RssSource, Subscription } from '../types'
 
 /**
  * 缓存项接口
@@ -11,7 +11,13 @@ interface CacheItem<T> {
 
 /**
  * 分页缓存项接口
- */
+        sourceArticles: new Map(),
+        subscriptions: null,
+        subscriptionFeeds: new Map(),
+        favorites: null
+        subscriptions: null,
+        subscriptionFeeds: new Map(),
+        favorites: null
 interface PaginatedCacheItem {
     data: RssSource[]
     page: number
@@ -19,11 +25,27 @@ interface PaginatedCacheItem {
     timestamp: number
 }
 
+interface FeedCacheItem {
+    data: ArticleFeed[]
+    cursor: string | null
+    hasMore: boolean
+    timestamp: number
+}
+
+interface FavoritesCacheData {
+    items: ArticleFeed[]
+    page: number
+    last: boolean
+}
+
 // 单例状态
 const state = reactive<{
     hotEvents: CacheItem<HotEvent[]> | null
     rssSources: Map<string, PaginatedCacheItem[]>
     sourceArticles: Map<number, CacheItem<ArticleFeed[]>>
+    subscriptions: CacheItem<Subscription[]> | null
+    subscriptionFeeds: Map<string, FeedCacheItem>
+    favorites: CacheItem<FavoritesCacheData> | null
 }>({
     hotEvents: null,
     rssSources: new Map(),
@@ -96,6 +118,89 @@ export function useCacheStore() {
             data,
             timestamp: Date.now()
         })
+    }
+
+    /**
+     * 获取订阅列表缓存
+     * @returns 订阅列表或 null
+     */
+    const getSubscriptions = (): Subscription[] | null => {
+        if (!state.subscriptions) return null
+        if (!isCacheValid(state.subscriptions.timestamp)) {
+            state.subscriptions = null
+            return null
+        }
+        return state.subscriptions.data
+    }
+
+    /**
+     * 设置订阅列表缓存
+     * @param data 订阅列表
+     */
+    const setSubscriptions = (data: Subscription[]): void => {
+        state.subscriptions = {
+            data,
+            timestamp: Date.now()
+        }
+    }
+
+    /**
+     * 获取订阅时间线缓存
+     * @param key 订阅缓存键
+     * @returns 时间线缓存或 null
+     */
+    const getSubscriptionFeed = (key: string): { items: ArticleFeed[]; cursor: string | null; hasMore: boolean } | null => {
+        const cached = state.subscriptionFeeds.get(key)
+        if (!cached) return null
+        if (!isCacheValid(cached.timestamp)) {
+            state.subscriptionFeeds.delete(key)
+            return null
+        }
+        return {
+            items: cached.data,
+            cursor: cached.cursor,
+            hasMore: cached.hasMore
+        }
+    }
+
+    /**
+     * 设置订阅时间线缓存
+     * @param key 订阅缓存键
+     * @param items 时间线列表
+     * @param cursor 游标
+     * @param hasMore 是否还有更多
+     */
+    const setSubscriptionFeed = (key: string, items: ArticleFeed[], cursor: string | null, hasMore: boolean): void => {
+        state.subscriptionFeeds.set(key, {
+            data: items,
+            cursor,
+            hasMore,
+            timestamp: Date.now()
+        })
+    }
+
+    /**
+     * 获取收藏列表缓存
+     * @returns 收藏列表缓存或 null
+     */
+    const getFavorites = (): FavoritesCacheData | null => {
+        if (!state.favorites) return null
+        if (!isCacheValid(state.favorites.timestamp)) {
+            state.favorites = null
+            return null
+        }
+        return state.favorites.data
+    }
+
+    /**
+     * 设置收藏列表缓存
+     * @param data 收藏列表缓存
+     */
+    const setFavorites = (data: FavoritesCacheData): void => {
+        state.favorites = {
+            data,
+            timestamp: Date.now()
+        }
     }
 
     /**
@@ -175,6 +280,9 @@ export function useCacheStore() {
         state.hotEvents = null
         state.rssSources.clear()
         state.sourceArticles.clear()
+        state.subscriptions = null
+        state.subscriptionFeeds.clear()
+        state.favorites = null
     }
 
     /**
@@ -197,6 +305,16 @@ export function useCacheStore() {
         // 源文章
         getSourceArticles,
         setSourceArticles,
+
+        // 订阅
+        getSubscriptions,
+        setSubscriptions,
+        getSubscriptionFeed,
+        setSubscriptionFeed,
+
+        // 收藏
+        getFavorites,
+        setFavorites,
 
         // 全局操作
         clearAll,

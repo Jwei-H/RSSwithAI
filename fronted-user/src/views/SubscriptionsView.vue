@@ -15,11 +15,13 @@ import { useDevice } from '../composables/useDevice'
 import { useUiStore } from '../stores/ui'
 import { useToastStore } from '../stores/toast'
 import { useHistoryStore } from '../stores/history'
+import { useCacheStore } from '../stores/cache'
 import { CalendarDays, ChevronDown, Eye, EyeOff, Rss, Search, X } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
 const historyStore = useHistoryStore()
+const cache = useCacheStore()
 const route = useRoute()
 const router = useRouter()
 const { isMobile } = useDevice()
@@ -45,6 +47,7 @@ const searchLoading = ref(false)
 const searchResults = ref<ArticleFeed[]>([])
 
 const showUnreadOnly = ref(false)
+const hasInitialized = ref(false)
 
 const wordCloud = ref<{ text: string; value: number }[]>([])
 const wordCloudLoading = ref(false)
@@ -73,15 +76,65 @@ const activeSubscriptionName = computed(() => {
     : activeSubscription.value.content
 })
 
-const loadSubscriptions = async () => {
-  loadingSubscriptions.value = true
+const getFeedCacheKey = (id: number | null) => (id === null ? 'all' : `sub:${id}`)
+
+const isSameFeed = (next: ArticleFeed[], current: ArticleFeed[]) => {
+  if (next.length !== current.length) return false
+  return next.every((item, index) => item.id === current[index]?.id && item.pubDate === current[index]?.pubDate)
+}
+
+const isSameSubscriptions = (next: Subscription[], current: Subscription[]) => {
+  if (next.length !== current.length) return false
+  return next.every((item, index) => {
+    const other = current[index]
+    return item.id === other?.id
+      && item.type === other?.type
+      && item.targetId === other?.targetId
+      && item.name === other?.name
+      && item.content === other?.content
+      && item.category === other?.category
+      && item.icon === other?.icon
+  })
+}
+
+const applySubscriptionsCache = (): boolean => {
+  const cached = cache.getSubscriptions()
+  if (!cached) return false
+  subscriptions.value = cached
+  subscriptionsError.value = ''
+  loadingSubscriptions.value = false
+  return true
+}
+
+const applyFeedCache = (id: number | null): boolean => {
+  const cached = cache.getSubscriptionFeed(getFeedCacheKey(id))
+  if (!cached) return false
+  feedList.value = [...cached.items]
+  feedCursor.value = cached.cursor
+  hasMore.value = cached.hasMore
+  feedError.value = ''
+  feedLoading.value = false
+  return true
+}
+
+const persistFeedCache = () => {
+  if (searchQuery.value.trim()) return
+  cache.setSubscriptionFeed(getFeedCacheKey(activeSubscriptionId.value), feedList.value, feedCursor.value, hasMore.value)
+}
+
+const loadSubscriptions = async (silent = false) => {
+  if (!silent) loadingSubscriptions.value = true
   subscriptionsError.value = ''
   try {
-    subscriptions.value = await subscriptionApi.list()
+    const list = await subscriptionApi.list()
+    if (!isSameSubscriptions(list, subscriptions.value)) {
+      subscriptions.value = list
+    }
+    cache.setSubscriptions(list)
   } catch (error: any) {
     subscriptionsError.value = error?.message || '订阅列表加载失败'
   } finally {
-    loadingSubscriptions.value = false
+    if (!silent) loadingSubscriptions.value = false
   }
 }
 
@@ -109,10 +162,39 @@ const loadFeed = async () => {
     if (last) {
       feedCursor.value = `${last.pubDate},${last.id}`
     }
+    persistFeedCache()
   } catch (error: any) {
     feedError.value = error?.message || '时间线加载失败'
   } finally {
     feedLoading.value = false
+  }
+}
+
+const refreshFeed = async (silent = false) => {
+  if (searchQuery.value.trim()) return
+  const showLoading = !silent && feedList.value.length === 0
+  if (showLoading) feedLoading.value = true
+  feedError.value = ''
+  try {
+    const list = await feedApi.feed({
+      subscriptionId: activeSubscriptionId.value || undefined,
+      size: 20
+    })
+    const currentFirstPage = feedList.value.slice(0, list.length)
+    const same = isSameFeed(list, currentFirstPage) && feedList.value.length >= list.length
+    if (!same) {
+      feedList.value = list
+      hasMore.value = list.length >= 20
+      const last = list[list.length - 1]
+      feedCursor.value = last ? `${last.pubDate},${last.id}` : null
+    }
+    persistFeedCache()
+  } catch (error: any) {
+    if (feedList.value.length === 0) {
+      feedError.value = error?.message || '时间线加载失败'
+    }
+  } finally {
+    if (showLoading) feedLoading.value = false
   }
 }
 
@@ -169,10 +251,6 @@ const onSelectSubscription = (id: number | null) => {
   router.push({ path: route.path, query }).catch(() => {
     // 忽略导航被中止的错误
   })
-
-  resetFeed()
-  loadFeed()
-  loadWordCloud()
 }
 
 const onHoverArticle = (id: number) => {
@@ -212,13 +290,15 @@ const onCancelSubscription = async (item: Subscription) => {
   try {
     await subscriptionApi.remove(item.id)
     toast.push('已取消订阅', 'success')
-    if (activeSubscriptionId.value === item.id) {
+    const wasActive = activeSubscriptionId.value === item.id
+    if (wasActive) {
       activeSubscriptionId.value = null
-      resetFeed()
     }
-    await loadSubscriptions()
-    loadFeed()
-    loadWordCloud()
+    await loadSubscriptions(false)
+    if (!wasActive) {
+      await refreshFeed(true)
+      loadWordCloud()
+    }
   } catch (error: any) {
     toast.push(error?.message || '取消订阅失败', 'error')
   }
@@ -242,8 +322,10 @@ const feedDisplay = computed(() => {
 })
 
 watch(activeSubscriptionId, () => {
-  resetFeed()
-  loadFeed()
+  if (!hasInitialized.value) return
+  const usedCache = applyFeedCache(activeSubscriptionId.value)
+  if (!usedCache) resetFeed()
+  refreshFeed(usedCache)
   loadWordCloud()
 })
 
@@ -272,8 +354,6 @@ onMounted(async () => {
   const articleId = route.query.articleId
   const searchQ = route.query.q
 
-  await loadSubscriptions()
-
   if (subscriptionId) {
     activeSubscriptionId.value = parseInt(String(subscriptionId), 10)
   }
@@ -282,8 +362,15 @@ onMounted(async () => {
     searchQuery.value = String(searchQ)
   }
 
-  loadFeed()
+  const usedSubscriptionsCache = applySubscriptionsCache()
+  await loadSubscriptions(usedSubscriptionsCache)
+
+  const usedFeedCache = applyFeedCache(activeSubscriptionId.value)
+  await refreshFeed(usedFeedCache)
+
   loadWordCloud()
+
+  hasInitialized.value = true
 
   // 恢复文章详情状态
   if (articleId && parseInt(String(articleId), 10) > 0) {
@@ -435,8 +522,7 @@ watch(
         <div class="mt-3 flex items-center gap-2 md:mt-4 md:gap-3">
           <input v-model="searchQuery" placeholder="在订阅中搜索"
             class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" />
-          <button
-            class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs transition"
+          <button class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs transition"
             :class="showUnreadOnly ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'"
             @click="showUnreadOnly = !showUnreadOnly">
             <EyeOff v-if="showUnreadOnly" class="h-3.5 w-3.5" />
@@ -471,8 +557,8 @@ watch(
               <span class="rounded-full bg-muted px-3 py-1">{{ entry.date }}</span>
               <span class="h-px flex-1 bg-border" />
             </div>
-            <ArticleCard v-else :article="entry.item" :isRead="historyStore.isRead(entry.item.id)" @open="onOpenArticle" @hover="onHoverArticle"
-              @leave="onLeaveArticle" />
+            <ArticleCard v-else :article="entry.item" :isRead="historyStore.isRead(entry.item.id)" @open="onOpenArticle"
+              @hover="onHoverArticle" @leave="onLeaveArticle" />
           </template>
         </div>
 

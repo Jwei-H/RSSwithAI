@@ -9,11 +9,13 @@ import type { ArticleFeed } from '../types'
 import { useInfiniteScroll } from '../composables/useInfiniteScroll'
 import { useUiStore } from '../stores/ui'
 import { useHistoryStore } from '../stores/history'
+import { useCacheStore } from '../stores/cache'
 import { formatRelativeTime } from '../utils/time'
 import { Bookmark, History, Trash2 } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const historyStore = useHistoryStore()
+const cache = useCacheStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -30,6 +32,29 @@ const searchQuery = ref('')
 const searchLoading = ref(false)
 const searchResults = ref<ArticleFeed[]>([])
 
+const isSameFeed = (next: ArticleFeed[], current: ArticleFeed[]) => {
+  if (next.length !== current.length) return false
+  return next.every((item, index) => item.id === current[index]?.id && item.pubDate === current[index]?.pubDate)
+}
+
+const applyFavoritesCache = (): boolean => {
+  const cached = cache.getFavorites()
+  if (!cached) return false
+  favorites.value = [...cached.items]
+  page.value = cached.page
+  last.value = cached.last
+  loading.value = false
+  return true
+}
+
+const persistFavoritesCache = () => {
+  cache.setFavorites({
+    items: favorites.value,
+    page: page.value,
+    last: last.value
+  })
+}
+
 const loadMore = async () => {
   if (loading.value || last.value || searchQuery.value.trim()) return
   loading.value = true
@@ -38,8 +63,28 @@ const loadMore = async () => {
     favorites.value.push(...res.content)
     last.value = res.last
     page.value += 1
+    persistFavoritesCache()
   } finally {
     loading.value = false
+  }
+}
+
+const refreshFavorites = async (silent = false) => {
+  if (searchQuery.value.trim()) return
+  const showLoading = !silent && favorites.value.length === 0
+  if (showLoading) loading.value = true
+  try {
+    const res = await feedApi.favorites(0, 10)
+    const currentFirstPage = favorites.value.slice(0, res.content.length)
+    const same = isSameFeed(res.content, currentFirstPage) && favorites.value.length >= res.content.length
+    if (!same) {
+      favorites.value = res.content
+      page.value = 1
+      last.value = res.last
+    }
+    persistFavoritesCache()
+  } finally {
+    if (showLoading) loading.value = false
   }
 }
 
@@ -110,7 +155,8 @@ onMounted(async () => {
     searchQuery.value = String(searchQ)
   }
 
-  await loadMore()
+  const usedFavoritesCache = applyFavoritesCache()
+  await refreshFavorites(usedFavoritesCache)
 
   // 恢复文章详情状态
   if (articleId && parseInt(String(articleId), 10) > 0) {
@@ -134,7 +180,7 @@ watch(activeTab, (newTab) => {
   } else {
     delete query.tab
   }
-  router.push({ path: route.path, query }).catch(() => {})
+  router.push({ path: route.path, query }).catch(() => { })
 })
 </script>
 
@@ -175,15 +221,13 @@ watch(activeTab, (newTab) => {
         <div class="rounded-2xl border border-border bg-card p-3 md:p-4">
           <!-- 移动端 Tab 切换 -->
           <div class="mb-3 flex gap-2 md:hidden">
-            <button
-              class="flex-1 rounded-xl border px-3 py-2 text-sm transition"
+            <button class="flex-1 rounded-xl border px-3 py-2 text-sm transition"
               :class="activeTab === 'favorites' ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'"
               @click="activeTab = 'favorites'">
               <Bookmark class="mr-1.5 inline h-4 w-4" />
               收藏
             </button>
-            <button
-              class="flex-1 rounded-xl border px-3 py-2 text-sm transition"
+            <button class="flex-1 rounded-xl border px-3 py-2 text-sm transition"
               :class="activeTab === 'history' ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'"
               @click="activeTab = 'history'">
               <History class="mr-1.5 inline h-4 w-4" />
@@ -262,13 +306,15 @@ watch(activeTab, (newTab) => {
                 <div class="flex min-w-0 flex-1 flex-col gap-1 md:gap-2">
                   <div class="flex items-start justify-between gap-2 md:gap-4">
                     <h3 class="line-clamp-2 text-sm font-semibold text-foreground">{{ item.title }}</h3>
-                    <span class="flex-shrink-0 text-xs text-muted-foreground">{{ formatRelativeTime(item.readAt) }}</span>
+                    <span class="flex-shrink-0 text-xs text-muted-foreground">{{ formatRelativeTime(item.readAt)
+                      }}</span>
                   </div>
                   <div class="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{{ item.sourceName }}</span>
                     <div class="flex items-center gap-2">
                       <div class="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
-                        <div class="h-full bg-primary transition-all" :style="{ width: `${item.readProgress * 100}%` }" />
+                        <div class="h-full bg-primary transition-all"
+                          :style="{ width: `${item.readProgress * 100}%` }" />
                       </div>
                       <span>{{ Math.round(item.readProgress * 100) }}%</span>
                     </div>

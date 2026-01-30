@@ -1,5 +1,5 @@
 services:
-  rsswithai-all-in-one:
+  rsswithai:
     build: .
     container_name: rsswithai-server
     environment:
