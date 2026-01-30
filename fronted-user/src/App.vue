@@ -27,6 +27,31 @@ watch(
     }
   }
 )
+
+watch(
+  [() => route.path, () => ui.detailOpen],
+  () => {
+    if (ui.detailOpen) {
+      document.title = '阅读 - RSSwithAI'
+      return
+    }
+
+    if (route.path.startsWith('/subscriptions')) {
+      document.title = '订阅 - RSSwithAI'
+    } else if (route.path.startsWith('/discover')) {
+      document.title = '发现 - RSSwithAI'
+    } else if (route.path.startsWith('/favorites')) {
+      document.title = '收藏 - RSSwithAI'
+    } else if (route.path.startsWith('/history')) {
+      document.title = '历史 - RSSwithAI'
+    } else if (route.path.startsWith('/profile')) {
+      document.title = '个人中心 - RSSwithAI'
+    } else {
+      document.title = 'RSSwithAI'
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
