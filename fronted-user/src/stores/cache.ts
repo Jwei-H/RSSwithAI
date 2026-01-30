@@ -11,13 +11,7 @@ interface CacheItem<T> {
 
 /**
  * 分页缓存项接口
-        sourceArticles: new Map(),
-        subscriptions: null,
-        subscriptionFeeds: new Map(),
-        favorites: null
-        subscriptions: null,
-        subscriptionFeeds: new Map(),
-        favorites: null
+ */
 interface PaginatedCacheItem {
     data: RssSource[]
     page: number
@@ -49,7 +43,10 @@ const state = reactive<{
 }>({
     hotEvents: null,
     rssSources: new Map(),
-    sourceArticles: new Map()
+    sourceArticles: new Map(),
+    subscriptions: null,
+    subscriptionFeeds: new Map(),
+    favorites: null
 })
 
 /**

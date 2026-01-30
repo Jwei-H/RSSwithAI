@@ -468,7 +468,7 @@ watch(
           <div v-if="loadingSubscriptions" class="mt-4">
             <LoadingState />
           </div>
-          <ErrorState v-else-if="subscriptionsError" :title="subscriptionsError" :onRetry="loadSubscriptions" />
+          <ErrorState v-else-if="subscriptionsError" :title="subscriptionsError" :onRetry="() => loadSubscriptions(false)" />
           <div v-else class="mt-4 space-y-2">
             <div v-for="item in subscriptions" :key="item.id"
               class="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-left text-xs"
