@@ -356,7 +356,7 @@ onUnmounted(() => {
     </div>
 
     <!-- 移动端：单栏垂直滚动布局 -->
-    <div ref="mobileScrollRef" class="flex-1 overflow-y-auto px-4 py-4 md:hidden" @scroll.passive="onLeftPaneScroll"
+    <div ref="mobileScrollRef" class="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:hidden" @scroll.passive="onLeftPaneScroll"
       @touchend.passive="onMobileTouchEnd">
       <div v-if="loading" class="text-sm text-muted-foreground">加载中...</div>
       <div v-else-if="article" class="space-y-4">

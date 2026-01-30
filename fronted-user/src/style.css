@@ -144,6 +144,9 @@
 
 .markdown-body {
   @apply text-base leading-7 text-foreground;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .markdown-body h1,
@@ -203,6 +206,8 @@
 
 .markdown-body img {
   @apply rounded-lg border border-border my-3;
+  max-width: 100%;
+  height: auto;
 }
 
 .markdown-body a,
@@ -216,6 +221,7 @@
 
 .md-codeblock {
   @apply my-4 rounded-lg border border-border bg-card overflow-hidden;
+  max-width: 100%;
 }
 
 .md-codeblock__header {
@@ -232,6 +238,7 @@
 
 .hljs {
   @apply bg-blue-50/70 p-3 text-xs overflow-auto;
+  max-width: 100%;
 }
 
 .dark .hljs {

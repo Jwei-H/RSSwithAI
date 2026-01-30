@@ -6,6 +6,8 @@ import EmptyState from '../components/common/EmptyState.vue'
 import { useUiStore } from '../stores/ui'
 import { useHistoryStore } from '../stores/history'
 import { formatRelativeTime } from '../utils/time'
+import { rewriteUrl } from '../utils/url-rewrites'
+import { unescapeUrl } from '../utils/text'
 import { History, Trash2 } from 'lucide-vue-next'
 
 const ui = useUiStore()
@@ -119,7 +121,7 @@ watch(
               @click="onOpenArticle(item.articleId)">
               <div v-if="item.coverImage"
                 class="h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-border md:h-16 md:w-24">
-                <img :src="item.coverImage" :alt="item.title" class="h-full w-full object-cover" loading="lazy"
+                <img :src="rewriteUrl(unescapeUrl(item.coverImage))" :alt="item.title" class="h-full w-full object-cover" loading="lazy"
                   referrerpolicy="no-referrer" />
               </div>
               <div class="flex min-w-0 flex-1 flex-col gap-1 md:gap-2">
