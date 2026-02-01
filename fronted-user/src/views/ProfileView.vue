@@ -54,15 +54,15 @@ const logout = () => {
 
 <template>
   <PageShell>
-    <template #sidebar>
+    <!-- <template #sidebar>
       <div class="rounded-2xl border border-border bg-card p-4">
         <h2 class="text-sm font-semibold text-foreground">个人中心</h2>
         <p class="mt-2 text-xs text-muted-foreground">管理账号信息与安全设置</p>
       </div>
-    </template>
+    </template> -->
 
     <template #main>
-      <div class="rounded-2xl border border-border bg-card p-4 md:p-6">
+      <!-- <div class="rounded-2xl border border-border bg-card p-4 md:p-6">
         <h3 class="text-sm font-semibold text-foreground">账号信息</h3>
         <div class="mt-4 space-y-4">
           <div>
@@ -94,7 +94,7 @@ const logout = () => {
             更新密码
           </button>
         </div>
-      </div>
+      </div> -->
 
       <div class="rounded-2xl border border-border bg-card p-4 md:p-6">
         <h3 class="text-sm font-semibold text-foreground">偏好设置</h3>

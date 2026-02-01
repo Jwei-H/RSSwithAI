@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { authApi } from '../services/frontApi'
+import { authApi, subscriptionApi } from '../services/frontApi'
 import { useToastStore } from '../stores/toast'
+import { useSessionStore } from '../stores/session'
 
 const router = useRouter()
 const toast = useToastStore()
+const session = useSessionStore()
 
 const username = ref('')
 const password = ref('')
@@ -26,6 +28,18 @@ const submit = async () => {
   loading.value = true
   try {
     await authApi.register({ username: username.value, password: password.value })
+    try {
+      const loginRes = await authApi.login({ username: username.value, password: password.value })
+      session.setToken(loginRes.token)
+      await Promise.all([
+        subscriptionApi.create({ type: 'RSS', targetId: 8 }),
+        subscriptionApi.create({ type: 'TOPIC', targetId: 17 })
+      ])
+    } catch (subscribeError: any) {
+      toast.push(subscribeError?.message || '默认订阅添加失败', 'error')
+    } finally {
+      session.clear()
+    }
     toast.push('注册成功，请登录', 'success')
     router.push({ path: '/login', query: { username: username.value } })
   } catch (err: any) {

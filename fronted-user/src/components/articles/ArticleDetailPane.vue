@@ -254,7 +254,7 @@ onUnmounted(() => {
         返回
       </button>
       <div class="flex items-center gap-3">
-        <button
+        <!-- <button
           class="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
           @click="toggleFavorite" :title="favorite ? '取消收藏' : '收藏'">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" :fill="favorite ? 'currentColor' : 'none'"
@@ -264,7 +264,7 @@ onUnmounted(() => {
               points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
           {{ favorite ? '已收藏' : '收藏' }}
-        </button>
+        </button> -->
       </div>
     </header>
 

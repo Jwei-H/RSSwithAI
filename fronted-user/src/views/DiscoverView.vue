@@ -336,7 +336,7 @@ watch(
             <RefreshCw class="h-4 w-4" />
           </button>
         </div>
-        <p class="mt-2 text-xs text-muted-foreground">探索新 RSS 源与热点事件</p>
+        <p class="mt-2 text-xs text-muted-foreground">探索新频道与热点事件</p>
       </div>
       <div class="rounded-2xl border border-border bg-card p-4">
         <div class="flex items-center gap-2">
@@ -448,7 +448,7 @@ watch(
 
             <!-- RSS 源分类 -->
             <div class="rounded-2xl border border-border bg-card p-3 md:p-4">
-              <h3 class="text-sm font-semibold text-foreground">RSS 源</h3>
+              <h3 class="text-sm font-semibold text-foreground">频道</h3>
               <div class="mt-3 flex flex-wrap gap-2">
                 <button v-for="item in categories" :key="item.value"
                   class="rounded-full border border-border px-3 py-1 text-xs"

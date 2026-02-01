@@ -42,7 +42,7 @@ const submit = async () => {
   <div class="flex min-h-screen items-center justify-center bg-muted/40 px-4">
     <div class="w-full max-w-md rounded-3xl border border-border bg-card p-8 shadow-sm">
       <h1 class="text-lg font-semibold text-foreground">欢迎回来</h1>
-      <p class="mt-1 text-xs text-muted-foreground">登录后进入 RSSwithAI 前台</p>
+      <!-- <p class="mt-1 text-xs text-muted-foreground">登录后进入 RSSwithAI 前台</p> -->
 
       <div class="mt-6 space-y-4">
         <div>

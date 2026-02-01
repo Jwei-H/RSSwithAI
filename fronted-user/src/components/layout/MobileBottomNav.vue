@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Bookmark, Grid2X2, Rss, UserRound } from 'lucide-vue-next'
+import { Grid2X2, Rss, UserRound } from 'lucide-vue-next'
 
 const route = useRoute()
 
 const items = computed(() => [
     { label: '订阅', to: '/subscriptions', icon: Rss },
     { label: '发现', to: '/discover', icon: Grid2X2 },
-    { label: '收藏', to: '/favorites', icon: Bookmark },
+    // { label: '收藏', to: '/favorites', icon: Bookmark },
     { label: '我的', to: '/profile', icon: UserRound }
 ])
 
