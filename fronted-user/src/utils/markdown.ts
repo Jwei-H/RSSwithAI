@@ -38,6 +38,14 @@ const renderCodeBlock = (code: string, language?: string) => {
 md.renderer.rules.fence = (tokens, idx) => {
   const token = tokens[idx]
   const info = token.info ? token.info.trim().split(/\s+/)[0] : ''
+  if (info.toLowerCase() === 'mermaid') {
+    const code = token.content
+    const escaped = code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+    return `<div class="mermaid">${escaped}</div>`
+  }
   return renderCodeBlock(token.content, info)
 }
 

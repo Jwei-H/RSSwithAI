@@ -8,6 +8,7 @@ import type { ArticleDetail, ArticleExtra, ArticleFeed } from '../../types'
 import { useToastStore } from '../../stores/toast'
 import { useHistoryStore } from '../../stores/history'
 import { FileText, ListChecks, ListTree, ThumbsUp } from 'lucide-vue-next'
+import mermaid from 'mermaid'
 
 const props = defineProps<{
   articleId: number | null
@@ -33,6 +34,7 @@ const leftWidth = ref(60)
 const isDragging = ref(false)
 const activeHeadingId = ref<string | null>(null)
 const scrollRafId = ref<number | null>(null)
+const mermaidReady = ref(false)
 
 const dividerStyle = computed(() => ({
   width: `${100 - leftWidth.value}%`
@@ -106,6 +108,22 @@ const setupCollapseToggle = () => {
       })
     })
   })
+}
+
+const renderMermaidDiagrams = async () => {
+  const containers = Array.from(document.querySelectorAll<HTMLElement>('.markdown-body .mermaid'))
+  if (!containers.length) return
+
+  const isDark = document.documentElement.classList.contains('dark')
+  if (!mermaidReady.value) {
+    mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' })
+    mermaidReady.value = true
+  } else {
+    mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' })
+  }
+
+  containers.forEach((node) => node.removeAttribute('data-processed'))
+  await mermaid.run({ nodes: containers })
 }
 
 const getContentBetweenHeadings = (startHeading: HTMLElement, container: HTMLElement): HTMLElement | null => {
@@ -323,6 +341,7 @@ watch(
     await nextTick()
     updateActiveHeading()
     setupCollapseToggle()
+    await renderMermaidDiagrams()
   }
 )
 
