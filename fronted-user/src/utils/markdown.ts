@@ -76,9 +76,18 @@ md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
   const inlineToken = tokens[idx + 1]
   const text = inlineToken?.type === 'inline' ? inlineToken.content : ''
   const slugger = (env as { slugger?: (value: string) => string })?.slugger ?? createSlugger()
-  token.attrSet('id', slugger(text))
-  return defaultHeadingOpen(tokens, idx, options, env, self)
+  const id = slugger(text)
+  token.attrSet('id', id)
+  token.attrSet('class', 'md-heading')
+  token.attrSet('data-heading-id', id)
+  const result = defaultHeadingOpen(tokens, idx, options, env, self)
+  // 在开始标签后面注入折叠按钮
+  return result + `<button type="button" class="md-heading-toggle" data-toggle-id="${id}" aria-expanded="true"></button>`
 }
+
+const defaultHeadingClose =
+  md.renderer.rules.heading_close || ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options))
+md.renderer.rules.heading_close = defaultHeadingClose
 
 // Custom image rendering for styling and anti-hotlinking
 md.renderer.rules.image = (tokens, idx, options, env, self) => {

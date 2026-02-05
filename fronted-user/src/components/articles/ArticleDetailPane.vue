@@ -27,6 +27,7 @@ const favorite = ref(false)
 
 const leftPaneRef = ref<HTMLElement | null>(null)
 const mobileScrollRef = ref<HTMLElement | null>(null)
+const collapsedHeadings = ref<Set<string>>(new Set())
 
 const leftWidth = ref(60)
 const isDragging = ref(false)
@@ -56,6 +57,98 @@ const escapeSelector = (value: string) => {
     return CSS.escape(value)
   }
   return value.replace(/([ #;?%&,.+*~'":!^$\[\]()=>|\/])/g, '\\$1')
+}
+
+const setupCollapseToggle = () => {
+  // 获取 markdown 内容容器（优先选择可见容器）
+  const isMobile = window.innerWidth < 768
+  const markdownBodies = document.querySelectorAll<HTMLElement>('.markdown-body')
+  
+  // 对所有 markdown 内容应用折叠逻辑
+  markdownBodies.forEach((markdownBody) => {
+    // 找到所有折叠按钮
+    const toggleButtons = markdownBody.querySelectorAll<HTMLButtonElement>('.md-heading-toggle')
+    
+    toggleButtons.forEach((btn) => {
+      // 检查是否已经有事件监听（避免重复）
+      if (btn.dataset.setupDone === 'true') return
+      btn.dataset.setupDone = 'true'
+      
+      // 添加事件监听
+      btn.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        
+        const headingId = btn.getAttribute('data-toggle-id')
+        if (!headingId) return
+        
+        const heading = markdownBody.querySelector<HTMLElement>(`#${escapeSelector(headingId)}`)
+        if (!heading) return
+        
+        // 获取下一个兄弟元素，直到找到下一个标题或到达末尾
+        const contentWrapper = getContentBetweenHeadings(heading, markdownBody)
+        
+        const isExpanded = btn.getAttribute('aria-expanded') === 'true'
+        btn.setAttribute('aria-expanded', isExpanded ? 'false' : 'true')
+        
+        // 切换 collapsed 类
+        if (contentWrapper) {
+          contentWrapper.classList.toggle('collapsed', isExpanded)
+        }
+        
+        // 更新状态
+        const headingIdVal = heading.id
+        if (isExpanded) {
+          collapsedHeadings.value.add(headingIdVal)
+        } else {
+          collapsedHeadings.value.delete(headingIdVal)
+        }
+      })
+    })
+  })
+}
+
+const getContentBetweenHeadings = (startHeading: HTMLElement, container: HTMLElement): HTMLElement | null => {
+  // 创建一个包装容器来包含这个标题和它的内容
+  // 找到下一个同级或更高级的标题
+  const currentLevel = parseInt(startHeading.tagName[1])
+  let currentElement = startHeading.nextElementSibling as HTMLElement | null
+  const contentElements: Element[] = []
+  
+  while (currentElement && container.contains(currentElement)) {
+    // 如果遇到标题
+    if (currentElement.tagName.match(/^H[1-6]$/)) {
+      const nextLevel = parseInt(currentElement.tagName[1])
+      // 如果下一个标题级别小于等于当前级别，停止
+      if (nextLevel <= currentLevel) {
+        break
+      }
+    }
+    contentElements.push(currentElement)
+    currentElement = currentElement.nextElementSibling as HTMLElement | null
+  }
+  
+  // 如果没有内容元素，返回 null
+  if (contentElements.length === 0) return null
+  
+  // 检查是否已经有包装容器
+  if (contentElements[0].classList?.contains('md-heading-content')) {
+    return contentElements[0] as HTMLElement
+  }
+  
+  // 创建包装容器
+  const wrapper = document.createElement('div')
+  wrapper.className = 'md-heading-content'
+  
+  // 将所有内容元素移入包装容器
+  contentElements.forEach((el) => {
+    wrapper.appendChild(el)
+  })
+  
+  // 将包装容器插入到标题后面
+  startHeading.after(wrapper)
+  
+  return wrapper
 }
 
 const getHeadingElements = () => {
@@ -226,8 +319,10 @@ watch(
 watch(
   () => article.value?.content,
   async () => {
+    collapsedHeadings.value.clear()
     await nextTick()
     updateActiveHeading()
+    setupCollapseToggle()
   }
 )
 
