@@ -140,6 +140,12 @@ public class TrendsAnalysisService {
         if (candidates.isEmpty())
             return Collections.emptyList();
 
+        LocalDateTime threeDaysAgo = LocalDateTime.now().minusDays(3);
+        Article latest = candidates.getFirst();
+        if (latest.getPubDate() == null || latest.getPubDate().isBefore(threeDaysAgo)) {
+            return Collections.emptyList();
+        }
+
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
         List<Article> recent = candidates.stream()
                 .filter(a -> a.getPubDate() != null && a.getPubDate().isAfter(sevenDaysAgo))

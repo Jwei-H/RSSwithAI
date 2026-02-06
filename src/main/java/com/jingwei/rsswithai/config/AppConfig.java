@@ -69,6 +69,9 @@ public class AppConfig {
             \\}
             """;
 
+    @SettingKey("trends_word_cloud_frequency_hours")
+    private Integer trendsWordCloudFrequencyHours = 24;
+
     @SettingKey("trends_hot_events_map_prompt")
     private String trendsHotEventsMapPrompt = """
             你是一个专业的新闻分析师。请分析以下RSS源最近的文章概览，提炼出 0-5 个具有明确时效性的关键新闻事件。
@@ -88,6 +91,9 @@ public class AppConfig {
               \\{"event": "Java 25正式发布", "description": "Oracle发布Java 25，引入全新协程模型。"\\}
             \\]
             """;
+
+    @SettingKey("trends_hot_events_frequency_hours")
+    private Integer trendsHotEventsFrequencyHours = 12;
 
     @SettingKey("trends_hot_events_reduce_prompt")
     private String trendsHotEventsReducePrompt = """

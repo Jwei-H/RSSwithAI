@@ -21,8 +21,8 @@
 
 | 配置键 | 默认值 | 说明 |
 |--------|--------|------|
-| trends_word_cloud_frequency_hours | 6 | 词云生成任务频率（小时） |
-| trends_hot_events_frequency_hours | 4 | 热点事件生成任务频率（小时） |
+| trends_word_cloud_frequency_hours | 24 | 词云生成任务频率（小时） |
+| trends_hot_events_frequency_hours | 12 | 热点事件生成任务频率（小时） |
 | trends_word_cloud_prompt | (见下文) | 词云清洗Prompt模板 |
 | trends_hot_events_map_prompt | (见下文) | 热点事件提取（Map阶段）Prompt模板 |
 | trends_hot_events_reduce_prompt | (见下文) | 热点事件聚合（Reduce阶段）Prompt模板 |
@@ -130,6 +130,7 @@ Entity (TrendsData)
 
 ### 6.2 异步调度
 分析任务耗时较长，采用 `@Scheduled` 定时任务后台异步执行，生成结果缓存于数据库，前端请求直接读取结果，保证毫秒级响应。
+任务首次执行在服务启动后延迟触发（词云 12 小时、热点事件 6 小时）。
 
 ### 6.3 动态Prompt配置
 所有涉及 LLM 的 Prompt 均存储于 `AppConfig` 并持久化到数据库，支持管理员在线调整 Prompt 策略以优化分析效果，无需重启服务。

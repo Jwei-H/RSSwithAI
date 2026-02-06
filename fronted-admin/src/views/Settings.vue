@@ -23,7 +23,9 @@ const coerceValue = (key: string, value: string): string | number => {
     'collector_fetch_interval',
     'collector_fetch_timeout',
     'collector_fetch_max_retries',
-    'concurrent_limit'
+    'concurrent_limit',
+    'trends_word_cloud_frequency_hours',
+    'trends_hot_events_frequency_hours'
   ])
   if (numberKeys.has(key)) {
     const n = Number(value)
@@ -240,6 +242,29 @@ onMounted(() => {
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
             <p class="mt-1 text-xs text-gray-500">修改后需要重新登录</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 热点趋势配置 -->
+      <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">热点趋势配置</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">词云生成间隔（小时）</label>
+            <input
+              v-model.number="settings['trends_word_cloud_frequency_hours']"
+              type="number"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">热点事件生成间隔（小时）</label>
+            <input
+              v-model.number="settings['trends_hot_events_frequency_hours']"
+              type="number"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
           </div>
         </div>
       </div>

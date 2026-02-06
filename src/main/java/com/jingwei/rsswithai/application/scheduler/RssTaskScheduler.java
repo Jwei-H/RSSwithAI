@@ -34,25 +34,20 @@ public class RssTaskScheduler {
 
     // 防止任务重叠执行
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
-    private long lastRunTime = 0;
 
     /**
      * 定时任务：每分钟检查需要抓取的源
      * 实际抓取由各源的fetchIntervalMinutes控制
      */
-    @Scheduled(fixedDelay = 1,timeUnit = TimeUnit.SECONDS)
+    @Scheduled(
+            timeUnit = TimeUnit.SECONDS,
+            fixedDelayString = "#{@appConfig.collectorFetchInterval}"
+    )
     public void scheduledFetch() {
-        long interval = appConfig.getCollectorFetchInterval() * 1000;
-        if (System.currentTimeMillis() - lastRunTime < interval) {
-            return;
-        }
-
         if (!isRunning.compareAndSet(false, true)) {
             log.debug("上一轮抓取任务尚未完成，跳过本次调度");
             return;
         }
-
-        lastRunTime = System.currentTimeMillis();
 
         try {
             log.debug("开始检查需要抓取的RSS源...");
@@ -62,8 +57,8 @@ public class RssTaskScheduler {
 
             // 筛选出需要抓取的源
             List<RssSource> sourcesToFetch = enabledSources.stream()
-                .filter(RssSource::shouldFetch)
-                .toList();
+                    .filter(RssSource::shouldFetch)
+                    .toList();
 
             if (sourcesToFetch.isEmpty()) {
                 log.debug("当前没有需要抓取的RSS源");
@@ -74,14 +69,14 @@ public class RssTaskScheduler {
 
             // 使用虚拟线程并发抓取
             sourcesToFetch.forEach(source ->
-                virtualThreadExecutor.submit(() -> {
-                    try {
-                        rssFetcherService.fetchSource(source);
-                    } catch (Exception e) {
-                        log.error("抓取RSS源异常: id={}, name={}, error={}",
-                            source.getId(), source.getName(), e.getMessage(), e);
-                    }
-                })
+                    virtualThreadExecutor.submit(() -> {
+                        try {
+                            rssFetcherService.fetchSource(source);
+                        } catch (Exception e) {
+                            log.error("抓取RSS源异常: id={}, name={}, error={}",
+                                    source.getId(), source.getName(), e.getMessage(), e);
+                        }
+                    })
             );
 
         } finally {
@@ -98,14 +93,14 @@ public class RssTaskScheduler {
         List<RssSource> enabledSources = rssSourceRepository.findAllEnabled();
 
         enabledSources.forEach(source ->
-            virtualThreadExecutor.submit(() -> {
-                try {
-                    rssFetcherService.fetchSource(source);
-                } catch (Exception e) {
-                    log.error("抓取RSS源异常: id={}, name={}, error={}",
-                        source.getId(), source.getName(), e.getMessage(), e);
-                }
-            })
+                virtualThreadExecutor.submit(() -> {
+                    try {
+                        rssFetcherService.fetchSource(source);
+                    } catch (Exception e) {
+                        log.error("抓取RSS源异常: id={}, name={}, error={}",
+                                source.getId(), source.getName(), e.getMessage(), e);
+                    }
+                })
         );
     }
 

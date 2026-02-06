@@ -18,7 +18,11 @@ public class TrendsTaskScheduler {
     private final TrendsAnalysisService trendsAnalysisService;
     private final RssSourceRepository rssSourceRepository;
 
-    @Scheduled(initialDelay = 12, fixedDelay = 24, timeUnit = TimeUnit.HOURS)
+    @Scheduled(
+            initialDelay = 12,
+            timeUnit = TimeUnit.HOURS,
+            fixedDelayString = "#{@appConfig.trendsWordCloudFrequencyHours * 60 * 60 * 1000}"
+    )
     private void runWordCloudTask() {
         log.info("Triggering Word Cloud Task");
          rssSourceRepository.findAllEnabled();
@@ -31,7 +35,11 @@ public class TrendsTaskScheduler {
         }
     }
 
-    @Scheduled(initialDelay = 6, fixedDelay = 12, timeUnit = TimeUnit.HOURS)
+    @Scheduled(
+            initialDelay = 6,
+            timeUnit = TimeUnit.HOURS,
+            fixedDelayString = "#{@appConfig.trendsHotEventsFrequencyHours * 60 * 60 * 1000}"
+    )
     private void runHotEventsTask() {
         log.info("Triggering Hot Events Task");
         try {
