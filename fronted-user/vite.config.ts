@@ -10,6 +10,22 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    minify: false,
+    cssMinify: false,
+    sourcemap: false,
+    reportCompressedSize: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          mermaid: ['mermaid'],
+        },
+      },
+    },
+  },
+  esbuild: {
+    legalComments: 'none',
+  },
   server: {
     // 允许所有 host，解决 "Blocked request" 问题
     allowedHosts: true,

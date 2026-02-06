@@ -8,7 +8,7 @@ import type { ArticleDetail, ArticleExtra, ArticleFeed } from '../../types'
 import { useToastStore } from '../../stores/toast'
 import { useHistoryStore } from '../../stores/history'
 import { FileText, ListChecks, ListTree, ThumbsUp } from 'lucide-vue-next'
-import mermaid from 'mermaid'
+let mermaidModule: typeof import('mermaid') | null = null
 
 const props = defineProps<{
   articleId: number | null
@@ -110,10 +110,19 @@ const setupCollapseToggle = () => {
   })
 }
 
+const loadMermaid = async () => {
+  if (!mermaidModule) {
+    const mod = await import('mermaid')
+    mermaidModule = mod
+  }
+  return mermaidModule.default
+}
+
 const renderMermaidDiagrams = async () => {
   const containers = Array.from(document.querySelectorAll<HTMLElement>('.markdown-body .mermaid'))
   if (!containers.length) return
 
+  const mermaid = await loadMermaid()
   const isDark = document.documentElement.classList.contains('dark')
   if (!mermaidReady.value) {
     mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' })
