@@ -14,4 +14,11 @@ export default defineConfig({
     // 允许所有 host，解决 "Blocked request" 问题
     allowedHosts: true,
   },
+  build: {
+    target: 'esnext',
+    minify: false,
+    cssMinify: false,
+    sourcemap: false,
+    reportCompressedSize: false,
+  },
 })

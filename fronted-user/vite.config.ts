@@ -11,14 +11,17 @@ export default defineConfig({
     },
   },
   build: {
+    target: 'esnext',
     minify: false,
     cssMinify: false,
     sourcemap: false,
     reportCompressedSize: false,
+    chunkSizeWarningLimit: 2048,
     rollupOptions: {
       output: {
         manualChunks: {
           mermaid: ['mermaid'],
+          echarts: ['echarts', 'echarts-wordcloud'],
         },
       },
     },

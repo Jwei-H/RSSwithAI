@@ -10,6 +10,8 @@ RUN mvn clean package -DskipTests -Dmaven.wagon.http.retryHandler.count=3
 # ========== Stage 2: Build User Frontend (Node) ==========
 FROM node:22-alpine AS build-user
 WORKDIR /app
+# Optimize Node memory for 2GB server (leave ~500MB for OS/Daemon)
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 COPY fronted-user/package.json ./
 # Use Aliyun mirror for faster install in China
 RUN npm config set registry https://registry.npmmirror.com/
@@ -22,6 +24,8 @@ RUN npm run build
 # ========== Stage 3: Build Admin Frontend (Node) ==========
 FROM node:22-alpine AS build-admin
 WORKDIR /app
+# Optimize Node memory for 2GB server (leave ~500MB for OS/Daemon)
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 COPY fronted-admin/package.json ./
 # Use Aliyun mirror for faster install in China
 RUN npm config set registry https://registry.npmmirror.com/
@@ -32,6 +36,12 @@ RUN npm run build
 
 # ========== Stage 4: Final Runtime Image ==========
 FROM eclipse-temurin:25-jre
+# Switch to Aliyun mirrors for speed/reliability in CN
+RUN if [ -f /etc/apt/sources.list ]; then sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list && sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list; fi
+RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources; fi
+# Handle Ubuntu based images if applicable
+RUN if [ -f /etc/apt/sources.list ]; then sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list && sed -i 's/security.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list; fi
+
 # Install Nginx
 # Note: eclipse-temurin is usually Ubuntu-based.
 RUN apt-get update && \
