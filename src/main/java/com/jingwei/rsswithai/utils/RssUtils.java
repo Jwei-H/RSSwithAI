@@ -123,9 +123,30 @@ public final class RssUtils {
      */
     public static List<Article> parseContent(String xmlContent, RssSource source) {
         List<Article> articles = new ArrayList<>();
+        List<ParsedItem> items = parseItems(xmlContent, source);
+        if (items.isEmpty()) {
+            return articles;
+        }
+
+        for (ParsedItem item : items) {
+            Article article = buildArticle(item, source);
+            if (article != null) {
+                articles.add(article);
+            }
+        }
+
+        log.debug("解析完成: source={}, 文章数={}", source.getName(), articles.size());
+        return articles;
+    }
+
+    /**
+     * 轻量解析入口：只解析条目字段，不执行HTML转Markdown等重操作
+     */
+    public static List<ParsedItem> parseItems(String xmlContent, RssSource source) {
+        List<ParsedItem> items = new ArrayList<>();
 
         if (xmlContent == null || xmlContent.isBlank() || source == null) {
-            return articles;
+            return items;
         }
 
         try {
@@ -137,19 +158,19 @@ public final class RssUtils {
 
             for (int i = 0; i < itemList.getLength(); i++) {
                 Element item = (Element) itemList.item(i);
-                Article article = buildArticle(item, source, format);
-                if (article != null) {
-                    articles.add(article);
+                ParsedItem parsedItem = buildParsedItem(item, format);
+                if (parsedItem != null) {
+                    items.add(parsedItem);
                 }
             }
 
-            log.debug("解析完成: source={}, format={}, 文章数={}", source.getName(), format, articles.size());
+            log.debug("轻量解析完成: source={}, format={}, 条目数={}", source.getName(), format, items.size());
 
         } catch (Exception e) {
             log.error("解析RSS/Atom内容失败: source={}, error={}", source.getName(), e.getMessage());
         }
 
-        return articles;
+        return items;
     }
 
     /**
@@ -223,19 +244,19 @@ public final class RssUtils {
     /**
      * 根据格式构建Article实体
      */
-    private static Article buildArticle(Element item, RssSource source, FeedFormat format) {
-        if (item == null || source == null) return null;
+    private static ParsedItem buildParsedItem(Element item, FeedFormat format) {
+        if (item == null) return null;
 
         return switch (format) {
-            case ATOM -> buildFromAtom(item, source);
-            case RSS_1_0, RSS_2_0, UNKNOWN -> buildFromRss(item, source);
+            case ATOM -> buildFromAtomItem(item);
+            case RSS_1_0, RSS_2_0, UNKNOWN -> buildFromRssItem(item);
         };
     }
 
     /**
      * 从RSS格式条目构建Article
      */
-    private static Article buildFromRss(Element item, RssSource source) {
+    private static ParsedItem buildFromRssItem(Element item) {
         // title
         String title = getElementText(item, "title");
 
@@ -271,13 +292,13 @@ public final class RssUtils {
         // categories
         String categories = extractCategories(item, "category");
 
-        return buildFinalArticle(source, title, link, guid, description, content, author, pubDateStr, categories);
+        return new ParsedItem(title, link, guid, description, content, author, pubDateStr, categories);
     }
 
     /**
      * 从Atom格式条目构建Article
      */
-    private static Article buildFromAtom(Element entry, RssSource source) {
+    private static ParsedItem buildFromAtomItem(Element entry) {
         // title
         String title = getElementText(entry, "title");
 
@@ -306,7 +327,16 @@ public final class RssUtils {
         // categories
         String categories = extractAtomCategories(entry);
 
-        return buildFinalArticle(source, title, link, guid, description, content, author, pubDateStr, categories);
+        return new ParsedItem(title, link, guid, description, content, author, pubDateStr, categories);
+    }
+
+    /**
+     * 将轻量条目转换为Article，包含HTML转Markdown等重处理
+     */
+    public static Article buildArticle(ParsedItem item, RssSource source) {
+        if (item == null || source == null) return null;
+        return buildFinalArticle(source, item.title(), item.link(), item.guid(),
+                item.description(), item.rawContent(), item.author(), item.pubDateStr(), item.categories());
     }
 
     /**
@@ -601,6 +631,24 @@ public final class RssUtils {
         RSS_1_0,    // RSS 1.0 / RDF (rdf:RDF/item)
         ATOM,       // Atom (feed/entry)
         UNKNOWN
+    }
+
+    /**
+     * 轻量解析结果
+     */
+    public record ParsedItem(
+            String title,
+            String link,
+            String guid,
+            String description,
+            String rawContent,
+            String author,
+            String pubDateStr,
+            String categories
+    ) {
+        public boolean hasIdentity() {
+            return !isBlank(guid) || !isBlank(link);
+        }
     }
 
     /**

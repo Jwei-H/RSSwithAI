@@ -93,6 +93,13 @@ public class ArticleService {
                 .map(ArticleDTO::from);
     }
 
+    public boolean existsBySourceAndGuidOrLink(Long sourceId, String guid, String link) {
+        if (sourceId == null) {
+            return false;
+        }
+        return articleRepository.existsBySourceIdAndGuidOrLink(sourceId, guid, link);
+    }
+
     /**
      * 获取文章增强信息
      */

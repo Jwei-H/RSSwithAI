@@ -98,10 +98,20 @@ public class RssFetcherService {
                         }
                     }
 
-                    List<Article> articles = RssUtils.parseContent(content, source);
+                    List<RssUtils.ParsedItem> items = RssUtils.parseItems(content, source);
 
                     int savedCount = 0;
-                    for (Article article : articles) {
+                    for (RssUtils.ParsedItem item : items) {
+                        if (item.hasIdentity() && articleService.existsBySourceAndGuidOrLink(
+                                source.getId(), item.guid(), item.link())) {
+                            continue;
+                        }
+
+                        Article article = RssUtils.buildArticle(item, source);
+                        if (article == null) {
+                            continue;
+                        }
+
                         Article savedArticle = articleService.saveArticleIfNotExists(article);
                         if (savedArticle != null) {
                             log.debug("保存新文章: title={}, guid={}", article.getTitle(), article.getGuid());
