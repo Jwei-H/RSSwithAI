@@ -12,8 +12,8 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    minify: false,
-    cssMinify: false,
+    minify: 'esbuild', // Open esbuild minification (fast, good effect)
+    cssMinify: true,   // Open CSS minification
     sourcemap: false,
     reportCompressedSize: false,
     chunkSizeWarningLimit: 2048,
