@@ -11,7 +11,7 @@ RUN mvn clean package -DskipTests -Dmaven.wagon.http.retryHandler.count=3
 FROM node:22-alpine AS build-user
 WORKDIR /app
 # Optimize Node memory for 2GB server (leave ~500MB for OS/Daemon)
-ENV NODE_OPTIONS="--max-old-space-size=1536"
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 COPY fronted-user/package.json ./
 # Use Aliyun mirror for faster install in China
 RUN npm config set registry https://registry.npmmirror.com/
@@ -25,7 +25,7 @@ RUN npm run build
 FROM node:22-alpine AS build-admin
 WORKDIR /app
 # Optimize Node memory for 2GB server (leave ~500MB for OS/Daemon)
-ENV NODE_OPTIONS="--max-old-space-size=1536"
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 COPY fronted-admin/package.json ./
 # Use Aliyun mirror for faster install in China
 RUN npm config set registry https://registry.npmmirror.com/
