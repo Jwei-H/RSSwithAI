@@ -36,11 +36,6 @@ RUN npm run build
 
 # ========== Stage 4: Final Runtime Image ==========
 FROM eclipse-temurin:25-jre
-# Switch to Aliyun mirrors for speed/reliability in CN
-RUN if [ -f /etc/apt/sources.list ]; then sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list && sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list; fi
-RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources; fi
-# Handle Ubuntu based images if applicable
-RUN if [ -f /etc/apt/sources.list ]; then sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list && sed -i 's/security.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list; fi
 
 # Install Nginx
 # Note: eclipse-temurin is usually Ubuntu-based.
