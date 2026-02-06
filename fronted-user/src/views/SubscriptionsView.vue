@@ -76,6 +76,12 @@ const activeSubscriptionName = computed(() => {
     : activeSubscription.value.content
 })
 
+const orderedSubscriptions = computed(() => {
+  const rssSubscriptions = subscriptions.value.filter((item) => item.type === 'RSS')
+  const topicSubscriptions = subscriptions.value.filter((item) => item.type === 'TOPIC')
+  return [...rssSubscriptions, ...topicSubscriptions]
+})
+
 const getFeedCacheKey = (id: number | null) => (id === null ? 'all' : `sub:${id}`)
 
 const isSameFeed = (next: ArticleFeed[], current: ArticleFeed[]) => {
@@ -410,30 +416,37 @@ watch(
           @click="onSelectSubscription(null)">
           全部订阅
         </button>
-        <div v-if="loadingSubscriptions" class="py-4">
-          <LoadingState />
-        </div>
-        <div v-else class="space-y-2">
-          <div v-for="item in subscriptions" :key="item.id"
-            class="flex w-full items-center justify-between rounded-xl border border-border px-3 py-3 text-left text-sm"
-            :class="activeSubscriptionId === item.id ? 'bg-muted' : 'bg-card'" role="button" tabindex="0"
-            @click="onSelectSubscription(item.id)">
-            <div class="flex min-w-0 flex-1 items-center gap-2">
-              <div v-if="item.type === 'RSS' && item.icon" class="h-6 w-6 flex-shrink-0">
-                <img :src="item.icon" :alt="item.name" class="h-full w-full rounded object-cover"
-                  @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
+        <template v-if="loadingSubscriptions">
+          <div class="py-4">
+            <LoadingState />
+          </div>
+        </template>
+        <template v-else>
+          <div class="space-y-2">
+            <div v-for="item in orderedSubscriptions" :key="item.id"
+              class="flex w-full items-center justify-between rounded-xl border border-border px-3 py-3 text-left text-sm"
+              :class="activeSubscriptionId === item.id ? 'bg-muted' : 'bg-card'" role="button" tabindex="0"
+              @click="onSelectSubscription(item.id)">
+              <div class="flex min-w-0 flex-1 items-center gap-2">
+                <div v-if="item.type === 'RSS' && item.icon" class="h-6 w-6 flex-shrink-0">
+                  <img :src="item.icon" :alt="item.name" class="h-full w-full rounded object-cover"
+                    @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-foreground" :class="item.type === 'TOPIC' ? 'line-clamp-2' : 'line-clamp-1'">
+                    {{ item.type === 'RSS' ? item.name : item.content }}
+                  </p>
+                  <p class="text-xs text-muted-foreground">
+                    {{ item.type === 'RSS' ? item.category : 'TOPIC' }}
+                  </p>
+                </div>
               </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-foreground" :class="item.type === 'TOPIC' ? 'line-clamp-2' : 'line-clamp-1'">
-                  {{ item.type === 'RSS' ? item.name : item.content }}
-                </p>
-                <p class="text-xs text-muted-foreground">
-                  {{ item.type === 'RSS' ? item.category : 'TOPIC' }}
-                </p>
-              </div>
+              <button class="text-xs text-muted-foreground hover:text-foreground" @click.stop="onCancelSubscription(item)">
+                取消
+              </button>
             </div>
           </div>
-        </div>
+        </template>
       </div>
     </div>
   </div>
@@ -470,7 +483,7 @@ watch(
           </div>
           <ErrorState v-else-if="subscriptionsError" :title="subscriptionsError" :onRetry="() => loadSubscriptions(false)" />
           <div v-else class="mt-4 space-y-2">
-            <div v-for="item in subscriptions" :key="item.id"
+            <div v-for="item in orderedSubscriptions" :key="item.id"
               class="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-left text-xs"
               :class="activeSubscriptionId === item.id ? 'bg-muted' : 'bg-card'" role="button" tabindex="0"
               @click="onSelectSubscription(item.id)">
