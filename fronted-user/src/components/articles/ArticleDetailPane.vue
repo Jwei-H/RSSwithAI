@@ -61,50 +61,62 @@ const escapeSelector = (value: string) => {
   return value.replace(/([ #;?%&,.+*~'":!^$\[\]()=>|\/])/g, '\\$1')
 }
 
+const getScrollContainer = () => (window.innerWidth < 768 ? mobileScrollRef.value : leftPaneRef.value)
+
 const setupCollapseToggle = () => {
   // 获取 markdown 内容容器（优先选择可见容器）
-  const isMobile = window.innerWidth < 768
   const markdownBodies = document.querySelectorAll<HTMLElement>('.markdown-body')
   
   // 对所有 markdown 内容应用折叠逻辑
   markdownBodies.forEach((markdownBody) => {
     // 找到所有折叠按钮
     const toggleButtons = markdownBody.querySelectorAll<HTMLButtonElement>('.md-heading-toggle')
-    
+
+    const toggleHeading = (heading: HTMLElement, btn: HTMLButtonElement) => {
+      const contentWrapper = getContentBetweenHeadings(heading, markdownBody)
+      const isExpanded = btn.getAttribute('aria-expanded') === 'true'
+      btn.setAttribute('aria-expanded', isExpanded ? 'false' : 'true')
+
+      if (contentWrapper) {
+        contentWrapper.classList.toggle('collapsed', isExpanded)
+      }
+
+      if (isExpanded) {
+        collapsedHeadings.value.add(heading.id)
+      } else {
+        collapsedHeadings.value.delete(heading.id)
+      }
+    }
+
     toggleButtons.forEach((btn) => {
-      // 检查是否已经有事件监听（避免重复）
       if (btn.dataset.setupDone === 'true') return
       btn.dataset.setupDone = 'true'
-      
-      // 添加事件监听
+
       btn.addEventListener('click', (e) => {
         e.preventDefault()
         e.stopPropagation()
-        
+
         const headingId = btn.getAttribute('data-toggle-id')
         if (!headingId) return
-        
+
         const heading = markdownBody.querySelector<HTMLElement>(`#${escapeSelector(headingId)}`)
         if (!heading) return
-        
-        // 获取下一个兄弟元素，直到找到下一个标题或到达末尾
-        const contentWrapper = getContentBetweenHeadings(heading, markdownBody)
-        
-        const isExpanded = btn.getAttribute('aria-expanded') === 'true'
-        btn.setAttribute('aria-expanded', isExpanded ? 'false' : 'true')
-        
-        // 切换 collapsed 类
-        if (contentWrapper) {
-          contentWrapper.classList.toggle('collapsed', isExpanded)
-        }
-        
-        // 更新状态
-        const headingIdVal = heading.id
-        if (isExpanded) {
-          collapsedHeadings.value.add(headingIdVal)
-        } else {
-          collapsedHeadings.value.delete(headingIdVal)
-        }
+
+        toggleHeading(heading, btn)
+      })
+    })
+
+    const headings = markdownBody.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')
+    headings.forEach((heading) => {
+      if (heading.dataset.collapseSetup === 'true') return
+      const btn = heading.querySelector<HTMLButtonElement>('.md-heading-toggle')
+      if (!btn) return
+      heading.dataset.collapseSetup = 'true'
+
+      heading.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement
+        if (target.closest('.md-heading-toggle')) return
+        toggleHeading(heading, btn)
       })
     })
   })
@@ -179,20 +191,21 @@ const getContentBetweenHeadings = (startHeading: HTMLElement, container: HTMLEle
 }
 
 const getHeadingElements = () => {
-  if (!leftPaneRef.value) return []
-  return Array.from(leftPaneRef.value.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')).filter(
+  const container = getScrollContainer()
+  if (!container) return []
+  return Array.from(container.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')).filter(
     (el) => !!el.id
   )
 }
 
 const updateActiveHeading = () => {
-  if (!leftPaneRef.value) return
+  const container = getScrollContainer()
+  if (!container) return
   const headings = getHeadingElements()
   if (!headings.length) {
     activeHeadingId.value = null
     return
   }
-  const container = leftPaneRef.value
   const marker = container.scrollTop + container.clientHeight * 0.25
   let current = headings[0]
   for (const heading of headings) {
@@ -252,10 +265,10 @@ const updateReadingProgress = () => {
 }
 
 const scrollToHeading = (id: string) => {
-  if (!leftPaneRef.value) return
-  const target = leftPaneRef.value.querySelector<HTMLElement>(`#${escapeSelector(id)}`)
+  const container = getScrollContainer()
+  if (!container) return
+  const target = container.querySelector<HTMLElement>(`#${escapeSelector(id)}`)
   if (!target) return
-  const container = leftPaneRef.value
   const offset = Math.round(container.clientHeight * 0.25)
   container.scrollTo({
     top: Math.max(0, target.offsetTop - offset),
@@ -523,12 +536,31 @@ onUnmounted(() => {
           <p v-else class="mt-2 text-sm text-muted-foreground">暂无关键信息</p>
         </div>
 
-        <!-- 4. 文章正文 -->
+        <!-- 4. 目录 -->
+        <div v-if="tocItems.length" class="rounded-2xl border border-border bg-card p-4">
+          <div class="flex items-center gap-2">
+            <ListTree class="h-4 w-4 text-primary" />
+            <h3 class="text-sm font-semibold text-foreground">目录</h3>
+          </div>
+          <ul class="mt-3 space-y-2 text-sm text-muted-foreground/70">
+            <li v-for="item in tocItems" :key="`mobile-toc-${item.id}`" :style="{ paddingLeft: `${(item.level - 1) * 12}px` }">
+              <button type="button"
+                class="line-clamp-1 w-full text-left underline-offset-4 hover:text-sky-600 hover:underline" :class="activeHeadingId === item.id
+                  ? 'font-semibold text-sky-600'
+                  : 'text-muted-foreground/70'
+                  " :title="item.text" @click="scrollToHeading(item.id)">
+                {{ item.text }}
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 5. 文章正文 -->
         <div class="rounded-2xl border border-border bg-card p-4">
           <div class="markdown-body" v-html="renderMarkdown(article.content)" />
         </div>
 
-        <!-- 5. 相似推荐 -->
+        <!-- 6. 相似推荐 -->
         <div class="rounded-2xl border border-border bg-card p-4">
           <div class="flex items-center gap-2">
             <ThumbsUp class="h-4 w-4 text-primary" />
