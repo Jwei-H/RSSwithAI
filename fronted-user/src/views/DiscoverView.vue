@@ -23,6 +23,7 @@ const route = useRoute()
 const router = useRouter()
 
 const searchQuery = ref('')
+const committedQuery = ref('')
 const searchResults = ref<ArticleFeed[]>([])
 const searchLoading = ref(false)
 
@@ -110,8 +111,7 @@ const loadSources = async (forceRefresh = false) => {
 
 const { sentinel } = useInfiniteScroll(loadSources, listContainer)
 
-const search = async () => {
-  const query = searchQuery.value.trim()
+const search = async (query: string) => {
   if (!query) {
     searchResults.value = []
     return
@@ -122,6 +122,23 @@ const search = async () => {
   } finally {
     searchLoading.value = false
   }
+}
+
+const onSearchSubmit = async () => {
+  const query = searchQuery.value.trim()
+  committedQuery.value = query
+
+  const nextQuery = { ...route.query }
+  if (query) {
+    nextQuery.q = query
+  } else {
+    delete nextQuery.q
+  }
+  router.push({ path: route.path, query: nextQuery }).catch(() => {
+    // 忽略导航被中止的错误
+  })
+
+  await search(query)
 }
 
 const onSubscribeHot = async (item: HotEvent) => {
@@ -240,23 +257,6 @@ watch(activeCategory, () => {
   loadSources(false)
 })
 
-watch(searchQuery, () => {
-  if (searchQuery.value.trim()) {
-    // 更新 URL 查询参数
-    const query = { ...route.query, q: searchQuery.value.trim() }
-    router.push({ path: route.path, query }).catch(() => {
-      // 忽略导航被中止的错误
-    })
-    search()
-  } else {
-    // 清除搜索参数
-    const query = { ...route.query }
-    delete query.q
-    router.push({ path: route.path, query }).catch(() => {
-      // 忽略导航被中止的错误
-    })
-  }
-})
 
 onMounted(() => {
   // 从 URL 查询参数恢复状态
@@ -271,6 +271,8 @@ onMounted(() => {
 
   if (searchQ) {
     searchQuery.value = String(searchQ)
+    committedQuery.value = String(searchQ)
+    search(committedQuery.value)
   }
 
   loadHotEvents()
@@ -393,16 +395,16 @@ watch(
           </div>
           <div class="mt-3 flex items-center gap-2 md:mt-4 md:gap-3">
             <input v-model="searchQuery" placeholder="搜索关键字"
-              class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" />
+              class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" @keydown.enter="onSearchSubmit" />
             <button class="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
-              :disabled="searchLoading" @click="search">
+              :disabled="searchLoading" @click="onSearchSubmit">
               搜索
             </button>
           </div>
         </div>
 
         <div ref="listContainer" class="flex-1 overflow-y-auto scrollbar-thin">
-          <div v-if="searchQuery" class="space-y-3">
+          <div v-if="committedQuery" class="space-y-3">
             <ArticleCard v-for="item in searchResults" :key="item.id" :article="item" @open="onOpenArticle" />
             <EmptyState v-if="!searchResults.length && !searchLoading" title="暂无搜索结果" />
           </div>

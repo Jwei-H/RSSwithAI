@@ -43,6 +43,7 @@ const feedError = ref('')
 const hasMore = ref(true)
 
 const searchQuery = ref('')
+const committedQuery = ref('')
 const searchLoading = ref(false)
 const searchResults = ref<ArticleFeed[]>([])
 
@@ -124,7 +125,7 @@ const applyFeedCache = (id: number | null): boolean => {
 }
 
 const persistFeedCache = () => {
-  if (searchQuery.value.trim()) return
+  if (committedQuery.value) return
   cache.setSubscriptionFeed(getFeedCacheKey(activeSubscriptionId.value), feedList.value, feedCursor.value, hasMore.value)
 }
 
@@ -151,7 +152,7 @@ const resetFeed = () => {
 }
 
 const loadFeed = async () => {
-  if (feedLoading.value || !hasMore.value || searchQuery.value.trim()) return
+  if (feedLoading.value || !hasMore.value || committedQuery.value) return
   feedLoading.value = true
   feedError.value = ''
   try {
@@ -177,7 +178,7 @@ const loadFeed = async () => {
 }
 
 const refreshFeed = async (silent = false) => {
-  if (searchQuery.value.trim()) return
+  if (committedQuery.value) return
   const showLoading = !silent && feedList.value.length === 0
   if (showLoading) feedLoading.value = true
   feedError.value = ''
@@ -220,8 +221,7 @@ const loadWordCloud = async () => {
   }
 }
 
-const search = async () => {
-  const query = searchQuery.value.trim()
+const search = async (query: string) => {
   if (!query) {
     searchResults.value = []
     return
@@ -234,6 +234,23 @@ const search = async () => {
   } finally {
     searchLoading.value = false
   }
+}
+
+const onSearchSubmit = async () => {
+  const query = searchQuery.value.trim()
+  committedQuery.value = query
+
+  const nextQuery = { ...route.query }
+  if (query) {
+    nextQuery.q = query
+  } else {
+    delete nextQuery.q
+  }
+  router.push({ path: route.path, query: nextQuery }).catch(() => {
+    // 忽略导航被中止的错误
+  })
+
+  await search(query)
 }
 
 const loadMore = () => {
@@ -335,24 +352,6 @@ watch(activeSubscriptionId, () => {
   loadWordCloud()
 })
 
-watch(searchQuery, () => {
-  if (searchQuery.value.trim()) {
-    // 更新 URL 中的搜索查询参数
-    const query = { ...route.query, q: searchQuery.value.trim() }
-    router.push({ path: route.path, query }).catch(() => {
-      // 忽略导航被中止的错误
-    })
-    search()
-  } else {
-    // 清除搜索参数
-    const query = { ...route.query }
-    delete query.q
-    router.push({ path: route.path, query }).catch(() => {
-      // 忽略导航被中止的错误
-    })
-    searchResults.value = []
-  }
-})
 
 onMounted(async () => {
   // 从 URL 查询参数恢复状态
@@ -366,6 +365,8 @@ onMounted(async () => {
 
   if (searchQ) {
     searchQuery.value = String(searchQ)
+    committedQuery.value = String(searchQ)
+    await search(committedQuery.value)
   }
 
   const usedSubscriptionsCache = applySubscriptionsCache()
@@ -534,7 +535,7 @@ watch(
         </div>
         <div class="mt-3 flex items-center gap-2 md:mt-4 md:gap-3">
           <input v-model="searchQuery" placeholder="在订阅中搜索"
-            class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" />
+            class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" @keydown.enter="onSearchSubmit" />
           <button class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs transition"
             :class="showUnreadOnly ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'"
             @click="showUnreadOnly = !showUnreadOnly">
@@ -544,7 +545,7 @@ watch(
           </button>
           <button
             class="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
-            :disabled="searchLoading" @click="search">
+            :disabled="searchLoading" @click="onSearchSubmit">
             <Search class="h-3.5 w-3.5" />
             <span class="hidden sm:inline">搜索</span>
           </button>
@@ -552,12 +553,12 @@ watch(
       </div>
 
       <div ref="listContainer" class="flex-1 space-y-3 overflow-y-auto scrollbar-thin">
-        <LoadingState v-if="feedLoading && !feedList.length && !searchQuery" />
-        <EmptyState v-else-if="!feedList.length && !feedLoading && !searchQuery" title="暂无内容"
+        <LoadingState v-if="feedLoading && !feedList.length && !committedQuery" />
+        <EmptyState v-else-if="!feedList.length && !feedLoading && !committedQuery" title="暂无内容"
           description="订阅 RSS 或创建主题以生成时间线" />
         <ErrorState v-else-if="feedError" :title="feedError" :onRetry="loadFeed" />
 
-        <div v-if="searchQuery" class="space-y-3">
+        <div v-if="committedQuery" class="space-y-3">
           <ArticleCard v-for="item in searchResults" :key="item.id" :article="item" @open="onOpenArticle"
             @hover="onHoverArticle" @leave="onLeaveArticle" />
           <EmptyState v-if="!searchResults.length && !searchLoading" title="没有搜索结果" description="尝试换个关键词" />
