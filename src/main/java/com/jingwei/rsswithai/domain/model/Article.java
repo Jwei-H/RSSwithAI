@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
         @Index(name = "idx_article_pub_date", columnList = "pubDate")
 /*实际上还有：
 @Index(name = "idx_article_source_pubdate_covered", columnList = "source_id, pubDate")
-include了元信息字段*/
+include了source_name, title, word_count, cover_image这些字段*/
 })
 @Getter
 @Setter

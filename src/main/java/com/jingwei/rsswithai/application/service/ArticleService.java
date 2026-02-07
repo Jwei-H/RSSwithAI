@@ -138,8 +138,8 @@ public class ArticleService {
 
     @Transactional(readOnly = true)
     public Page<ArticleFeedDTO> listFavoriteArticles(Long userId, Pageable pageable) {
-        return articleFavoriteRepository.findFavoriteArticles(userId, pageable)
-                .map(ArticleFeedDTO::from);
+        return articleRepository.findFavoriteFeedByUserId(userId, pageable)
+            .map(this::toFeedDto);
     }
 
     @Transactional(readOnly = true)
@@ -200,43 +200,44 @@ public class ArticleService {
             return List.of();
         }
 
-        Map<Long, Article> articleMap = toArticleMap(allIds);
+        Map<Long, ArticleRepository.ArticleFeedView> feedMap = toFeedViewMap(allIds);
 
         return allIds.stream()
-                .map(articleMap::get)
+            .map(feedMap::get)
                 .filter(Objects::nonNull)
-                .map(article -> {
+            .map(feed -> {
                     double score = 0.0;
 
                     // 1. Vector Score (Relevance): 1 - distance
                     // OpenAI distance is 0..2 (Cosine Distance). We map it to score.
                     // Lower distance = Higher score.
-                    Double distance = vectorDistanceMap.get(article.getId());
+                    Double distance = vectorDistanceMap.get(feed.getId());
                     if (distance != null) {
                         // Weight=1.5 implies semantic match is very important
                         score += (1.0 - distance) * 1.5;
                     }
 
                     // 2. Keyword Score (Exactness): Fixed bonus
-                    if (fuzzyIds != null && fuzzyIds.contains(article.getId())) {
+                    if (fuzzyIds != null && fuzzyIds.contains(feed.getId())) {
                         score += 1.0;
                     }
 
                     // 3. Time Decay (Freshness): Gaussian or Linear decay?
                     // Let's use Simple Logic: Score = Score / (1 + age_in_days * 0.1)
                     // 10 days old => score / 2.
-                    long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(article.getPubDate(),
-                            LocalDateTime.now());
+                        LocalDateTime pubDate = feed.getPubDate();
+                        long daysDiff = pubDate == null ? 0
+                            : java.time.temporal.ChronoUnit.DAYS.between(pubDate, LocalDateTime.now());
                     if (daysDiff < 0)
                         daysDiff = 0; // Future articles treated as now
 
                     double decay = 1.0 / (1.0 + daysDiff * 0.1);
                     double finalScore = score * decay;
 
-                    return Map.entry(article, finalScore);
+                    return Map.entry(feed, finalScore);
                 })
-                .sorted(Map.Entry.<Article, Double>comparingByValue().reversed())
-                .map(entry -> ArticleFeedDTO.from(entry.getKey()))
+                .sorted(Map.Entry.<ArticleRepository.ArticleFeedView, Double>comparingByValue().reversed())
+                .map(entry -> toFeedDto(entry.getKey()))
                 .toList();
     }
 
@@ -301,11 +302,11 @@ public class ArticleService {
             return List.of();
         }
 
-        Map<Long, Article> articleMap = toArticleMap(similarIds);
+        Map<Long, ArticleRepository.ArticleFeedView> feedMap = toFeedViewMap(similarIds);
         return similarIds.stream()
-                .map(articleMap::get)
+            .map(feedMap::get)
                 .filter(Objects::nonNull)
-                .map(ArticleFeedDTO::from)
+            .map(this::toFeedDto)
                 .toList();
     }
 
@@ -360,20 +361,32 @@ public class ArticleService {
      * 根据RSS源ID分页获取文章（FeedDTO）
      */
     public Page<ArticleFeedDTO> getArticleFeedsBySource(Long sourceId, Pageable pageable) {
-        return articleRepository.findBySourceIdOrderByPubDateDesc(sourceId, pageable)
-                .map(ArticleFeedDTO::from);
+        return articleRepository.findFeedBySourceId(sourceId, pageable)
+            .map(this::toFeedDto);
+    }
+
+    private ArticleFeedDTO toFeedDto(ArticleRepository.ArticleFeedView view) {
+        return ArticleFeedDTO.of(
+            view.getId(),
+            view.getSourceId(),
+            view.getSourceName(),
+            view.getTitle(),
+            view.getCoverImage(),
+            view.getPubDate(),
+            view.getWordCount());
     }
 
     private boolean hasVector(Long articleId) {
         return articleExtraRepository.existsByArticleIdAndVectorIsNotNull(articleId);
     }
 
-    private Map<Long, Article> toArticleMap(Collection<Long> ids) {
+    private Map<Long, ArticleRepository.ArticleFeedView> toFeedViewMap(Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return Map.of();
         }
-        return articleRepository.findAllById(ids).stream()
-                .collect(Collectors.toMap(Article::getId, article -> article));
+        List<ArticleRepository.ArticleFeedView> feeds = articleRepository.findFeedByIds(new ArrayList<>(ids));
+        return feeds.stream()
+                .collect(Collectors.toMap(ArticleRepository.ArticleFeedView::getId, feed -> feed));
     }
 
     private String toPgVectorLiteral(float[] vector) {
