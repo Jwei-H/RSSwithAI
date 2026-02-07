@@ -5,7 +5,7 @@ COPY settings.xml /usr/share/maven/conf/settings.xml
 COPY pom.xml .
 COPY src ./src
 # Skip tests to speed up build, adding retry to help with network flakes
-RUN mvn clean package -DskipTests -Dmaven.wagon.http.retryHandler.count=3
+RUN mvn package -DskipTests -Dmaven.wagon.http.retryHandler.count=3
 
 # ========== Stage 2: Build User Frontend (Node) ==========
 FROM node:22-alpine AS build-user
