@@ -5,7 +5,8 @@ COPY settings.xml /usr/share/maven/conf/settings.xml
 COPY pom.xml .
 COPY src ./src
 # Skip tests to speed up build, adding retry to help with network flakes
-RUN mvn package -DskipTests -Dmaven.wagon.http.retryHandler.count=3
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn package -DskipTests -Dmaven.wagon.http.retryHandler.count=3
 
 # ========== Stage 2: Build User Frontend (Node) ==========
 FROM node:22-alpine AS build-user
@@ -15,7 +16,8 @@ ENV NODE_OPTIONS="--max-old-space-size=2048"
 COPY fronted-user/package.json ./
 # Use Aliyun mirror for faster install in China
 RUN npm config set registry https://registry.npmmirror.com/
-RUN npm install
+RUN --mount=type=cache,target=/root/.npm \
+    npm install
 COPY fronted-user/ .
 # Ensure VITE_API_BASE_URL is relative for web hosting, OR empty to default to code logic
 ENV VITE_API_BASE_URL=""
@@ -29,7 +31,8 @@ ENV NODE_OPTIONS="--max-old-space-size=2048"
 COPY fronted-admin/package.json ./
 # Use Aliyun mirror for faster install in China
 RUN npm config set registry https://registry.npmmirror.com/
-RUN npm install
+RUN --mount=type=cache,target=/root/.npm \
+    npm install
 COPY fronted-admin/ .
 ENV VITE_API_BASE_URL=""
 RUN npm run build
