@@ -8,13 +8,29 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.util.AntPathMatcher;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 public class FrontJwtFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+    private static final List<PublicEndpoint> PUBLIC_ENDPOINTS = List.of(
+            new PublicEndpoint("POST", "/api/login"),
+            new PublicEndpoint("POST", "/api/register"),
+            new PublicEndpoint("POST", "/api/refresh"),
+            new PublicEndpoint("GET", "/api/front/v1/rss-sources"),
+            new PublicEndpoint("GET", "/api/front/v1/trends/wordcloud"),
+            new PublicEndpoint("GET", "/api/front/v1/trends/hotevents"),
+            new PublicEndpoint("GET", "/api/front/v1/articles/search"),
+            new PublicEndpoint("GET", "/api/front/v1/articles/source/**"),
+            new PublicEndpoint("GET", "/api/front/v1/articles/*"),
+            new PublicEndpoint("GET", "/api/front/v1/articles/*/extra"),
+            new PublicEndpoint("GET", "/api/front/v1/articles/*/recommendations")
+    );
 
     public FrontJwtFilter(JwtUtils jwtUtils) {
         this.jwtUtils = jwtUtils;
@@ -35,10 +51,7 @@ public class FrontJwtFilter extends OncePerRequestFilter {
             return true;
         }
 
-        // Public front endpoints
-        return path.equals("/api/login")
-                || path.equals("/api/register")
-                || path.equals("/api/refresh");
+        return false;
     }
 
     @Override
@@ -51,8 +64,22 @@ public class FrontJwtFilter extends OncePerRequestFilter {
             return;
         }
 
+        boolean isPublic = isPublicEndpoint(request);
         String token = extractBearerToken(request);
-        if (token == null || !jwtUtils.validateToken(token)) {
+        if (token == null) {
+            if (isPublic) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        if (!jwtUtils.validateToken(token)) {
+            if (isPublic) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
@@ -61,6 +88,10 @@ public class FrontJwtFilter extends OncePerRequestFilter {
         String username = jwtUtils.extractUsername(token);
 
         if (userId == null || username == null || username.isBlank()) {
+            if (isPublic) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
@@ -74,6 +105,22 @@ public class FrontJwtFilter extends OncePerRequestFilter {
                         throw new RuntimeException(e);
                     }
                 });
+    }
+
+    private static boolean isPublicEndpoint(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+        if (path == null || method == null) {
+            return false;
+        }
+
+        return PUBLIC_ENDPOINTS.stream().anyMatch(rule -> rule.matches(method, path));
+    }
+
+    private record PublicEndpoint(String method, String pattern) {
+        private boolean matches(String requestMethod, String path) {
+            return method.equalsIgnoreCase(requestMethod) && PATH_MATCHER.match(pattern, path);
+        }
     }
 
     private static String extractBearerToken(HttpServletRequest request) {

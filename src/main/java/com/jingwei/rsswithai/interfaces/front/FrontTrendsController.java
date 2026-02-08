@@ -22,14 +22,14 @@ public class FrontTrendsController {
 
     @GetMapping("/wordcloud")
     public ResponseEntity<List<WordCloudItemDTO>> getWordCloud(@RequestParam(required = false) Long sourceId) {
-        long userId = UserContext.currentUserId();
+        Long userId = UserContext.currentUserIdOrNull();
         List<WordCloudItemDTO> result = trendsService.getWordCloud(sourceId, userId);
         return ResponseEntity.ok(result);
     }
 
     @GetMapping("/hotevents")
     public ResponseEntity<List<HotEventDTO>> getHotEvents() {
-        long userId = UserContext.currentUserId();
+        Long userId = UserContext.currentUserIdOrNull();
         List<HotEventDTO> result = trendsService.getHotEvents(userId);
         return ResponseEntity.ok(result);
     }

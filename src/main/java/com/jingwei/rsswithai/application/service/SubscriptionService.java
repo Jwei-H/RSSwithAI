@@ -43,11 +43,16 @@ public class SubscriptionService {
     private EntityManager entityManager;
 
     public Page<UserRssSourceDTO> listRssSources(Long userId, SourceCategory category, Pageable pageable) {
-        Map<Long, Long> subscriptionMap = subscriptionRepository
+        Map<Long, Long> subscriptionMap;
+        if (userId != null) {
+            subscriptionMap = subscriptionRepository
                 .findByUserIdAndTypeWithSource(userId, SubscriptionType.RSS).stream()
                 .filter(sub -> sub.getSource() != null)
                 .collect(Collectors.toMap(sub -> sub.getSource().getId(), Subscription::getId, (a, b) -> a,
-                        LinkedHashMap::new));
+                    LinkedHashMap::new));
+        } else {
+            subscriptionMap = Collections.emptyMap();
+        }
 
         Page<RssSource> page = category != null
                 ? rssSourceRepository.findByStatusAndCategory(SourceStatus.ENABLED, category, pageable)

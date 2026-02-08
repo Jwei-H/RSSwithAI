@@ -25,7 +25,7 @@ public class SubscriptionController {
     @GetMapping("/rss-sources")
     public ResponseEntity<Page<UserRssSourceDTO>> getRssSources(@PageableDefault(size = 20, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
                                                                @RequestParam(value = "category", required = false) SourceCategory category) {
-        Long userId = UserContext.currentUserId();
+        Long userId = UserContext.currentUserIdOrNull();
         return ResponseEntity.ok(subscriptionService.listRssSources(userId, category, pageable));
     }
 

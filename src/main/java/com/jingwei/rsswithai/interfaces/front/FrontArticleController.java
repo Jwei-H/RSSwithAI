@@ -25,7 +25,7 @@ public class FrontArticleController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ArticleDetailDTO> getArticle(@PathVariable Long id) {
-        ArticleDetailDTO article = articleService.getArticle(id, UserContext.currentUserId());
+        ArticleDetailDTO article = articleService.getArticle(id, UserContext.currentUserIdOrNull());
         return ResponseEntity.ok(article);
     }
 
@@ -42,7 +42,7 @@ public class FrontArticleController {
     public ResponseEntity<List<ArticleFeedDTO>> searchArticles(
             @RequestParam("query") String query,
             @RequestParam(value = "searchScope", defaultValue = "ALL") SearchScope searchScope) {
-        List<ArticleFeedDTO> results = articleService.searchArticles(query, searchScope, UserContext.currentUserId());
+        List<ArticleFeedDTO> results = articleService.searchArticles(query, searchScope, UserContext.currentUserIdOrNull());
         return ResponseEntity.ok(results);
     }
 

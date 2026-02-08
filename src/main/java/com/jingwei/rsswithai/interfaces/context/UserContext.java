@@ -15,7 +15,15 @@ public final class UserContext {
         return USER_ID.orElseThrow(() -> new RuntimeException("Unauthorized"));
     }
 
+    public static Long currentUserIdOrNull() {
+        return USER_ID.isBound() ? USER_ID.get() : null;
+    }
+
     public static String currentUsername() {
         return USERNAME.orElseThrow(() -> new RuntimeException("Unauthorized"));
+    }
+
+    public static String currentUsernameOrNull() {
+        return USERNAME.isBound() ? USERNAME.get() : null;
     }
 }

@@ -51,6 +51,9 @@ public class ArticleService {
     public ArticleDetailDTO getArticle(Long id, Long userId) {
         Article article = articleRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("文章不存在: " + id));
+        if (userId == null) {
+            return ArticleDetailDTO.from(article, false);
+        }
         boolean isFavorite = articleFavoriteRepository.existsByUserIdAndArticle_Id(userId, id);
         return ArticleDetailDTO.from(article, isFavorite);
     }
@@ -147,6 +150,10 @@ public class ArticleService {
         String trimmed = query == null ? "" : query.trim();
         if (trimmed.isEmpty()) {
             throw new IllegalArgumentException("Search query cannot be blank");
+        }
+
+        if (userId == null && scope != FrontArticleController.SearchScope.ALL) {
+            return List.of();
         }
 
         return switch (scope) {
