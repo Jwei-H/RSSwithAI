@@ -4,17 +4,17 @@ import { isAuthenticated } from '../stores/session'
 const routes = [
   {
     path: '/',
-    redirect: '/subscriptions'
+    redirect: '/discover'
   },
   {
     path: '/login',
     component: () => import('../views/LoginView.vue'),
-    meta: { public: true }
+    meta: { public: true, shell: true }
   },
   {
     path: '/register',
     component: () => import('../views/RegisterView.vue'),
-    meta: { public: true }
+    meta: { public: true, shell: false }
   },
   {
     path: '/subscriptions',
@@ -22,7 +22,8 @@ const routes = [
   },
   {
     path: '/discover',
-    component: () => import('../views/DiscoverView.vue')
+    component: () => import('../views/DiscoverView.vue'),
+    meta: { public: true, shell: true }
   },
   {
     path: '/favorites',
@@ -39,7 +40,7 @@ const routes = [
   {
     path: '/:pathMatch(.*)*',
     component: () => import('../views/NotFound.vue'),
-    meta: { public: true }
+    meta: { public: true, shell: false }
   }
 ]
 

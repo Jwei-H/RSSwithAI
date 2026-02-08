@@ -9,7 +9,7 @@ import { computed, watch } from 'vue'
 
 const ui = useUiStore()
 const route = useRoute()
-const showShell = computed(() => !route.meta.public)
+const showShell = computed(() => route.meta.shell !== false)
 const showOverlay = computed(
   () =>
     ui.detailOpen &&

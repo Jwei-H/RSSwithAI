@@ -1,6 +1,8 @@
+import router from '../router'
 import { getToken, useSessionStore } from '../stores/session'
+import { useToastStore } from '../stores/toast'
 
-const BASE_URL = 'http://123.249.32.164:9090'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
   status: number
@@ -11,6 +13,34 @@ export class ApiError extends Error {
     this.status = status
     this.payload = payload
   }
+}
+
+const AUTH_ENDPOINTS = new Set(['/api/login', '/api/register', '/api/refresh'])
+let lastUnauthorizedAt = 0
+
+function handleUnauthorized(path: string) {
+  if (AUTH_ENDPOINTS.has(path)) return
+  const now = Date.now()
+  if (now - lastUnauthorizedAt < 1200) return
+  lastUnauthorizedAt = now
+
+  const toast = useToastStore()
+  toast.push('请登录后使用订阅功能', 'error')
+
+  const current = router.currentRoute.value
+  if (current.path !== '/login') {
+    router
+      .push({ path: '/login', query: { redirect: current.fullPath } })
+      .catch(() => {
+        // ignore navigation failures
+      })
+  }
+}
+
+function shouldPromptLogin(path: string, method: string) {
+  if (AUTH_ENDPOINTS.has(path)) return false
+  if (method.toUpperCase() === 'GET') return false
+  return path.startsWith('/api/front/v1/') || path.startsWith('/api/user/')
 }
 
 async function refreshToken() {
@@ -37,6 +67,7 @@ export async function apiRequest<T>(
   retryOnUnauthorized = true
 ): Promise<T> {
   const token = getToken()
+  const method = options.method ?? 'GET'
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   }
@@ -49,10 +80,20 @@ export async function apiRequest<T>(
     headers.Authorization = `Bearer ${token}`
   }
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers
-  })
+  let response: Response
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers
+    })
+  } catch (error: any) {
+    if (!token && shouldPromptLogin(path, method)) {
+      handleUnauthorized(path)
+      throw new ApiError('Unauthorized', 401)
+    }
+    const message = error?.message || '网络异常，请稍后重试'
+    throw new ApiError(message, 0)
+  }
 
   if (response.status === 401 && retryOnUnauthorized) {
     const refreshed = await refreshToken()
@@ -64,6 +105,7 @@ export async function apiRequest<T>(
   if (response.status === 401) {
     const session = useSessionStore()
     session.clear()
+    handleUnauthorized(path)
   }
 
   if (!response.ok) {

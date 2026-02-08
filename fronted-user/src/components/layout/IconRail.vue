@@ -1,18 +1,29 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Bookmark, Grid2X2, History, Rss, UserRound } from 'lucide-vue-next'
+import { Bookmark, Grid2X2, History, LogIn, Rss, UserRound } from 'lucide-vue-next'
+import { useSessionStore } from '../../stores/session'
 
 const route = useRoute()
+const session = useSessionStore()
 
-const items = computed(() => [
-  { label: '订阅', to: '/subscriptions', icon: Rss },
-  { label: '频道广场', to: '/discover', icon: Grid2X2 },
-  { label: '收藏', to: '/favorites', icon: Bookmark },
-  { label: '历史', to: '/history', icon: History }
-])
+const items = computed(() => {
+  if (!session.isAuthed.value) {
+    return [{ label: '频道广场', to: '/discover', icon: Grid2X2 }]
+  }
+  return [
+    { label: '订阅', to: '/subscriptions', icon: Rss },
+    { label: '频道广场', to: '/discover', icon: Grid2X2 },
+    { label: '收藏', to: '/favorites', icon: Bookmark },
+    { label: '历史', to: '/history', icon: History }
+  ]
+})
 
-const profileItem = computed(() => ({ label: '个人中心', to: '/profile', icon: UserRound }))
+const profileItem = computed(() =>
+  session.isAuthed.value
+    ? { label: '个人中心', to: '/profile', icon: UserRound }
+    : { label: '登录', to: '/login', icon: LogIn }
+)
 </script>
 
 <template>

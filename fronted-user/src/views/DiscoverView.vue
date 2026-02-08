@@ -8,6 +8,7 @@ import RssSourceCard from '../components/discover/RssSourceCard.vue'
 import SourcePreviewDialog from '../components/discover/SourcePreviewDialog.vue'
 import LoadingState from '../components/common/LoadingState.vue'
 import EmptyState from '../components/common/EmptyState.vue'
+import { ApiError } from '../services/api'
 import { feedApi, rssApi, subscriptionApi, trendApi } from '../services/frontApi'
 import type { ArticleFeed, HotEvent, RssSource } from '../types'
 import { useToastStore } from '../stores/toast'
@@ -152,6 +153,7 @@ const onSubscribeHot = async (item: HotEvent) => {
     item.isSubscribed = true
     toast.push('热点已订阅', 'success')
   } catch (error: any) {
+    if (error instanceof ApiError && error.status === 401) return
     toast.push(error?.message || '订阅失败', 'error')
   }
 }
@@ -173,6 +175,7 @@ const onCreateTopic = async () => {
     toast.push('主题已订阅', 'success')
     topicInput.value = ''
   } catch (error: any) {
+    if (error instanceof ApiError && error.status === 401) return
     toast.push(error?.message || '创建主题失败', 'error')
   } finally {
     topicLoading.value = false
@@ -209,6 +212,7 @@ const onToggleSubscribe = async (source: RssSource) => {
       toast.push('订阅成功', 'success')
     }
   } catch (error: any) {
+    if (error instanceof ApiError && error.status === 401) return
     toast.push(error?.message || '操作失败', 'error')
   }
 }
