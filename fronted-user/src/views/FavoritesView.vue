@@ -206,7 +206,7 @@ watch(activeTab, (newTab) => {
       <div class="rounded-2xl border border-border bg-card p-4">
         <h3 class="text-sm font-semibold text-foreground">提示</h3>
         <ul class="mt-3 list-decimal pl-4 text-xs text-muted-foreground">
-          <li>点击文章进入详情即可收藏</li>
+          <li>收藏记录仅保存在本地</li>
           <li>收藏列表支持关键词搜索</li>
           <li>内容按发布时间倒序排列</li>
         </ul>

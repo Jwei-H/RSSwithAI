@@ -73,8 +73,8 @@ watch(
       <div class="rounded-2xl border border-border bg-card p-4">
         <h3 class="text-sm font-semibold text-foreground">提示</h3>
         <ul class="mt-3 list-decimal pl-4 text-xs text-muted-foreground">
-          <li>阅读进度会自动记录</li>
           <li>历史记录仅保存在本地</li>
+          <li>阅读进度会自动记录</li>
           <li>30 天后自动清理</li>
         </ul>
         <button v-if="historyStore.historyList.value.length > 0"
