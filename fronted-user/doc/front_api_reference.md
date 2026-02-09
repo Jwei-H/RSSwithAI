@@ -356,7 +356,7 @@ Invalid token
 
 **接口**: `GET /api/front/v1/rss-sources`
 
-**认证**: 需要
+**认证**: 不需要
 
 **查询参数**:
 
@@ -365,7 +365,7 @@ Invalid token
 | page | int | 否 | 0 | 页码（从0开始） |
 | size | int | 否 | 20 | 每页大小 |
 | sort | string | 否 | id,desc | 排序字段和方向 |
-| category | enum | 否 | - | 源分类（NEWS/TECH/SOCIETY/FINANCE/LIFESTYLE/OTHER） |
+| category | enum | 否 | - | 源分类（NEWS/TECH/PROGRAMMING/SOCIETY/FINANCE/LIFESTYLE/OTHER） |
 
 **响应** (200 OK):
 
@@ -409,6 +409,7 @@ Invalid token
 **枚举值 - SourceCategory**:
 - `NEWS`: 新闻
 - `TECH`: 科技
+- `PROGRAMMING`: 编程
 - `SOCIETY`: 社会
 - `FINANCE`: 财经
 - `LIFESTYLE`: 生活
@@ -682,7 +683,7 @@ Invalid token
 
 **接口**: `GET /api/front/v1/articles/source/{sourceId}`
 
-**认证**: 需要
+**认证**: 不需要
 
 **路径参数**:
 
@@ -731,7 +732,7 @@ Invalid token
 
 **接口**: `GET /api/front/v1/articles/{id}`
 
-**认证**: 需要
+**认证**: 不需要
 
 **路径参数**:
 
@@ -777,7 +778,7 @@ Invalid token
 
 **接口**: `GET /api/front/v1/articles/{id}/extra`
 
-**认证**: 需要
+**认证**: 不需要
 
 **路径参数**:
 
@@ -884,7 +885,7 @@ Invalid token
 
 **接口**: `GET /api/front/v1/articles/{id}/recommendations`
 
-**认证**: 需要
+**认证**: 不需要
 
 **路径参数**:
 
@@ -1083,7 +1084,7 @@ Invalid token
 
 **接口**: `GET /api/front/v1/trends/hotevents`
 
-**认证**: 需要
+**认证**: 不需要
 
 **响应** (200 OK):
 
@@ -1127,6 +1128,7 @@ Invalid token
 #### SourceCategory（RSS源分类）
 - `NEWS`: 新闻
 - `TECH`: 科技
+- `PROGRAMMING`: 编程
 - `SOCIETY`: 社会
 - `FINANCE`: 财经
 - `LIFESTYLE`: 生活

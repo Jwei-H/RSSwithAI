@@ -1,5 +1,5 @@
 export type SubscriptionType = 'RSS' | 'TOPIC'
-export type SourceCategory = 'NEWS' | 'TECH' | 'SOCIETY' | 'FINANCE' | 'LIFESTYLE' | 'OTHER'
+export type SourceCategory = 'NEWS' | 'TECH' | 'PROGRAMMING' | 'SOCIETY' | 'FINANCE' | 'LIFESTYLE' | 'OTHER'
 
 export type Subscription = {
   id: number

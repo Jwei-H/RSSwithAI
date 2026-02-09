@@ -36,8 +36,9 @@ const topicLoading = ref(false)
 
 const categories = [
   { label: '全部', value: '' },
-  { label: '新闻', value: 'NEWS' },
   { label: '科技', value: 'TECH' },
+  { label: '编程', value: 'PROGRAMMING' },
+  { label: '新闻', value: 'NEWS' },
   { label: '社会', value: 'SOCIETY' },
   { label: '财经', value: 'FINANCE' },
   { label: '生活', value: 'LIFESTYLE' },

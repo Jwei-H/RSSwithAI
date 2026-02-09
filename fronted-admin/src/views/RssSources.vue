@@ -58,6 +58,7 @@ const typeOptions = [
 const categoryOptions = [
   { value: 'NEWS', label: '新闻' },
   { value: 'TECH', label: '科技' },
+  { value: 'PROGRAMMING', label: '编程' },
   { value: 'SOCIETY', label: '社会' },
   { value: 'FINANCE', label: '财经' },
   { value: 'LIFESTYLE', label: '生活' },
@@ -245,6 +246,7 @@ const getCategoryText = (category: SourceCategory) => {
   const map: Record<SourceCategory, string> = {
     NEWS: '新闻',
     TECH: '科技',
+    PROGRAMMING: '编程',
     SOCIETY: '社会',
     FINANCE: '财经',
     LIFESTYLE: '生活',

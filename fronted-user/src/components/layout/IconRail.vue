@@ -9,7 +9,10 @@ const session = useSessionStore()
 
 const items = computed(() => {
   if (!session.isAuthed.value) {
-    return [{ label: '频道广场', to: '/discover', icon: Grid2X2 }]
+    return [
+      { label: '频道广场', to: '/discover', icon: Grid2X2 },
+      { label: '历史', to: '/history', icon: History }
+    ]
   }
   return [
     { label: '订阅', to: '/subscriptions', icon: Rss },

@@ -9,6 +9,9 @@ public enum SourceCategory {
     
     /** 科技：AI、编程、互联网趋势 */
     TECH,
+
+    /** 编程：语言、框架、工程实践 */
+    PROGRAMMING,
     
     /** 社会：深度报道，长文分析 */
     SOCIETY,

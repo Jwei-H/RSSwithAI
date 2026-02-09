@@ -483,6 +483,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 
 - `NEWS`：新闻
 - `TECH`：科技
+- `PROGRAMMING`：编程
 - `SOCIETY`：社会
 - `FINANCE`：财经
 - `LIFESTYLE`：生活

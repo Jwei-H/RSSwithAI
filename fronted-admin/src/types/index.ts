@@ -43,6 +43,7 @@ export enum FetchStatus {
 export enum SourceCategory {
   NEWS = 'NEWS',
   TECH = 'TECH',
+  PROGRAMMING = 'PROGRAMMING',
   SOCIETY = 'SOCIETY',
   FINANCE = 'FINANCE',
   LIFESTYLE = 'LIFESTYLE',

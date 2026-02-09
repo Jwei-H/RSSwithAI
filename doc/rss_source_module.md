@@ -102,7 +102,7 @@ Entity (RssSource)
 | link                 | String | 原始链接                                           |
 | fetchIntervalMinutes | Integer | 抓取间隔（分钟）                                       |
 | status               | SourceStatus | 源状态（ENABLED/DISABLED）                          |
-| category             | SourceCategory | 源分类（NEWS/TECH/SOCIETY/FINANCE/LIFESTYLE/OTHER） |
+| category             | SourceCategory | 源分类（NEWS/TECH/PROGRAMMING/SOCIETY/FINANCE/LIFESTYLE/OTHER） |
 | lastFetchStatus      | FetchStatus | 最后抓取状态                                         |
 | lastFetchTime        | LocalDateTime | 最后抓取时间                                         |
 | lastFetchError       | String | 最后抓取错误                                         |
@@ -114,7 +114,7 @@ Entity (RssSource)
 
 - **SourceType**: ORIGIN（原始RSS源）、RSSHUB（RSSHub源）
 - **SourceStatus**: ENABLED（启用）、DISABLED（禁用）
-- **SourceCategory**: NEWS（新闻）、TECH（科技）、SOCIETY（社会）、FINANCE（财经）、LIFESTYLE（生活）、OTHER（其他）
+- **SourceCategory**: NEWS（新闻）、TECH（科技）、PROGRAMMING（编程）、SOCIETY（社会）、FINANCE（财经）、LIFESTYLE（生活）、OTHER（其他）
 - **FetchStatus**: NEVER（从未抓取）、SUCCESS（成功）、FAILED（失败）、FETCHING（抓取中）
 
 ---
