@@ -1,6 +1,10 @@
 package com.jingwei.rsswithai.utils;
 
+import com.github.htmltomd.ConverterConfig;
 import com.github.htmltomd.HtmlToMarkdownConverter;
+import com.github.htmltomd.handler.ElementHandler;
+import com.github.htmltomd.handler.HandlerContext;
+import com.github.htmltomd.handler.impl.ParagraphHandler;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.RssSource;
 import lombok.extern.slf4j.Slf4j;
@@ -37,12 +41,41 @@ public final class RssUtils {
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX"),
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ"),
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss Z"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss  Z"), // 针对报错中的双空格格式
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
             DateTimeFormatter.ISO_DATE_TIME,
             DateTimeFormatter.ISO_OFFSET_DATE_TIME
     );
 
-    private static final HtmlToMarkdownConverter converter = new HtmlToMarkdownConverter();
+    private static final HtmlToMarkdownConverter converter = new HtmlToMarkdownConverter(ConverterConfig.builder()
+            .addCustomHandler("p", new ElementHandler() {
+                private final ParagraphHandler defaultHandler = new ParagraphHandler();
+
+                @Override
+                public String handle(org.jsoup.nodes.Element element, HandlerContext context) {
+                    String className = element.className();
+                    String style = element.attr("style");
+                    String text = context.processChildren(element).trim();
+
+                    if (className.contains("text-big-title")) {
+                        return "## " + text + "\n\n";
+                    }
+                    if (className.contains("text-sm-title")) {
+                        return "### " + text + "\n\n";
+                    }
+
+                    boolean isCentered = style.contains("text-align: center");
+                    boolean hasBold = !element.select("span[style*='font-weight: bold']").isEmpty()
+                            || !element.select("strong").isEmpty();
+
+                    if (isCentered && hasBold) {
+                        return "# " + text + "\n\n";
+                    }
+                    return defaultHandler.handle(element, context);
+                }
+            })
+            .build());
 
     private RssUtils() {
     }
@@ -111,32 +144,6 @@ public final class RssUtils {
             log.error("解析Channel元信息失败: error={}", e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * 统一解析入口：解析XML字符串，返回Article列表
-     * 自动检测RSS/Atom格式，调用者无需关心具体格式
-     *
-     * @param xmlContent XML内容字符串
-     * @param source     RSS源实体
-     * @return 解析出的文章列表
-     */
-    public static List<Article> parseContent(String xmlContent, RssSource source) {
-        List<Article> articles = new ArrayList<>();
-        List<ParsedItem> items = parseItems(xmlContent, source);
-        if (items.isEmpty()) {
-            return articles;
-        }
-
-        for (ParsedItem item : items) {
-            Article article = buildArticle(item, source);
-            if (article != null) {
-                articles.add(article);
-            }
-        }
-
-        log.debug("解析完成: source={}, 文章数={}", source.getName(), articles.size());
-        return articles;
     }
 
     /**
@@ -290,7 +297,7 @@ public final class RssUtils {
         }
 
         // categories
-        String categories = extractCategories(item, "category");
+        String categories = extractCategories(item);
 
         return new ParsedItem(title, link, guid, description, content, author, pubDateStr, categories);
     }
@@ -399,7 +406,6 @@ public final class RssUtils {
             return null;
         }
 
-        description = cleanHtml(description);
         String coverImage = extractFirstImage(markdownContent);
 
         return Article.builder()
@@ -468,7 +474,7 @@ public final class RssUtils {
             Element catEl = (Element) categoryNodes.item(i);
             String term = catEl.getAttribute("term");
             if (!isBlank(term)) {
-                if (sb.length() > 0) sb.append(",");
+                if (!sb.isEmpty()) sb.append(",");
                 sb.append(term.trim());
             }
         }
@@ -478,13 +484,13 @@ public final class RssUtils {
     /**
      * 提取RSS格式的categories
      */
-    private static String extractCategories(Element item, String tagName) {
-        NodeList categoryNodes = item.getElementsByTagName(tagName);
+    private static String extractCategories(Element item) {
+        NodeList categoryNodes = item.getElementsByTagName("category");
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < categoryNodes.getLength(); i++) {
             String text = categoryNodes.item(i).getTextContent();
             if (!isBlank(text)) {
-                if (sb.length() > 0) sb.append(",");
+                if (!sb.isEmpty()) sb.append(",");
                 sb.append(text.trim());
             }
         }
@@ -614,7 +620,7 @@ public final class RssUtils {
         }
 
         // Markdown图片格式: ![alt](url)
-        Pattern markdownImagePattern = Pattern.compile("!\\[.*?\\]\\((.*?)\\)");
+        Pattern markdownImagePattern = Pattern.compile("!\\[.*?]\\((.*?)\\)");
         Matcher matcher = markdownImagePattern.matcher(content);
         if (matcher.find()) {
             return matcher.group(1);
