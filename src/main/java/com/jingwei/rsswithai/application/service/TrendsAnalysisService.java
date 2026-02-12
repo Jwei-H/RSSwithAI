@@ -207,7 +207,7 @@ public class TrendsAnalysisService {
         log.info("Starting Hot Events generation");
         try {
             // 1. Map Phase (Per Source)
-            List<String> allEventsJson = new ArrayList<>();
+            List<Map<String, Object>> allEvents = new ArrayList<>();
 
             for (RssSource source : rssSourceRepository.findAllEnabled()) {
                 List<Article> articles = fetchArticlesForHotEvents(source.getId());
@@ -218,20 +218,19 @@ public class TrendsAnalysisService {
                         .map(a -> "- " + a.getTitle())
                         .collect(Collectors.joining("\n"));
 
-                String eventsJson = fetchEventsFromLlm(articlesOverview);
+                String sourceName = resolveSourceName(source);
+                String eventsJson = fetchEventsFromLlm(articlesOverview, sourceName);
                 log.info("Source {}: Extracted events JSON: {}", source.getId(), eventsJson);
-                if (!eventsJson.isBlank() && !eventsJson.equals("[]")) {
-                    allEventsJson.add(eventsJson);
-                }
+                allEvents.addAll(parseEventsWithSource(eventsJson, sourceName));
             }
 
-            if (allEventsJson.isEmpty()) {
+            if (allEvents.isEmpty()) {
                 log.info("No events extracted from any source.");
                 return;
             }
 
             // 2. Reduce Phase (Global)
-            String combinedEvents = String.join(",", allEventsJson);
+            String combinedEvents = objectMapper.writeValueAsString(allEvents);
 
             String globalEvents = fetchGlobalEventsFromLlm(combinedEvents);
 
@@ -260,12 +259,12 @@ public class TrendsAnalysisService {
                 .collect(Collectors.toList());
     }
 
-    private String fetchEventsFromLlm(String articlesDetails) {
+    private String fetchEventsFromLlm(String articlesDetails, String sourceName) {
         if (appConfig.getTrendsHotEventsMapPrompt() == null)
             return "[]";
         try {
             PromptTemplate template = new PromptTemplate(appConfig.getTrendsHotEventsMapPrompt());
-            Prompt prompt = template.create(Map.of("articles", articlesDetails));
+            Prompt prompt = template.create(Map.of("articles", articlesDetails, "sourcename", sourceName));
             ChatResponse response = chatModel.call(prompt);
             return cleanJsonBlock(response.getResult().getOutput().getText());
         } catch (Exception e) {
@@ -285,6 +284,32 @@ public class TrendsAnalysisService {
         } catch (Exception e) {
             log.error("LLM Reduce error", e);
             return "[]";
+        }
+    }
+
+    private String resolveSourceName(RssSource source) {
+        if (source.getName() != null && !source.getName().isBlank()) {
+            return source.getName();
+        }
+        return "source-" + source.getId();
+    }
+
+    private List<Map<String, Object>> parseEventsWithSource(String eventsJson, String sourceName) {
+        if (eventsJson == null || eventsJson.isBlank() || eventsJson.equals("[]")) {
+            return Collections.emptyList();
+        }
+        try {
+            List<Map<String, Object>> events = objectMapper.readValue(
+                    cleanJsonBlock(eventsJson),
+                    new TypeReference<List<Map<String, Object>>>() {
+                    });
+            for (Map<String, Object> event : events) {
+                event.put("source", sourceName);
+            }
+            return events;
+        } catch (Exception e) {
+            log.error("Failed to parse events JSON for source {}", sourceName, e);
+            return Collections.emptyList();
         }
     }
 
