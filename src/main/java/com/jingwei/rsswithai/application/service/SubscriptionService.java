@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -248,7 +249,7 @@ public class SubscriptionService {
 
     private FeedCursor parseCursor(String cursor) {
         if (cursor == null || cursor.isBlank()) {
-            return new FeedCursor(LocalDateTime.now(), Long.MAX_VALUE);
+            return new FeedCursor(LocalDateTime.now(ZoneId.systemDefault()), Long.MAX_VALUE);
         }
         String[] parts = cursor.split(",", 2);
         if (parts.length != 2) {
