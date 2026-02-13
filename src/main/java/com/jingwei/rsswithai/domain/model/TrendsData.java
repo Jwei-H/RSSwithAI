@@ -13,9 +13,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "trends_data", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "source_id", "type" })
-})
+@Table(name = "trends_data")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -41,7 +39,7 @@ public class TrendsData {
     /**
      * Core data, JSONB structure
      * WORD_CLOUD: [{"text": "AI", "value": 50}, ...]
-     * HOT_EVENTS: [{"event": "Title", "score": 9}, ...]
+      * HOT_EVENTS: [{"event": "Title", "score": 9}, ...]
      */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSONB", nullable = false)

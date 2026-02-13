@@ -47,10 +47,10 @@ public class SubscriptionService {
         Map<Long, Long> subscriptionMap;
         if (userId != null) {
             subscriptionMap = subscriptionRepository
-                .findByUserIdAndTypeWithSource(userId, SubscriptionType.RSS).stream()
-                .filter(sub -> sub.getSource() != null)
-                .collect(Collectors.toMap(sub -> sub.getSource().getId(), Subscription::getId, (a, b) -> a,
-                    LinkedHashMap::new));
+                    .findByUserIdAndTypeWithSource(userId, SubscriptionType.RSS).stream()
+                    .filter(sub -> sub.getSource() != null)
+                    .collect(Collectors.toMap(sub -> sub.getSource().getId(), Subscription::getId, (a, b) -> a,
+                            LinkedHashMap::new));
         } else {
             subscriptionMap = Collections.emptyMap();
         }
@@ -230,7 +230,7 @@ public class SubscriptionService {
             query.setParameter("sourceIds", sourceIds);
         }
         if (!topicVectors.isEmpty()) {
-            double threshold = 0.45D;
+            double threshold = appConfig.getTopicThreshold();
             query.setParameter("threshold", threshold);
             for (int i = 0; i < topicVectors.size(); i++) {
                 query.setParameter("vector" + i, toPgVectorLiteral(topicVectors.get(i)));

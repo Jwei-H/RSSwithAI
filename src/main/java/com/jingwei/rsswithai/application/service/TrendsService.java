@@ -33,7 +33,7 @@ public class TrendsService {
     public List<WordCloudItemDTO> getWordCloud(Long sourceId, Long userId) {
         if (sourceId != null) {
             // Direct query
-            return trendsDataRepository.findBySourceIdAndType(sourceId, "WORD_CLOUD")
+            return trendsDataRepository.findFirstBySourceIdAndTypeOrderByCreatedAtDescIdDesc(sourceId, "WORD_CLOUD")
                     .map(this::parseWordCloudList)
                     .orElse(Collections.emptyList());
         } else if (userId != null) {
@@ -47,7 +47,7 @@ public class TrendsService {
             if (sourceIds.isEmpty())
                 return Collections.emptyList();
 
-            List<TrendsData> allTrends = trendsDataRepository.findBySourceIdInAndType(sourceIds, "WORD_CLOUD");
+            List<TrendsData> allTrends = trendsDataRepository.findLatestBySourceIdsAndType(sourceIds, "WORD_CLOUD");
             return aggregateWordClouds(allTrends);
         }
         return Collections.emptyList();
@@ -55,7 +55,7 @@ public class TrendsService {
 
     @Transactional(readOnly = true)
     public List<HotEventDTO> getHotEvents(Long userId) {
-        return trendsDataRepository.findBySourceIdAndType(0L, "HOT_EVENTS")
+        return trendsDataRepository.findFirstBySourceIdAndTypeOrderByCreatedAtDescIdDesc(0L, "HOT_EVENTS")
                 .map(data -> parseHotEventList(data, userId))
                 .orElse(Collections.emptyList());
     }
@@ -82,7 +82,7 @@ public class TrendsService {
             return rawList.stream()
                     .map(m -> new HotEventDTO(
                             (String) m.get("event"),
-                            ((Number) m.get("score")).intValue(),
+                        m.get("score") instanceof Number n ? n.intValue() : null,
                             isSubscribed((String) m.get("event"), userId)))
                     .collect(Collectors.toList());
         } catch (Exception e) {

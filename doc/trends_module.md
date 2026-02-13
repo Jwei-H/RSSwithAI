@@ -19,13 +19,13 @@
 
 ### 1.3 配置项
 
-| 配置键 | 默认值 | 说明 |
-|--------|--------|------|
-| trends_word_cloud_frequency_hours | 24 | 词云生成任务频率（小时） |
-| trends_hot_events_frequency_hours | 12 | 热点事件生成任务频率（小时） |
-| trends_word_cloud_prompt | (见下文) | 词云清洗Prompt模板 |
-| trends_hot_events_map_prompt | (见下文) | 热点事件提取（Map阶段）Prompt模板 |
-| trends_hot_events_reduce_prompt | (见下文) | 热点事件聚合（Reduce阶段）Prompt模板 |
+| 配置键                            | 默认值   | 说明                                 |
+| --------------------------------- | -------- | ------------------------------------ |
+| trends_word_cloud_frequency_hours | 24       | 词云生成任务频率（小时）             |
+| trends_hot_events_frequency_hours | 12       | 热点事件生成任务频率（小时）         |
+| trends_word_cloud_prompt          | (见下文) | 词云清洗Prompt模板                   |
+| trends_hot_events_map_prompt      | (见下文) | 热点事件提取（Map阶段）Prompt模板    |
+| trends_hot_events_reduce_prompt   | (见下文) | 热点事件聚合（Reduce阶段）Prompt模板 |
 
 ---
 
@@ -47,13 +47,13 @@ Entity (TrendsData)
 
 ### 2.2 核心组件
 
-| 组件 | 职责 |
-|------|------|
-| FrontTrendsController | 提供前台查询趋势数据的 REST API |
-| TrendsService | 封装查询逻辑，处理 DTO 转换 |
+| 组件                  | 职责                                                      |
+| --------------------- | --------------------------------------------------------- |
+| FrontTrendsController | 提供前台查询趋势数据的 REST API                           |
+| TrendsService         | 封装查询逻辑，处理 DTO 转换                               |
 | TrendsAnalysisService | 核心分析服务，执行 LLM 调用、数据清洗与聚合（Map-Reduce） |
-| TrendsTaskScheduler | 定时调度器，触发分析任务 |
-| TrendsDataRepository | 趋势数据存取 |
+| TrendsTaskScheduler   | 定时调度器，触发分析任务                                  |
+| TrendsDataRepository  | 趋势数据存取                                              |
 
 ---
 
@@ -70,12 +70,16 @@ Entity (TrendsData)
 
 1. **Map 阶段（源内提取）**：
    - 遍历活跃 RSS 源，选取最近 3 天文章。
-  - 调用 LLM 提取 0-5 个关键事件，并附带源名称作为参考。
+  - 为每篇文章提供“标题 + Overview”作为 LLM 参考上下文。
+  - 调用 LLM 提取 0-10 个关键事件短描述（每条 40 字内），并要求按重要程度降序返回。
+  - Map 输出仅保留事件短描述，不再拆分 `event` 与 `description` 字段。
 2. **Reduce 阶段（全局聚合）**：
-   - 收集所有源的事件列表。
-  - 调用 LLM 进行语义去重、归并、打分（1-10分），并附带每个事件的来源信息作为参考。
+  - 将 Map 结果按 RSS 源分组后输入 LLM，并明确告知“每个源内事件已按重要程度排序”。
+  - 对空事件列表的 RSS 源直接跳过，不参与 Reduce。
+  - 调用 LLM 进行跨源语义去重、归并、打分（1-10分）。
 3. **持久化**：
-   - 将最终 Top 事件列表存入数据库（SourceId=0）。
+  - 词云与热点事件均采用**追加写入**（append-only），不覆盖历史记录。
+  - 查询时统一读取指定维度的**最新一条记录**。
 
 ---
 
@@ -85,14 +89,14 @@ Entity (TrendsData)
 
 使用单个实体存储不同维度的分析结果，利用 `JSONB` 字段存储非结构化数据。
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| id | Long | 主键ID |
-| sourceId | Long | 来源ID（0=全局，非0=特定源） |
-| type | String | 类型：WORD_CLOUD, HOT_EVENTS |
-| data | JSONB | 核心数据（JSON数组） |
-| createdAt | LocalDateTime | 创建时间 |
-| updatedAt | LocalDateTime | 更新时间 |
+| 字段      | 类型          | 说明                         |
+| --------- | ------------- | ---------------------------- |
+| id        | Long          | 主键ID                       |
+| sourceId  | Long          | 来源ID（0=全局，非0=特定源） |
+| type      | String        | 类型：WORD_CLOUD, HOT_EVENTS |
+| data      | JSONB         | 核心数据（JSON数组）         |
+| createdAt | LocalDateTime | 创建时间                     |
+| updatedAt | LocalDateTime | 更新时间                     |
 
 ### 4.2 数据结构示例
 
@@ -112,14 +116,22 @@ Entity (TrendsData)
 ]
 ```
 
+**Map 阶段中间结果（按源排序事件）**:
+```json
+[
+  {"source": "TechCrunch", "events": ["OpenAI发布Sora并开启测试", "Google更新Gemini多模态能力"]},
+  {"source": "InfoQ", "events": ["Java 25正式发布并带来平台增强"]}
+]
+```
+
 ---
 
 ## 5. API接口
 
-| 方法 | 路径 | 描述 |
-|------|------|------|
-| GET | /api/front/v1/trends/wordcloud | 获取词云（可指定 sourceId，否则聚合用户订阅） |
-| GET | /api/front/v1/trends/hotevents | 获取全局热点事件榜单 |
+| 方法 | 路径                           | 描述                                          |
+| ---- | ------------------------------ | --------------------------------------------- |
+| GET  | /api/front/v1/trends/wordcloud | 获取词云（可指定 sourceId，否则聚合用户订阅） |
+| GET  | /api/front/v1/trends/hotevents | 获取全局热点事件榜单                          |
 
 ---
 

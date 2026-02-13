@@ -134,7 +134,7 @@ public class TrendsAnalysisService {
     }
 
     private List<Article> fetchArticlesForWordCloud(Long sourceId) {
-        org.springframework.data.domain.Pageable limit = org.springframework.data.domain.PageRequest.of(0, 50);
+        Pageable limit = PageRequest.of(0, 50);
         List<Article> candidates = articleRepository.findBySourceIdOrderByPubDateDesc(sourceId, limit).getContent();
 
         if (candidates.isEmpty())
@@ -207,30 +207,33 @@ public class TrendsAnalysisService {
         log.info("Starting Hot Events generation");
         try {
             // 1. Map Phase (Per Source)
-            List<Map<String, Object>> allEvents = new ArrayList<>();
+            Map<String, List<String>> sourceEvents = new LinkedHashMap<>();
 
             for (RssSource source : rssSourceRepository.findAllEnabled()) {
                 List<Article> articles = fetchArticlesForHotEvents(source.getId());
                 if (articles.isEmpty())
                     continue;
 
-                String articlesOverview = articles.stream()
-                        .map(a -> "- " + a.getTitle())
-                        .collect(Collectors.joining("\n"));
+                String articlesOverview = buildArticlesDetailsForMap(articles);
 
                 String sourceName = resolveSourceName(source);
                 String eventsJson = fetchEventsFromLlm(articlesOverview, sourceName);
                 log.info("Source {}: Extracted events JSON: {}", source.getId(), eventsJson);
-                allEvents.addAll(parseEventsWithSource(eventsJson, sourceName));
+                List<String> rankedEvents = parseRankedEvents(eventsJson);
+                if (!rankedEvents.isEmpty()) {
+                    sourceEvents.put(sourceName, rankedEvents);
+                }
             }
 
-            if (allEvents.isEmpty()) {
+            if (sourceEvents.isEmpty()) {
                 log.info("No events extracted from any source.");
                 return;
             }
 
             // 2. Reduce Phase (Global)
-            String combinedEvents = objectMapper.writeValueAsString(allEvents);
+            String combinedEvents = objectMapper.writeValueAsString(sourceEvents.entrySet().stream()
+                    .map(e -> Map.of("source", (Object) e.getKey(), "events", e.getValue()))
+                    .toList());
 
             String globalEvents = fetchGlobalEventsFromLlm(combinedEvents);
 
@@ -248,7 +251,7 @@ public class TrendsAnalysisService {
     }
 
     private List<Article> fetchArticlesForHotEvents(Long sourceId) {
-        Pageable limit = PageRequest.of(0, 10);
+        Pageable limit = PageRequest.of(0, 40);
         List<Article> candidates = articleRepository.findBySourceIdOrderByPubDateDesc(sourceId, limit).getContent();
 
         if (candidates.isEmpty())
@@ -294,21 +297,53 @@ public class TrendsAnalysisService {
         return "source-" + source.getId();
     }
 
-    private List<Map<String, Object>> parseEventsWithSource(String eventsJson, String sourceName) {
+    private String buildArticlesDetailsForMap(List<Article> articles) {
+        StringBuilder builder = new StringBuilder();
+        for (Article article : articles) {
+            String overview = articleExtraRepository.findByArticleId(article.getId())
+                    .map(ArticleExtraRepository.ArticleExtraNoVectorView::getOverview)
+                    .orElse(null);
+
+            builder.append("- 标题：")
+                    .append(Optional.ofNullable(article.getTitle()).orElse(""))
+                    .append("\n  概览：")
+                    .append((overview == null || overview.isBlank()) ? "无" : overview)
+                    .append("\n");
+        }
+        return builder.toString().trim();
+    }
+
+    private List<String> parseRankedEvents(String eventsJson) {
         if (eventsJson == null || eventsJson.isBlank() || eventsJson.equals("[]")) {
             return Collections.emptyList();
         }
         try {
-            List<Map<String, Object>> events = objectMapper.readValue(
+            List<Object> events = objectMapper.readValue(
                     cleanJsonBlock(eventsJson),
-                    new TypeReference<List<Map<String, Object>>>() {
+                    new TypeReference<List<Object>>() {
                     });
-            for (Map<String, Object> event : events) {
-                event.put("source", sourceName);
+
+            List<String> normalized = new ArrayList<>();
+            for (Object eventObj : events) {
+                if (eventObj instanceof String text && !text.isBlank()) {
+                    normalized.add(text.trim());
+                    continue;
+                }
+                if (eventObj instanceof Map<?, ?> eventMap) {
+                    Object eventText = eventMap.get("event");
+                    if (eventText instanceof String text && !text.isBlank()) {
+                        normalized.add(text.trim());
+                        continue;
+                    }
+                    Object descriptionText = eventMap.get("description");
+                    if (descriptionText instanceof String text && !text.isBlank()) {
+                        normalized.add(text.trim());
+                    }
+                }
             }
-            return events;
+            return normalized;
         } catch (Exception e) {
-            log.error("Failed to parse events JSON for source {}", sourceName, e);
+            log.error("Failed to parse ranked events JSON", e);
             return Collections.emptyList();
         }
     }
@@ -316,13 +351,11 @@ public class TrendsAnalysisService {
     private void saveTrendsData(Long sourceId, String type, Object dataObj) throws Exception {
         String jsonStr = objectMapper.writeValueAsString(dataObj);
 
-        TrendsData data = trendsDataRepository.findBySourceIdAndType(sourceId, type)
-                .orElse(TrendsData.builder()
-                        .sourceId(sourceId)
-                        .type(type)
-                        .build());
-
-        data.setData(jsonStr);
+        TrendsData data = TrendsData.builder()
+                .sourceId(sourceId)
+                .type(type)
+                .data(jsonStr)
+                .build();
         trendsDataRepository.save(data);
     }
 
