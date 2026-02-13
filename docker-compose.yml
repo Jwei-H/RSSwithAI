@@ -10,6 +10,9 @@ services:
       
       # Security (JWT)
       - JWT_SECRET=${JWT_SECRET}
+      
+      # Timezone
+      - TZ=Asia/Shanghai
     
     ports:
       - "9090:8080"  # 后端 API (Tauri 或外部调用, 内部8080暴露为9090)

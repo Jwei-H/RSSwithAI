@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -196,10 +196,10 @@ public class SubscriptionService {
     }
 
     private List<ArticleFeedDTO> executeHybridFeed(List<Long> sourceIds,
-                                                   List<float[]> topicVectors,
-                                                   LocalDateTime cursorTime,
-                                                   long cursorId,
-                                                   int size) {
+            List<float[]> topicVectors,
+            LocalDateTime cursorTime,
+            long cursorId,
+            int size) {
         List<String> branches = new ArrayList<>();
         if (!sourceIds.isEmpty()) {
             branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.cover_image, a.pub_date, a.word_count " +
@@ -249,7 +249,7 @@ public class SubscriptionService {
 
     private FeedCursor parseCursor(String cursor) {
         if (cursor == null || cursor.isBlank()) {
-            return new FeedCursor(LocalDateTime.now(ZoneId.of("Asia/Shanghai")), Long.MAX_VALUE);
+            return new FeedCursor(LocalDateTime.now(), Long.MAX_VALUE);
         }
         String[] parts = cursor.split(",", 2);
         if (parts.length != 2) {

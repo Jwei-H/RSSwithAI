@@ -40,6 +40,9 @@ RUN npm run build
 # ========== Stage 4: Final Runtime Image ==========
 FROM eclipse-temurin:25-jre
 
+ENV TZ=Asia/Shanghai
+
+
 # Install Nginx
 # Note: eclipse-temurin is usually Ubuntu-based.
 RUN apt-get update && \
