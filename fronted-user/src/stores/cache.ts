@@ -1,5 +1,5 @@
 import { reactive } from 'vue'
-import type { ArticleFeed, HotEvent, RssSource, Subscription } from '../types'
+import type { ArticleDetail, ArticleExtra, ArticleFeed, HotEvent, RssSource, Subscription } from '../types'
 
 /**
  * 缓存项接口
@@ -40,13 +40,17 @@ const state = reactive<{
     subscriptions: CacheItem<Subscription[]> | null
     subscriptionFeeds: Map<string, FeedCacheItem>
     favorites: CacheItem<FavoritesCacheData> | null
+    articleDetails: Map<number, CacheItem<ArticleDetail>>
+    articleExtras: Map<number, CacheItem<ArticleExtra>>
 }>({
     hotEvents: null,
     rssSources: new Map(),
     sourceArticles: new Map(),
     subscriptions: null,
     subscriptionFeeds: new Map(),
-    favorites: null
+    favorites: null,
+    articleDetails: new Map(),
+    articleExtras: new Map()
 })
 
 /**
@@ -62,6 +66,17 @@ export function useCacheStore() {
     const isCacheValid = (timestamp: number): boolean => {
         const now = Date.now()
         const cacheExpiry = 5 * 60 * 1000 // 5分钟过期
+        return now - timestamp < cacheExpiry
+    }
+
+    /**
+     * 检查长期缓存是否有效 (24小时)
+     * @param timestamp 缓存时间戳
+     * @returns 缓存是否有效
+     */
+    const isLongTermCacheValid = (timestamp: number): boolean => {
+        const now = Date.now()
+        const cacheExpiry = 24 * 60 * 60 * 1000 // 24小时过期
         return now - timestamp < cacheExpiry
     }
 
@@ -201,6 +216,67 @@ export function useCacheStore() {
     }
 
     /**
+     * 获取文章详情缓存
+     * @param id 文章ID
+     */
+    const getArticleDetail = (id: number): ArticleDetail | null => {
+        const cached = state.articleDetails.get(id)
+        if (!cached) return null
+        if (!isLongTermCacheValid(cached.timestamp)) {
+            state.articleDetails.delete(id)
+            return null
+        }
+        return cached.data
+    }
+
+    /**
+     * 设置文章详情缓存 (LRU max 50)
+     */
+    const setArticleDetail = (id: number, data: ArticleDetail): void => {
+        if (state.articleDetails.has(id)) {
+            state.articleDetails.delete(id)
+        }
+        state.articleDetails.set(id, {
+            data,
+            timestamp: Date.now()
+        })
+        if (state.articleDetails.size > 50) {
+            const first = state.articleDetails.keys().next().value
+            if (first !== undefined) state.articleDetails.delete(first)
+        }
+    }
+
+    /**
+     * 获取文章AI增强信息缓存
+     */
+    const getArticleExtra = (id: number): ArticleExtra | null => {
+        const cached = state.articleExtras.get(id)
+        if (!cached) return null
+        if (!isLongTermCacheValid(cached.timestamp)) {
+            state.articleExtras.delete(id)
+            return null
+        }
+        return cached.data
+    }
+
+    /**
+     * 设置文章AI增强信息缓存 (LRU max 50)
+     */
+    const setArticleExtra = (id: number, data: ArticleExtra): void => {
+        if (state.articleExtras.has(id)) {
+            state.articleExtras.delete(id)
+        }
+        state.articleExtras.set(id, {
+            data,
+            timestamp: Date.now()
+        })
+        if (state.articleExtras.size > 50) {
+            const first = state.articleExtras.keys().next().value
+            if (first !== undefined) state.articleExtras.delete(first)
+        }
+    }
+
+    /**
      * 获取 RSS 源缓存
      * @param category 分类
      * @returns RSS 源数组或 null
@@ -280,6 +356,8 @@ export function useCacheStore() {
         state.subscriptions = null
         state.subscriptionFeeds.clear()
         state.favorites = null
+        state.articleDetails.clear()
+        state.articleExtras.clear()
     }
 
     /**
@@ -312,6 +390,12 @@ export function useCacheStore() {
         // 收藏
         getFavorites,
         setFavorites,
+
+        // 文章详情 & AI增强
+        getArticleDetail,
+        setArticleDetail,
+        getArticleExtra,
+        setArticleExtra,
 
         // 全局操作
         clearAll,

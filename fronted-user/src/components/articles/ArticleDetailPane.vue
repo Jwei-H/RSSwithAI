@@ -7,6 +7,7 @@ import { formatOverview } from '../../utils/text'
 import type { ArticleDetail, ArticleExtra, ArticleFeed } from '../../types'
 import { useToastStore } from '../../stores/toast'
 import { useHistoryStore } from '../../stores/history'
+import { useCacheStore } from '../../stores/cache'
 import { FileText, ListChecks, ListTree, ThumbsUp } from 'lucide-vue-next'
 let mermaidModule: typeof import('mermaid') | null = null
 
@@ -18,6 +19,7 @@ const props = defineProps<{
 
 const toast = useToastStore()
 const historyStore = useHistoryStore()
+const cache = useCacheStore()
 
 const article = ref<ArticleDetail | null>(null)
 const extra = ref<ArticleExtra | null>(null)
@@ -150,14 +152,14 @@ const renderMermaidDiagrams = async () => {
 const getContentBetweenHeadings = (startHeading: HTMLElement, container: HTMLElement): HTMLElement | null => {
   // 创建一个包装容器来包含这个标题和它的内容
   // 找到下一个同级或更高级的标题
-  const currentLevel = parseInt(startHeading.tagName[1])
+  const currentLevel = parseInt(startHeading.tagName.charAt(1))
   let currentElement = startHeading.nextElementSibling as HTMLElement | null
   const contentElements: Element[] = []
   
   while (currentElement && container.contains(currentElement)) {
     // 如果遇到标题
     if (currentElement.tagName.match(/^H[1-6]$/)) {
-      const nextLevel = parseInt(currentElement.tagName[1])
+      const nextLevel = parseInt(currentElement.tagName.charAt(1))
       // 如果下一个标题级别小于等于当前级别，停止
       if (nextLevel <= currentLevel) {
         break
@@ -207,7 +209,7 @@ const updateActiveHeading = () => {
     return
   }
   const marker = container.scrollTop + container.clientHeight * 0.25
-  let current = headings[0]
+  let current = headings[0]!
   for (const heading of headings) {
     if (heading.offsetTop <= marker) {
       current = heading
@@ -217,6 +219,7 @@ const updateActiveHeading = () => {
   }
   activeHeadingId.value = current.id
 }
+
 
 const onLeftPaneScroll = () => {
   if (scrollRafId.value !== null) return
@@ -284,8 +287,19 @@ const load = async () => {
   favorite.value = false
   recommendations.value = []
   try {
-    article.value = await feedApi.detail(props.articleId)
-    favorite.value = article.value?.isFavorite ?? false
+    // 尝试从缓存获取文章详情
+    const cachedArticle = cache.getArticleDetail(props.articleId)
+    if (cachedArticle) {
+      article.value = cachedArticle
+      favorite.value = article.value?.isFavorite ?? false
+    } else {
+      article.value = await feedApi.detail(props.articleId)
+      if (article.value) {
+        cache.setArticleDetail(props.articleId, article.value)
+      }
+      favorite.value = article.value?.isFavorite ?? false
+    }
+
     // 记录阅读历史
     if (article.value) {
       historyStore.addReading({
@@ -307,7 +321,16 @@ const load = async () => {
   }
 
   try {
-    extra.value = await feedApi.extra(props.articleId)
+    // 尝试从缓存获取 AI 增强信息
+    const cachedExtra = cache.getArticleExtra(props.articleId)
+    if (cachedExtra) {
+      extra.value = cachedExtra
+    } else {
+      extra.value = await feedApi.extra(props.articleId)
+      if (extra.value && extra.value.status === 'SUCCESS') {
+        cache.setArticleExtra(props.articleId, extra.value)
+      }
+    }
   } catch {
     extra.value = null
     extraError.value = 'AI 增强信息暂不可用'
@@ -326,10 +349,12 @@ const toggleFavorite = async () => {
     if (favorite.value) {
       await feedApi.unfavorite(article.value.id)
       favorite.value = false
+      article.value.isFavorite = false // Update cache reference
       toast.push('已取消收藏', 'success')
     } else {
       await feedApi.favorite(article.value.id)
       favorite.value = true
+      article.value.isFavorite = true // Update cache reference
       toast.push('已加入收藏', 'success')
     }
   } catch (error) {
