@@ -4,6 +4,7 @@ import IconRail from './components/layout/IconRail.vue'
 import MobileBottomNav from './components/layout/MobileBottomNav.vue'
 import ArticleDetailOverlay from './components/articles/ArticleDetailOverlay.vue'
 import ToastHost from './components/common/ToastHost.vue'
+import WelcomePopup from './components/common/WelcomePopup.vue'
 import { useUiStore } from './stores/ui'
 import { computed, watch } from 'vue'
 
@@ -57,6 +58,7 @@ watch(
 <template>
   <div class="min-h-screen bg-muted/40 text-foreground">
     <ToastHost />
+    <WelcomePopup />
     <ArticleDetailOverlay v-if="showOverlay" />
     <div v-else class="min-h-screen">
       <div v-if="showShell" class="flex min-h-screen flex-col md:flex-row">

@@ -9,11 +9,13 @@ export type UserProfile = {
 type SessionState = {
   token: string
   profile: UserProfile | null
+  welcomeShown: boolean
 }
 
 const state = reactive<SessionState>({
   token: '',
-  profile: null
+  profile: null,
+  welcomeShown: false
 })
 
 export function initSession() {
@@ -49,11 +51,20 @@ export function useSessionStore() {
   const clear = () => {
     state.token = ''
     state.profile = null
+    state.welcomeShown = false
     localStorage.removeItem('rss_token')
     localStorage.removeItem('rss_profile')
   }
 
-  return { state, isAuthed, setToken, setProfile, clear }
+  const openWelcome = () => {
+    state.welcomeShown = true
+  }
+
+  const closeWelcome = () => {
+    state.welcomeShown = false
+  }
+
+  return { state, isAuthed, setToken, setProfile, clear, openWelcome, closeWelcome }
 }
 
 export function getToken() {

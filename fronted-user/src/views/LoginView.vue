@@ -27,6 +27,7 @@ const submit = async () => {
     session.setToken(token)
     const profile = await authApi.profile()
     session.setProfile(profile)
+    session.openWelcome()
     toast.push('登录成功', 'success')
     const redirect = (route.query.redirect as string) || '/subscriptions'
     router.replace(redirect)
