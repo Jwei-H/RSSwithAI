@@ -6,6 +6,7 @@ import {useSessionStore} from '../stores/session'
 import {useToastStore} from '../stores/toast'
 import {useRouter} from 'vue-router'
 import {useThemeStore} from '../stores/theme'
+import {ShieldCheck, UserRound} from 'lucide-vue-next'
 
 const session = useSessionStore()
 const toast = useToastStore()
@@ -56,25 +57,15 @@ const logout = () => {
   <PageShell>
     <template #sidebar>
       <div class="rounded-2xl border border-border bg-card p-4">
-        <h2 class="text-sm font-semibold text-foreground">个人中心</h2>
-        <p class="mt-2 text-xs text-muted-foreground">偏好设置</p>
+        <div class="flex items-center gap-2">
+          <UserRound class="h-4 w-4 text-primary"/>
+          <h2 class="text-sm font-semibold text-foreground">个人中心</h2>
+        </div>
+        <p class="mt-2 text-xs text-muted-foreground">偏好与安全设置</p>
       </div>
     </template>
 
     <template #main>
-      <!--      <div class="rounded-2xl border border-border bg-card p-4 md:p-6">-->
-      <!--        <h3 class="text-sm font-semibold text-foreground">账号信息</h3>-->
-      <!--        <div class="mt-4 space-y-4">-->
-      <!--          <div>-->
-      <!--            <label class="text-xs text-muted-foreground">用户名</label>-->
-      <!--            <input v-model="username" class="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm" />-->
-      <!--            <button class="mt-3 rounded-xl bg-primary px-3 py-2 text-xs text-primary-foreground" :disabled="loading"-->
-      <!--              @click="updateUsername">-->
-      <!--              更新用户名-->
-      <!--            </button>-->
-      <!--          </div>-->
-      <!--        </div>-->
-      <!--      </div>-->
       <div class="rounded-2xl border border-border bg-card p-4 md:p-6">
         <h3 class="text-sm font-semibold text-foreground">偏好设置</h3>
         <p class="mt-2 text-xs text-muted-foreground">主题将影响全部页面与卡片</p>
@@ -101,6 +92,20 @@ const logout = () => {
         </p>
       </div>
       <div class="rounded-2xl border border-border bg-card p-4 md:p-6">
+        <h3 class="text-sm font-semibold text-foreground">账号信息</h3>
+        <div class="mt-4 space-y-4">
+          <div>
+            <label class="text-xs text-muted-foreground">用户名</label>
+            <input v-model="username" class="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm"/>
+            <button class="mt-3 rounded-xl bg-primary px-3 py-2 text-xs text-primary-foreground" :disabled="loading"
+                    @click="updateUsername">
+              更新用户名
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-border bg-card p-4 md:p-6">
         <h3 class="text-sm font-semibold text-foreground">修改密码</h3>
         <div class="mt-4 space-y-4">
           <div>
@@ -122,18 +127,24 @@ const logout = () => {
 
 
       <!-- 移动端：账户操作 -->
-      <!--      <div class="rounded-2xl border border-border bg-card p-4 md:hidden">-->
-      <!--        <h3 class="text-sm font-semibold text-foreground">账户</h3>-->
-      <!--        <p class="mt-2 text-xs text-muted-foreground">当前用户：{{ session.state.profile?.username }}</p>-->
-      <!--        <button class="mt-4 w-full rounded-xl border border-border px-3 py-2 text-xs" @click="logout">-->
-      <!--          退出登录-->
-      <!--        </button>-->
-      <!--      </div>-->
+      <div class="rounded-2xl border border-border bg-card p-4 md:hidden">
+        <div class="flex items-center gap-2">
+          <ShieldCheck class="h-4 w-4 text-primary"/>
+          <h3 class="text-sm font-semibold text-foreground">账户状态</h3>
+        </div>
+        <p class="mt-2 text-xs text-muted-foreground">当前用户：{{ session.state.profile?.username }}</p>
+        <button class="mt-4 w-full rounded-xl border border-border px-3 py-2 text-xs" @click="logout">
+          退出登录
+        </button>
+      </div>
     </template>
 
     <template #right>
       <div class="rounded-2xl border border-border bg-card p-4">
-        <h3 class="text-sm font-semibold text-foreground">账户状态</h3>
+        <div class="flex items-center gap-2">
+          <ShieldCheck class="h-4 w-4 text-primary"/>
+          <h3 class="text-sm font-semibold text-foreground">账户状态</h3>
+        </div>
         <p class="mt-3 text-xs text-muted-foreground">当前用户：{{ session.state.profile?.username }}</p>
         <button class="mt-4 w-full rounded-xl border border-border px-3 py-2 text-xs" @click="logout">
           退出登录

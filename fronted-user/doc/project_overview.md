@@ -329,7 +329,6 @@ src/
 ## 文档参考
 
 ### 项目文档（doc/）
-- `front_requirements.md` - 前台需求文档（详细的页面结构和交互流程）
 - `front_api_reference.md` - API 文档（完整的接口说明）
 
 ### 外部文档

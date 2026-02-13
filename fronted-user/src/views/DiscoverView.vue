@@ -15,7 +15,7 @@ import { useToastStore } from '../stores/toast'
 import { useUiStore } from '../stores/ui'
 import { useCacheStore } from '../stores/cache'
 import { useInfiniteScroll } from '../composables/useInfiniteScroll'
-import { Compass, Search, Sparkles, RefreshCw } from 'lucide-vue-next'
+import { Compass, Search, Sparkles, RefreshCw, Rss } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
@@ -455,7 +455,10 @@ watch(
 
             <!-- RSS 源分类 -->
             <div class="rounded-2xl border border-border bg-card p-3 md:p-4">
-              <h3 class="text-sm font-semibold text-foreground">RSS 源</h3>
+              <div class="flex items-center gap-2">
+                <Rss class="h-4 w-4 text-primary" />
+                <h3 class="text-sm font-semibold text-foreground">RSS 源</h3>
+              </div>
               <div class="mt-3 flex flex-wrap gap-2">
                 <button v-for="item in categories" :key="item.value"
                   class="rounded-full border border-border px-3 py-1 text-xs"

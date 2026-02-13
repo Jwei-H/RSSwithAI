@@ -8,7 +8,7 @@ import { useHistoryStore } from '../stores/history'
 import { formatRelativeTime } from '../utils/time'
 import { rewriteUrl } from '../utils/url-rewrites'
 import { unescapeUrl } from '../utils/text'
-import { History, Trash2 } from 'lucide-vue-next'
+import { History, Trash2, Lightbulb } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const historyStore = useHistoryStore()
@@ -71,7 +71,10 @@ watch(
         <p class="mt-2 text-xs text-muted-foreground">记录最近 30 天的阅读</p>
       </div>
       <div class="rounded-2xl border border-border bg-card p-4">
-        <h3 class="text-sm font-semibold text-foreground">提示</h3>
+        <div class="flex items-center gap-2">
+          <Lightbulb class="h-4 w-4 text-primary" />
+          <h3 class="text-sm font-semibold text-foreground">提示</h3>
+        </div>
         <ul class="mt-3 list-decimal pl-4 text-xs text-muted-foreground">
           <li>历史记录仅保存在本地</li>
           <li>阅读进度会自动记录</li>
@@ -121,8 +124,8 @@ watch(
               @click="onOpenArticle(item.articleId)">
               <div v-if="item.coverImage"
                 class="h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-border md:h-16 md:w-24">
-                <img :src="rewriteUrl(unescapeUrl(item.coverImage))" :alt="item.title" class="h-full w-full object-cover" loading="lazy"
-                  referrerpolicy="no-referrer" />
+                <img :src="rewriteUrl(unescapeUrl(item.coverImage))" :alt="item.title"
+                  class="h-full w-full object-cover" loading="lazy" referrerpolicy="no-referrer" />
               </div>
               <div class="flex min-w-0 flex-1 flex-col gap-1 md:gap-2">
                 <div class="flex items-start justify-between gap-2 md:gap-4">

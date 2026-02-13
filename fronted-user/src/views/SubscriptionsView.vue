@@ -16,7 +16,7 @@ import { useUiStore } from '../stores/ui'
 import { useToastStore } from '../stores/toast'
 import { useHistoryStore } from '../stores/history'
 import { useCacheStore } from '../stores/cache'
-import { CalendarDays, ChevronDown, Eye, EyeOff, Rss, Search, X } from 'lucide-vue-next'
+import { CalendarDays, ChevronDown, Eye, EyeOff, Rss, Search, X, List } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
@@ -442,7 +442,8 @@ watch(
                   </p>
                 </div>
               </div>
-              <button class="text-xs text-muted-foreground hover:text-foreground" @click.stop="onCancelSubscription(item)">
+              <button class="text-xs text-muted-foreground hover:text-foreground"
+                @click.stop="onCancelSubscription(item)">
                 取消
               </button>
             </div>
@@ -476,13 +477,17 @@ watch(
       <div class="flex-1 overflow-y-auto scrollbar-thin">
         <div class="rounded-2xl border border-border bg-card p-4">
           <div class="flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-foreground">我的订阅</h3>
+            <div class="flex items-center gap-2">
+              <List class="h-4 w-4 text-primary" />
+              <h3 class="text-sm font-semibold text-foreground">我的订阅</h3>
+            </div>
             <span class="text-xs text-muted-foreground">{{ subscriptions.length }}</span>
           </div>
           <div v-if="loadingSubscriptions" class="mt-4">
             <LoadingState />
           </div>
-          <ErrorState v-else-if="subscriptionsError" :title="subscriptionsError" :onRetry="() => loadSubscriptions(false)" />
+          <ErrorState v-else-if="subscriptionsError" :title="subscriptionsError"
+            :onRetry="() => loadSubscriptions(false)" />
           <div v-else class="mt-4 space-y-2">
             <div v-for="item in orderedSubscriptions" :key="item.id"
               class="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-left text-xs"

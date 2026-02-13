@@ -11,7 +11,7 @@ import { useUiStore } from '../stores/ui'
 import { useHistoryStore } from '../stores/history'
 import { useCacheStore } from '../stores/cache'
 import { formatRelativeTime } from '../utils/time'
-import { Bookmark, History, Trash2 } from 'lucide-vue-next'
+import { Bookmark, History, Trash2, Lightbulb } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const historyStore = useHistoryStore()
@@ -204,9 +204,12 @@ watch(activeTab, (newTab) => {
         <p class="mt-2 text-xs text-muted-foreground">保存的重要文章都在这里</p>
       </div>
       <div class="rounded-2xl border border-border bg-card p-4">
-        <h3 class="text-sm font-semibold text-foreground">提示</h3>
+        <div class="flex items-center gap-2">
+          <Lightbulb class="h-4 w-4 text-primary" />
+          <h3 class="text-sm font-semibold text-foreground">提示</h3>
+        </div>
         <ul class="mt-3 list-decimal pl-4 text-xs text-muted-foreground">
-          <li>收藏记录仅保存在本地</li>
+          <li>点击文章进入详情即可收藏</li>
           <li>收藏列表支持关键词搜索</li>
           <li>内容按发布时间倒序排列</li>
         </ul>
@@ -308,7 +311,7 @@ watch(activeTab, (newTab) => {
                   <div class="flex items-start justify-between gap-2 md:gap-4">
                     <h3 class="line-clamp-2 text-sm font-semibold text-foreground">{{ item.title }}</h3>
                     <span class="flex-shrink-0 text-xs text-muted-foreground">{{ formatRelativeTime(item.readAt)
-                      }}</span>
+                    }}</span>
                   </div>
                   <div class="flex items-center justify-between text-xs text-muted-foreground">
                     <span>{{ item.sourceName }}</span>
