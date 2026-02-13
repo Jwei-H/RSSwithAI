@@ -7,6 +7,7 @@ import { Cloud } from 'lucide-vue-next'
 const props = defineProps<{
   data: { text: string; value: number }[]
   loading: boolean
+  minimized?: boolean
 }>()
 
 const chartEl = ref<HTMLDivElement | null>(null)
@@ -54,6 +55,8 @@ const render = () => {
         type: 'wordCloud',
         left: 0,
         right: 0,
+        bottom: 0,
+        top: 0,
         width: '100%',
         height: '100%',
         gridSize: 4,
@@ -96,13 +99,13 @@ watch(
 </script>
 
 <template>
-  <div class="rounded-2xl border border-border bg-card p-4">
+  <div class="rounded-2xl border border-border bg-card" :class="minimized ? 'p-2' : 'p-4'">
     <div class="flex items-center gap-2">
       <Cloud class="h-4 w-4 text-primary" />
       <h4 class="text-sm font-semibold text-foreground">词云</h4>
     </div>
-    <div v-if="loading" class="mt-4 text-xs text-muted-foreground">加载中...</div>
-    <div v-else-if="!data.length" class="mt-4 text-xs text-muted-foreground">暂无词云</div>
-    <div v-else ref="chartEl" class="mt-4 h-24 w-full" />
+    <div v-if="loading" :class="minimized ? 'mt-2' : 'mt-4'" class="text-xs text-muted-foreground">加载中...</div>
+    <div v-else-if="!data.length" :class="minimized ? 'mt-2' : 'mt-4'" class="text-xs text-muted-foreground">暂无词云</div>
+    <div v-else ref="chartEl" class="w-full" :class="minimized ? 'mt-0 h-30' : 'mt-4 h-64 md:h-24'" />
   </div>
 </template>

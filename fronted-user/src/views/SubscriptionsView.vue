@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, onActivated, onDeactivated, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import ArticleCard from '../components/articles/ArticleCard.vue'
 import ArticlePreviewPanel from '../components/articles/ArticlePreviewPanel.vue'
 import ArticleDetailPane from '../components/articles/ArticleDetailPane.vue'
@@ -56,6 +56,7 @@ const wordCloudLoading = ref(false)
 const previewLoading = ref(false)
 const previewExtra = ref<ArticleExtra | null>(null)
 const previewError = ref<string | null>(null)
+const savedScrollTop = ref(0)
 let hoverTimer: number | null = null
 
 const detailOpen = computed(() => ui.detailOpen)
@@ -333,10 +334,24 @@ const feedDisplay = computed(() => {
   const items = showUnreadOnly.value
     ? feedList.value.filter(item => !historyStore.isRead(item.id))
     : feedList.value
+
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  const todayStr = today.toISOString().split('T')[0]
+  const yesterdayStr = yesterday.toISOString().split('T')[0]
+
+  const formatDate = (dateStr: string) => {
+    if (dateStr === todayStr) return '今天'
+    if (dateStr === yesterdayStr) return '昨天'
+    return dateStr
+  }
+
   for (const item of items) {
-    const date = item.pubDate.split('T')[0]
+    const date = item.pubDate.split('T')[0] ?? ''
     if (date !== lastDate) {
-      result.push({ type: 'separator', date })
+      result.push({ type: 'separator', date: formatDate(date) })
       lastDate = date
     }
     result.push({ type: 'article', item })
@@ -383,6 +398,23 @@ onMounted(async () => {
   if (articleId && parseInt(String(articleId), 10) > 0) {
     ui.restoreDetailFromUrl(parseInt(String(articleId), 10))
   }
+})
+
+onActivated(() => {
+  if (listContainer.value && savedScrollTop.value > 0) {
+    requestAnimationFrame(() => {
+      if (listContainer.value) {
+        listContainer.value.scrollTop = savedScrollTop.value
+      }
+    })
+  }
+})
+
+onBeforeRouteLeave((to, from, next) => {
+  if (listContainer.value) {
+    savedScrollTop.value = listContainer.value.scrollTop
+  }
+  next()
 })
 
 // 监听路由变化，支持浏览器后退键
@@ -570,6 +602,10 @@ watch(
         </div>
 
         <div v-else class="space-y-3">
+          <div class="md:hidden" v-if="wordCloud.length && activeSubscriptionId">
+            <WordCloudCard :data="wordCloud" :loading="wordCloudLoading" :minimized="true" />
+          </div>
+
           <template v-for="(entry, index) in feedDisplay" :key="`feed-${index}`">
             <div v-if="entry.type === 'separator'" class="flex items-center gap-4 py-2 text-xs text-muted-foreground">
               <span class="h-px flex-1 bg-border" />

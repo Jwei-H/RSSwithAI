@@ -91,19 +91,19 @@ const logout = () => {
           <span v-if="theme.state.mode === 'system'">（跟随系统）</span>
         </p>
       </div>
-      <div class="rounded-2xl border border-border bg-card p-4 md:p-6">
+      <!-- <div class="rounded-2xl border border-border bg-card p-4 md:p-6">
         <h3 class="text-sm font-semibold text-foreground">账号信息</h3>
         <div class="mt-4 space-y-4">
           <div>
             <label class="text-xs text-muted-foreground">用户名</label>
-            <input v-model="username" class="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm"/>
+            <input v-model="username" class="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm" />
             <button class="mt-3 rounded-xl bg-primary px-3 py-2 text-xs text-primary-foreground" :disabled="loading"
-                    @click="updateUsername">
+              @click="updateUsername">
               更新用户名
             </button>
           </div>
         </div>
-      </div>
+      </div> -->
 
       <div class="rounded-2xl border border-border bg-card p-4 md:p-6">
         <h3 class="text-sm font-semibold text-foreground">修改密码</h3>

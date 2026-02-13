@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, onActivated, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import ArticleCard from '../components/articles/ArticleCard.vue'
 import ArticleDetailPane from '../components/articles/ArticleDetailPane.vue'
 import HotEventsList from '../components/trends/HotEventsList.vue'
@@ -55,6 +55,7 @@ const previewSource = ref<RssSource | null>(null)
 const previewOpen = ref(false)
 
 const listContainer = ref<HTMLElement | null>(null)
+const savedScrollTop = ref(0)
 
 const detailOpen = computed(() => ui.detailOpen)
 
@@ -318,6 +319,23 @@ watch(
     }
   }
 )
+
+onActivated(() => {
+  if (listContainer.value && savedScrollTop.value > 0) {
+    requestAnimationFrame(() => {
+      if (listContainer.value) {
+        listContainer.value.scrollTop = savedScrollTop.value
+      }
+    })
+  }
+})
+
+onBeforeRouteLeave((to, from, next) => {
+  if (listContainer.value) {
+    savedScrollTop.value = listContainer.value.scrollTop
+  }
+  next()
+})
 </script>
 
 <template>
@@ -389,26 +407,28 @@ watch(
           </div>
         </div>
 
-        <!-- 搜索栏 -->
-        <div class="rounded-2xl border border-border bg-card p-3 md:p-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <Search class="h-4 w-4 text-primary" />
-              <h2 class="text-sm font-semibold text-foreground">搜索</h2>
-            </div>
-            <span class="hidden text-xs text-muted-foreground md:inline">全站范围</span>
-          </div>
-          <div class="mt-3 flex items-center gap-2 md:mt-4 md:gap-3">
-            <input v-model="searchQuery" placeholder="搜索关键字"
-              class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" @keydown.enter="onSearchSubmit" />
-            <button class="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
-              :disabled="searchLoading" @click="onSearchSubmit">
-              搜索
-            </button>
-          </div>
-        </div>
+
 
         <div ref="listContainer" class="flex-1 overflow-y-auto scrollbar-thin">
+          <!-- 搜索栏 -->
+          <div class="rounded-2xl border border-border bg-card p-3 md:p-4 mb-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <Search class="h-4 w-4 text-primary" />
+                <h2 class="text-sm font-semibold text-foreground">搜索</h2>
+              </div>
+              <span class="hidden text-xs text-muted-foreground md:inline">全站范围</span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 md:mt-4 md:gap-3">
+              <input v-model="searchQuery" placeholder="搜索关键字"
+                class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" @keydown.enter="onSearchSubmit" />
+              <button class="rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
+                :disabled="searchLoading" @click="onSearchSubmit">
+                搜索
+              </button>
+            </div>
+          </div>
+
           <div v-if="committedQuery" class="space-y-3">
             <ArticleCard v-for="item in searchResults" :key="item.id" :article="item" @open="onOpenArticle" />
             <EmptyState v-if="!searchResults.length && !searchLoading" title="暂无搜索结果" />

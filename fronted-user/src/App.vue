@@ -65,7 +65,11 @@ watch(
         <!-- 移动端底部导航 -->
         <MobileBottomNav class="md:hidden" />
         <main class="min-h-screen flex-1 pb-16 md:pb-0">
-          <RouterView />
+          <RouterView v-slot="{ Component }">
+            <KeepAlive>
+              <component :is="Component" />
+            </KeepAlive>
+          </RouterView>
         </main>
       </div>
       <div v-else class="min-h-screen">
