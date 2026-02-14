@@ -14,7 +14,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +46,13 @@ public class SubscriptionService {
     private EntityManager entityManager;
 
     public Page<UserRssSourceDTO> listRssSources(Long userId, SourceCategory category, Pageable pageable) {
+        Pageable sortedPageable = PageRequest.of(
+            pageable.getPageNumber(),
+            pageable.getPageSize(),
+            Sort.by(
+                Sort.Order.desc("lastFetchTime").nullsLast(),
+                Sort.Order.desc("id")));
+
         Map<Long, Long> subscriptionMap;
         if (userId != null) {
             subscriptionMap = subscriptionRepository
@@ -56,8 +65,8 @@ public class SubscriptionService {
         }
 
         Page<RssSource> page = category != null
-                ? rssSourceRepository.findByStatusAndCategory(SourceStatus.ENABLED, category, pageable)
-                : rssSourceRepository.findByStatus(SourceStatus.ENABLED, pageable);
+        ? rssSourceRepository.findByStatusAndCategory(SourceStatus.ENABLED, category, sortedPageable)
+        : rssSourceRepository.findByStatus(SourceStatus.ENABLED, sortedPageable);
 
         return page.map(source -> UserRssSourceDTO.from(source, subscriptionMap.get(source.getId())));
     }
