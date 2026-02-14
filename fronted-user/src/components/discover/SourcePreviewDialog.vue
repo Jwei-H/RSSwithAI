@@ -35,21 +35,30 @@ const loadMore = async () => {
 
 const { sentinel } = useInfiniteScroll(loadMore, container)
 
+const loadedSourceId = ref<number | null>(null)
+
 watch(
-  () => props.open,
-  (value) => {
-    if (value) {
-      list.value = []
-      page.value = 0
-      last.value = false
-      loadMore()
+  [() => props.open, () => props.source],
+  ([isOpen, newSource]) => {
+    if (isOpen && newSource) {
+      // 如果源改变了（与上次加载的不同），或者列表为空，则加载
+      if (newSource.id !== loadedSourceId.value) {
+        list.value = []
+        page.value = 0
+        last.value = false
+        loadMore().then(() => {
+          loadedSourceId.value = newSource.id
+        })
+      } else if (list.value.length === 0) {
+        loadMore()
+      }
     }
   }
 )
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+  <div v-show="open" class="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
     <!-- 移动端全屏，桌面端居中弹窗 -->
     <div class="flex h-full w-full flex-col bg-background md:h-[80vh] md:w-[80vw] md:rounded-3xl md:shadow">
       <header class="flex items-center justify-between border-b border-border px-4 py-3 md:px-6 md:py-4">

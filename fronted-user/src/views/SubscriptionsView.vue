@@ -212,9 +212,20 @@ const loadWordCloud = async () => {
     wordCloudLoading.value = false
     return
   }
+
+  const cacheKey = activeSourceId.value || 0
+  const cached = cache.getWordCloud(cacheKey)
+  if (cached) {
+    wordCloud.value = cached
+    wordCloudLoading.value = false
+    return
+  }
+
   wordCloudLoading.value = true
   try {
-    wordCloud.value = await trendApi.wordCloud(activeSourceId.value)
+    const data = await trendApi.wordCloud(activeSourceId.value)
+    wordCloud.value = data
+    cache.setWordCloud(cacheKey, data)
   } catch {
     wordCloud.value = []
   } finally {
@@ -283,10 +294,23 @@ const onHoverArticle = (id: number) => {
 
   if (hoverTimer) window.clearTimeout(hoverTimer)
   hoverTimer = window.setTimeout(async () => {
+    // 尝试从缓存获取
+    const cached = cache.getArticleExtra(id)
+    if (cached) {
+      previewExtra.value = cached
+      previewLoading.value = false
+      previewError.value = null
+      return
+    }
+
     previewLoading.value = true
     previewError.value = null
     try {
-      previewExtra.value = await feedApi.extra(id)
+      const data = await feedApi.extra(id)
+      previewExtra.value = data
+      if (data && data.status === 'SUCCESS') {
+        cache.setArticleExtra(id, data)
+      }
     } catch {
       previewExtra.value = null
       previewError.value = 'AI 增强信息暂不可用'
@@ -361,6 +385,10 @@ const feedDisplay = computed(() => {
 
 watch(activeSubscriptionId, () => {
   if (!hasInitialized.value) return
+  // 切换订阅时清空右侧 AI 增强信息
+  previewExtra.value = null
+  previewError.value = null
+  
   const usedCache = applyFeedCache(activeSubscriptionId.value)
   if (!usedCache) resetFeed()
   refreshFeed(usedCache)

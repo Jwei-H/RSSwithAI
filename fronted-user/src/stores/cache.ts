@@ -42,6 +42,7 @@ const state = reactive<{
     favorites: CacheItem<FavoritesCacheData> | null
     articleDetails: Map<number, CacheItem<ArticleDetail>>
     articleExtras: Map<number, CacheItem<ArticleExtra>>
+    wordCloud: Map<number, CacheItem<{ text: string; value: number }[]>>
 }>({
     hotEvents: null,
     rssSources: new Map(),
@@ -50,7 +51,8 @@ const state = reactive<{
     subscriptionFeeds: new Map(),
     favorites: null,
     articleDetails: new Map(),
-    articleExtras: new Map()
+    articleExtras: new Map(),
+    wordCloud: new Map()
 })
 
 /**
@@ -77,6 +79,17 @@ export function useCacheStore() {
     const isLongTermCacheValid = (timestamp: number): boolean => {
         const now = Date.now()
         const cacheExpiry = 24 * 60 * 60 * 1000 // 24小时过期
+        return now - timestamp < cacheExpiry
+    }
+
+    /**
+     * 检查中期缓存是否有效 (12小时)
+     * @param timestamp 缓存时间戳
+     * @returns 缓存是否有效
+     */
+    const isMediumTermCacheValid = (timestamp: number): boolean => {
+        const now = Date.now()
+        const cacheExpiry = 12 * 60 * 60 * 1000 // 12小时过期
         return now - timestamp < cacheExpiry
     }
 
@@ -277,6 +290,32 @@ export function useCacheStore() {
     }
 
     /**
+     * 获取词云缓存
+     * @param sourceId 源 ID (0表示全部)
+     */
+    const getWordCloud = (sourceId: number): { text: string; value: number }[] | null => {
+        const cached = state.wordCloud.get(sourceId)
+        if (!cached) return null
+        if (!isMediumTermCacheValid(cached.timestamp)) {
+            state.wordCloud.delete(sourceId)
+            return null
+        }
+        return cached.data
+    }
+
+    /**
+     * 设置词云缓存
+     * @param sourceId 源 ID (0表示全部)
+     * @param data 词云数据
+     */
+    const setWordCloud = (sourceId: number, data: { text: string; value: number }[]): void => {
+        state.wordCloud.set(sourceId, {
+            data,
+            timestamp: Date.now()
+        })
+    }
+
+    /**
      * 获取 RSS 源缓存
      * @param category 分类
      * @returns RSS 源数组或 null
@@ -358,6 +397,7 @@ export function useCacheStore() {
         state.favorites = null
         state.articleDetails.clear()
         state.articleExtras.clear()
+        state.wordCloud.clear()
     }
 
     /**
@@ -396,6 +436,10 @@ export function useCacheStore() {
         setArticleDetail,
         getArticleExtra,
         setArticleExtra,
+
+        // 词云
+        getWordCloud,
+        setWordCloud,
 
         // 全局操作
         clearAll,

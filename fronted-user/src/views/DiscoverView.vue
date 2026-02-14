@@ -235,7 +235,8 @@ const onOpenArticle = (id: number) => {
 
   // 更新 URL 查询参数
   const query: Record<string, string> = { ...route.query, articleId: String(id) } as Record<string, string>
-  delete query.previewSourceId
+  // 不删除 previewSourceId，以便返回时恢复
+  // delete query.previewSourceId
   router.push({ path: route.path, query }).catch(() => {
     // 忽略导航被中止的错误
   })
@@ -304,8 +305,23 @@ onMounted(() => {
 // 监听路由变化，支持浏览器后退键
 watch(
   () => route.query.articleId,
-  () => {
+  (newVal) => {
     ui.syncWithRoute()
+    // 如果文章关闭（newVal 为空），且有 previewSourceId，则恢复预览弹窗
+    if (!newVal && route.query.previewSourceId) {
+      // 只有当 previewSource 已加载时才打开
+      if (previewSource.value) {
+        previewOpen.value = true
+      } else {
+        // 如果页面刷新过程中 previewSource 丢失，尝试重新查找
+        const sid = parseInt(String(route.query.previewSourceId), 10)
+        const source = sources.value.find(s => s.id === sid)
+        if (source) {
+          previewSource.value = source
+          previewOpen.value = true
+        }
+      }
+    }
   }
 )
 
