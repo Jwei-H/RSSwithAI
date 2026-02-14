@@ -33,6 +33,9 @@ import java.util.regex.Pattern;
 @Slf4j
 public final class RssUtils {
 
+    private static final Pattern FONT_SIZE_PATTERN = Pattern.compile("font-size\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)px", Pattern.CASE_INSENSITIVE);
+    private static final Pattern META_SEPARATOR_PATTERN = Pattern.compile("[|｜丨/\\-]");
+
     private static final List<DateTimeFormatter> DATE_FORMATTERS = List.of(
             DateTimeFormatter.RFC_1123_DATE_TIME,
             DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH),
@@ -58,6 +61,10 @@ public final class RssUtils {
                     String style = element.attr("style");
                     String text = context.processChildren(element).trim();
 
+                    if (isBlank(text)) {
+                        return defaultHandler.handle(element, context);
+                    }
+
                     if (className.contains("text-big-title")) {
                         return "## " + text + "\n\n";
                     }
@@ -65,11 +72,15 @@ public final class RssUtils {
                         return "### " + text + "\n\n";
                     }
 
-                    boolean isCentered = style.contains("text-align: center");
-                    boolean hasBold = !element.select("span[style*='font-weight: bold']").isEmpty()
-                            || !element.select("strong").isEmpty();
+                    boolean isCentered = style.contains("text-align: center") || style.contains("text-align:center");
+                    boolean hasBold = !element.select("strong, b").isEmpty()
+                            || style.contains("font-weight: bold")
+                            || style.contains("font-weight:bold")
+                            || style.contains("font-weight: 700")
+                            || style.contains("font-weight:700")
+                            || !element.select("span[style*='font-weight: bold'], span[style*='font-weight:bold'], span[style*='font-weight: 700'], span[style*='font-weight:700']").isEmpty();
 
-                    if (isCentered && hasBold) {
+                    if (isCentered && hasBold && isLikelyHeadingByStyleAndText(element, text)) {
                         return "# " + text + "\n\n";
                     }
                     return defaultHandler.handle(element, context);
@@ -570,6 +581,66 @@ public final class RssUtils {
 
     private static boolean isBlank(String str) {
         return str == null || str.isBlank();
+    }
+
+    private static boolean isLikelyHeadingByStyleAndText(org.jsoup.nodes.Element element, String text) {
+        if (text.length() > 36) {
+            return false;
+        }
+
+        if (isLikelyMetaText(text)) {
+            return false;
+        }
+
+        double maxFontSize = extractMaxFontSizePx(element);
+        return maxFontSize >= 16;
+    }
+
+    private static boolean isLikelyMetaText(String text) {
+        String normalized = text.replaceAll("\\s+", "").toLowerCase(Locale.ROOT);
+
+        if (META_SEPARATOR_PATTERN.matcher(text).find() && normalized.length() <= 40) {
+            return true;
+        }
+
+        return normalized.contains("出品")
+                || normalized.contains("工作室")
+                || normalized.contains("责任编辑")
+                || normalized.contains("编辑")
+                || normalized.contains("记者")
+                || normalized.contains("来源")
+                || normalized.contains("作者")
+                || normalized.contains("转载")
+                || normalized.startsWith("文/")
+                || normalized.startsWith("图/");
+    }
+
+    private static double extractMaxFontSizePx(org.jsoup.nodes.Element element) {
+        double max = extractFontSizeFromStyle(element.attr("style"));
+
+        for (org.jsoup.nodes.Element child : element.select("*[style*=font-size]")) {
+            max = Math.max(max, extractFontSizeFromStyle(child.attr("style")));
+        }
+
+        return max;
+    }
+
+    private static double extractFontSizeFromStyle(String style) {
+        if (isBlank(style)) {
+            return 0;
+        }
+
+        Matcher matcher = FONT_SIZE_PATTERN.matcher(style);
+        double max = 0;
+        while (matcher.find()) {
+            try {
+                max = Math.max(max, Double.parseDouble(matcher.group(1)));
+            } catch (NumberFormatException ignored) {
+                // ignore invalid font-size
+            }
+        }
+
+        return max;
     }
 
     /**
