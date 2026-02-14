@@ -23,6 +23,7 @@ const cache = useCacheStore()
 
 const article = ref<ArticleDetail | null>(null)
 const extra = ref<ArticleExtra | null>(null)
+const mergedContent = ref('')
 const recommendations = ref<ArticleFeed[]>([])
 const loading = ref(true)
 const extraError = ref<string | null>(null)
@@ -43,8 +44,8 @@ const dividerStyle = computed(() => ({
 }))
 
 const tocItems = computed(() => {
-  if (!article.value?.content) return []
-  const raw = extractHeadings(article.value.content).map((item) => ({
+  if (!mergedContent.value) return []
+  const raw = extractHeadings(mergedContent.value).map((item) => ({
     ...item,
     text: item.text.replace(/\*\*/g, '')
   }))
@@ -173,8 +174,9 @@ const getContentBetweenHeadings = (startHeading: HTMLElement, container: HTMLEle
   if (contentElements.length === 0) return null
   
   // 检查是否已经有包装容器
-  if (contentElements[0].classList?.contains('md-heading-content')) {
-    return contentElements[0] as HTMLElement
+  const firstElement = contentElements[0]
+  if (firstElement && firstElement.classList?.contains('md-heading-content')) {
+    return firstElement as HTMLElement
   }
   
   // 创建包装容器
@@ -280,6 +282,42 @@ const scrollToHeading = (id: string) => {
   activeHeadingId.value = id
 }
 
+const normalizeHeadingTitle = (title: string) => {
+  const trimmed = title.trim()
+  if (!trimmed) return ''
+  return /^#{2,6}\s/.test(trimmed) ? trimmed : `## ${trimmed.replace(/^#+\s*/, '')}`
+}
+
+const mergeAiTocIntoContent = (content: string, toc?: ArticleExtra['toc']) => {
+  if (!content || !toc?.length) return content
+  let merged = content
+  for (const item of toc) {
+    const title = normalizeHeadingTitle(item.title || '')
+    const anchor = (item.anchor || '').trim()
+    if (!title || !anchor) continue
+
+    const anchorIndex = merged.indexOf(anchor)
+    if (anchorIndex < 0) continue
+
+    const lineStart = merged.lastIndexOf('\n', anchorIndex)
+    const insertPos = lineStart < 0 ? 0 : lineStart + 1
+    const before = merged.slice(0, insertPos)
+    const after = merged.slice(insertPos)
+    merged = `${before.trimEnd()}\n\n${title}\n\n${after.trimStart()}`
+  }
+  return merged
+}
+
+const rebuildMergedContent = () => {
+  if (!article.value?.content || !props.articleId) {
+    mergedContent.value = ''
+    return
+  }
+  const content = mergeAiTocIntoContent(article.value.content, extra.value?.toc)
+  mergedContent.value = content
+  cache.setArticleMergedContent(props.articleId, content)
+}
+
 const load = async () => {
   if (!props.articleId) return
   loading.value = true
@@ -299,6 +337,9 @@ const load = async () => {
       }
       favorite.value = article.value?.isFavorite ?? false
     }
+
+    const cachedMergedContent = cache.getArticleMergedContent(props.articleId)
+    mergedContent.value = cachedMergedContent || article.value?.content || ''
 
     // 记录阅读历史
     if (article.value) {
@@ -331,9 +372,11 @@ const load = async () => {
         cache.setArticleExtra(props.articleId, extra.value)
       }
     }
+    rebuildMergedContent()
   } catch {
     extra.value = null
     extraError.value = 'AI 增强信息暂不可用'
+    rebuildMergedContent()
   }
 
   try {
@@ -382,7 +425,7 @@ watch(
 )
 
 watch(
-  () => article.value?.content,
+  () => mergedContent.value,
   async () => {
     collapsedHeadings.value.clear()
     await nextTick()
@@ -448,7 +491,7 @@ onUnmounted(() => {
               打开原文
             </a>
           </div>
-          <div class="markdown-body" v-html="renderMarkdown(article.content)" />
+          <div class="markdown-body" v-html="renderMarkdown(mergedContent)" />
         </div>
       </section>
 
@@ -582,7 +625,7 @@ onUnmounted(() => {
 
         <!-- 5. 文章正文 -->
         <div class="rounded-2xl border border-border bg-card p-4">
-          <div class="markdown-body" v-html="renderMarkdown(article.content)" />
+          <div class="markdown-body" v-html="renderMarkdown(mergedContent)" />
         </div>
 
         <!-- 6. 相似推荐 -->

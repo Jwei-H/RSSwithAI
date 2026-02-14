@@ -55,6 +55,11 @@ export type ArticleExtra = {
   articleId: number
   overview: string
   keyInformation: string[]
+  tags?: string[]
+  toc?: {
+    title: string
+    anchor: string
+  }[]
   status: 'SUCCESS' | 'FAILED'
   errorMessage?: string | null
 }

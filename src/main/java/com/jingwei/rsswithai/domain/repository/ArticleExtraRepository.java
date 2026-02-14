@@ -34,7 +34,7 @@ public interface ArticleExtraRepository extends JpaRepository<ArticleExtra, Long
      * 即使使用了 Projection，默认行为有时仍会加载完整实体导致 vector 映射错误。
      */
     @Query("SELECT a.id as id, a.articleId as articleId, a.overview as overview, " +
-            "a.keyInformation as keyInformation, a.tags as tags, a.status as status, " +
+            "a.keyInformation as keyInformation, a.tags as tags, a.toc as toc, a.status as status, " +
             "a.errorMessage as errorMessage, a.createdAt as createdAt, a.updatedAt as updatedAt " +
             "FROM ArticleExtra a WHERE a.articleId = :articleId")
     Optional<ArticleExtraNoVectorView> findByArticleId(@Param("articleId") Long articleId);
@@ -93,6 +93,8 @@ public interface ArticleExtraRepository extends JpaRepository<ArticleExtra, Long
         List<String> getKeyInformation();
 
         List<String> getTags();
+
+        String getToc();
 
         AnalysisStatus getStatus();
 

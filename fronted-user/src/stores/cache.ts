@@ -42,6 +42,7 @@ const state = reactive<{
     favorites: CacheItem<FavoritesCacheData> | null
     articleDetails: Map<number, CacheItem<ArticleDetail>>
     articleExtras: Map<number, CacheItem<ArticleExtra>>
+    articleMergedContents: Map<number, CacheItem<string>>
     wordCloud: Map<number, CacheItem<{ text: string; value: number }[]>>
 }>({
     hotEvents: null,
@@ -52,6 +53,7 @@ const state = reactive<{
     favorites: null,
     articleDetails: new Map(),
     articleExtras: new Map(),
+    articleMergedContents: new Map(),
     wordCloud: new Map()
 })
 
@@ -290,6 +292,36 @@ export function useCacheStore() {
     }
 
     /**
+     * 获取拼接后的文章正文缓存
+     */
+    const getArticleMergedContent = (id: number): string | null => {
+        const cached = state.articleMergedContents.get(id)
+        if (!cached) return null
+        if (!isLongTermCacheValid(cached.timestamp)) {
+            state.articleMergedContents.delete(id)
+            return null
+        }
+        return cached.data
+    }
+
+    /**
+     * 设置拼接后的文章正文缓存 (LRU max 50)
+     */
+    const setArticleMergedContent = (id: number, content: string): void => {
+        if (state.articleMergedContents.has(id)) {
+            state.articleMergedContents.delete(id)
+        }
+        state.articleMergedContents.set(id, {
+            data: content,
+            timestamp: Date.now()
+        })
+        if (state.articleMergedContents.size > 50) {
+            const first = state.articleMergedContents.keys().next().value
+            if (first !== undefined) state.articleMergedContents.delete(first)
+        }
+    }
+
+    /**
      * 获取词云缓存
      * @param sourceId 源 ID (0表示全部)
      */
@@ -397,6 +429,7 @@ export function useCacheStore() {
         state.favorites = null
         state.articleDetails.clear()
         state.articleExtras.clear()
+        state.articleMergedContents.clear()
         state.wordCloud.clear()
     }
 
@@ -436,6 +469,8 @@ export function useCacheStore() {
         setArticleDetail,
         getArticleExtra,
         setArticleExtra,
+        getArticleMergedContent,
+        setArticleMergedContent,
 
         // 词云
         getWordCloud,

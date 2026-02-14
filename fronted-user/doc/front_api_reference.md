@@ -774,7 +774,7 @@ Invalid token
 
 ### 3. 获取文章增强信息
 
-获取文章的 AI 增强信息（概览、关键信息、标签）。
+获取文章的 AI 增强信息（概览、关键信息、标签、补充目录）。
 
 **接口**: `GET /api/front/v1/articles/{id}/extra`
 
@@ -805,12 +805,27 @@ Invalid token
     "人工智能",
     "科技"
   ],
+  "toc": [
+    {
+      "title": "## 模型能力概览",
+      "anchor": "Sora可生成最长"
+    },
+    {
+      "title": "## 当前限制与进展",
+      "anchor": "目前处于测试阶段"
+    }
+  ],
   "status": "SUCCESS",
   "errorMessage": null,
   "createdAt": "2026-01-12T10:06:00",
   "updatedAt": "2026-01-12T10:06:00"
 }
 ```
+
+`toc` 字段说明：
+- 若文章结构完整或篇幅较短，可返回空数组 `[]`
+- `title` 为 Markdown 标题（如 `## 小节标题`）
+- `anchor` 为原文段落开头片段，用于将补充标题插入正文
 
 **枚举值 - AnalysisStatus**:
 - `SUCCESS`: 处理成功

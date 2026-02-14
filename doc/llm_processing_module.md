@@ -2,7 +2,7 @@
 
 ## 1. 模块概述
 
-大语言模型处理模块负责对原始文章进行AI驱动的深度处理与增强，包括生成文章概览、提取关键信息、生成标签，并生成向量表示。
+大语言模型处理模块负责对原始文章进行AI驱动的深度处理与增强，包括生成文章概览、提取关键信息、生成标签、补充目录（toc），并生成向量表示。
 
 ### 1.1 核心功能
 
@@ -10,6 +10,7 @@
 - 生成文章概览（80字以内，支持Markdown）
 - 提取关键信息（1-3条，每条40字以内）
 - 生成标签（5个左右）
+- 生成补充目录（toc，含标题与锚点）
 - 生成文章向量表示（1024维）
 - 支持配置动态更新和客户端重建
 - 支持并发控制（默认5）
@@ -45,7 +46,8 @@
 {
   "overview": "文章概览内容",
   "key_info": ["重要信息1", "重要信息2", "..."],
-  "tags": ["标签1", "标签2", "..."]
+    "tags": ["标签1", "标签2", "..."],
+    "toc": [{"title": "## 补充标题", "anchor": "原文锚点"}]
 }
 其中overview字段支持markdown格式，其它字段为纯文本内容
 文章内容如下：
@@ -91,7 +93,7 @@ Entity (ArticleExtra)
 2. 获取信号量许可（控制并发数）
 3. 检查文章是否已处理过
 4. 调用语言模型生成内容
-5. 解析JSON响应，提取概览、关键信息、标签
+5. 解析JSON响应，提取概览、关键信息、标签、toc
 6. 拼接概览和关键信息，调用embedding模型生成向量
 7. 保存结果到ArticleExtra表
 8. 释放信号量许可
@@ -102,7 +104,7 @@ Entity (ArticleExtra)
 2. 注入文章参数（title、author、content）
 3. 调用语言模型
 4. 解析JSON响应
-5. 提取各字段内容
+5. 提取各字段内容并清洗toc项（仅保留有效title/anchor）
 
 ### 3.3 向量生成流程
 
@@ -132,6 +134,7 @@ Entity (ArticleExtra)
 | overview | String | 文章概览 |
 | keyInformation | String[] | 关键信息列表 |
 | tags | String[] | 标签列表 |
+| toc | JSONB(String) | AI补充目录（数组：title + anchor） |
 | vector | Vector(1024) | 文章向量（1024维，pgvector） |
 | status | AnalysisStatus | 处理状态（SUCCESS/FAILED） |
 | errorMessage | String | 错误信息 |

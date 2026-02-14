@@ -59,6 +59,13 @@ public class ArticleExtra {
     private List<String> tags;
 
     /**
+     * AI补充目录（JSON数组字符串）
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "JSONB")
+    private String toc;
+
+    /**
      * 文章向量表示（1024维，由embedding模型生成）
      */
     @Column

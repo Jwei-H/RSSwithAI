@@ -22,13 +22,13 @@
 2. **查询文章详情**：查看文章的完整信息（包括内容）
 3. **查询指定源的文章**：查看特定RSS源的文章
 4. **查看统计信息**：查看文章总数和每日新增趋势
-5. **查看增强信息**：查看AI生成的概览、关键信息、标签
+5. **查看增强信息**：查看AI生成的概览、关键信息、标签、补充目录(toc)
 6. **重新生成增强信息**：手动触发AI处理（阻塞调用）
 
 前台用户可以通过REST API进行以下操作：
 
 1. **文章详情**：查看文章内容
-2. **AI增强信息**：查看文章的关键信息、概览、标签
+2. **AI增强信息**：查看文章的关键信息、概览、标签、补充目录(toc)
 3. **智能搜索**：
    - 全局搜索：在所有文章中搜索
     - 订阅内搜索：仅在用户已订阅的RSS源中搜索
@@ -115,6 +115,7 @@ Entity (Article, ArticleExtra)
 | overview | String | 文章概览 |
 | keyInformation | String[] | 关键信息列表 |
 | tags | String[] | 标签列表 |
+| toc | JSONB(String) | AI补充目录（数组：title + anchor） |
 | vector | Vector(1024) | 文章向量（1024维） |
 | status | AnalysisStatus | 处理状态（SUCCESS/FAILED） |
 | errorMessage | String | 错误信息 |
@@ -143,7 +144,7 @@ Entity (Article, ArticleExtra)
 | 方法 | 路径 | 描述 |
 |------|------|------|
 | GET | /api/front/v1/articles/{id} | 获取文章详情（ArticleDetailDTO） |
-| GET | /api/front/v1/articles/{id}/extra | 获取文章的AI增强信息（ArticleExtraDTO，如不存在或处理失败返回404，失败仅后台可见错误信息） |
+| GET | /api/front/v1/articles/{id}/extra | 获取文章的AI增强信息（ArticleExtraDTO，含toc；如不存在或处理失败返回404，失败仅后台可见错误信息） |
 | GET | /api/front/v1/articles/search | 智能搜索（query必填，scope可选ALL/SUBSCRIBED；返回ArticleFeedDTO列表，最多20条） |
 | GET | /api/front/v1/articles/{id}/recommendations | 相似文章推荐（最多2条；若当前文章无有效vector则返回空列表） |
 

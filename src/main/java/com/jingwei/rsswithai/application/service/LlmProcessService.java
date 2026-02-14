@@ -31,6 +31,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -254,6 +255,7 @@ public class LlmProcessService {
             String overview = jsonResponse.has("overview") ? jsonResponse.get("overview").asString() : "";
             List<String> keyInfoList = List.of();
             List<String> tagsList = List.of();
+            List<Map<String, String>> tocList = List.of();
             if (jsonResponse.has("key_info") && jsonResponse.get("key_info").isArray()) {
                 keyInfoList = objectMapper.convertValue(
                         jsonResponse.get("key_info"),
@@ -267,9 +269,14 @@ public class LlmProcessService {
                         objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
             }
 
+            if (jsonResponse.has("toc") && jsonResponse.get("toc").isArray()) {
+                tocList = parseTocList(jsonResponse.get("toc"));
+            }
+
             resultBuilder.overview(overview)
                     .keyInformation(keyInfoList)
                     .tags(tagsList)
+                    .toc(objectMapper.writeValueAsString(tocList))
                     .status(AnalysisStatus.SUCCESS);
 
         } catch (Exception e) {
@@ -280,6 +287,22 @@ public class LlmProcessService {
         return resultBuilder.createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
+    }
+
+    private List<Map<String, String>> parseTocList(JsonNode tocNode) {
+        List<Map<String, String>> result = new ArrayList<>();
+        for (JsonNode node : tocNode) {
+            if (!node.isObject()) {
+                continue;
+            }
+            String title = node.has("title") ? node.get("title").asText("").trim() : "";
+            String anchor = node.has("anchor") ? node.get("anchor").asText("").trim() : "";
+            if (title.isBlank() || anchor.isBlank()) {
+                continue;
+            }
+            result.add(Map.of("title", title, "anchor", anchor));
+        }
+        return result;
     }
 
     /**
