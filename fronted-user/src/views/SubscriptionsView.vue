@@ -233,6 +233,27 @@ const loadWordCloud = async () => {
   }
 }
 
+const resolveSearchScope = () => {
+  if (activeSubscription.value?.type === 'RSS') {
+    return {
+      scope: 'ALL' as const,
+      sourceId: activeSubscription.value.targetId
+    }
+  }
+
+  if (activeSubscription.value?.type === 'TOPIC') {
+    return {
+      scope: 'ALL' as const,
+      sourceId: undefined
+    }
+  }
+
+  return {
+    scope: 'SUBSCRIBED' as const,
+    sourceId: undefined
+  }
+}
+
 const search = async (query: string) => {
   if (!query) {
     searchResults.value = []
@@ -240,7 +261,8 @@ const search = async (query: string) => {
   }
   searchLoading.value = true
   try {
-    searchResults.value = await feedApi.search(query, 'SUBSCRIBED')
+    const { scope, sourceId } = resolveSearchScope()
+    searchResults.value = await feedApi.search(query, scope, sourceId)
   } catch {
     searchResults.value = []
   } finally {
@@ -393,7 +415,24 @@ watch(activeSubscriptionId, () => {
   if (!usedCache) resetFeed()
   refreshFeed(usedCache)
   loadWordCloud()
+
+  if (committedQuery.value) {
+    search(committedQuery.value)
+  }
 })
+
+watch(
+  () => route.query.q,
+  async (newVal) => {
+    const nextQuery = typeof newVal === 'string' ? newVal.trim() : ''
+    if (nextQuery === committedQuery.value && nextQuery === searchQuery.value) {
+      return
+    }
+    searchQuery.value = nextQuery
+    committedQuery.value = nextQuery
+    await search(nextQuery)
+  }
+)
 
 
 onMounted(async () => {
@@ -601,18 +640,18 @@ watch(
         <div class="mt-3 flex items-center gap-2 md:mt-4 md:gap-3">
           <input v-model="searchQuery" placeholder="在订阅中搜索"
             class="flex-1 rounded-xl border border-border px-3 py-2 text-sm" @keydown.enter="onSearchSubmit" />
+          <button
+            class="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
+            :disabled="searchLoading" @click="onSearchSubmit">
+            <Search class="h-3.5 w-3.5" />
+            <span class="hidden sm:inline">搜索</span>
+          </button>
           <button class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs transition"
             :class="showUnreadOnly ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'"
             @click="showUnreadOnly = !showUnreadOnly">
             <EyeOff v-if="showUnreadOnly" class="h-3.5 w-3.5" />
             <Eye v-else class="h-3.5 w-3.5" />
             <span class="hidden sm:inline">{{ showUnreadOnly ? '仅未读' : '全部' }}</span>
-          </button>
-          <button
-            class="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
-            :disabled="searchLoading" @click="onSearchSubmit">
-            <Search class="h-3.5 w-3.5" />
-            <span class="hidden sm:inline">搜索</span>
           </button>
         </div>
       </div>

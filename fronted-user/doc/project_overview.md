@@ -98,7 +98,7 @@ src/
 - **按源预览**：`GET /api/front/v1/articles/source/{sourceId}`（分页）
 - **文章详情**：`GET /api/front/v1/articles/{id}`
 - **AI 增强信息**：`GET /api/front/v1/articles/{id}/extra`
-- **智能搜索**：`GET /api/front/v1/articles/search`（支持模糊匹配 + 向量相似度）
+- **智能搜索**：`GET /api/front/v1/articles/search`（支持模糊匹配 + 向量相似度，支持 `sourceId` 指定 RSS 源）
 - **相似推荐**：`GET /api/front/v1/articles/{id}/recommendations`（最多 2 条）
 - **收藏操作**：`POST /api/front/v1/articles/{id}/favorite` / `DELETE /api/front/v1/articles/{id}/favorite`
 - **收藏列表**：`GET /api/front/v1/articles/favorites`（分页）
@@ -175,6 +175,8 @@ src/
 - hover 文章卡片 → 右侧展示 AI 预览（overview + keyInformation）
 - 点击文章 → 进入文章详情模式（不跳转页面）
 - 切换订阅 → 时间线和词云同步刷新
+- 在 RSS 订阅上下文搜索 → 自动携带 `sourceId`，仅在该 RSS 源内搜索
+- 在 Topic 订阅上下文搜索 → 自动回退到全站范围（`searchScope=ALL`）
 
 #### 频道广场页（DiscoverView.vue）
 **路径**：`/discover`
@@ -319,6 +321,8 @@ src/
 - 全站搜索：searchScope=ALL
 - 订阅搜索：searchScope=SUBSCRIBED
 - 收藏搜索：searchScope=FAVORITE
+- RSS 订阅源内搜索：`searchScope=ALL + sourceId=<rssSourceId>`
+- 订阅页与频道页搜索词与 URL 查询参数 `q` 双向同步，支持浏览器回退恢复视图
 
 ### 5. 静态资源 URL 重写
 - 为避免部分图片防盗链导致加载失败，对图片 URL 进行重写

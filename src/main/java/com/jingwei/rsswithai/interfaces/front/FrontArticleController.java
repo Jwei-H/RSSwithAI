@@ -41,8 +41,9 @@ public class FrontArticleController {
     @GetMapping("/search")
     public ResponseEntity<List<ArticleFeedDTO>> searchArticles(
             @RequestParam("query") String query,
-            @RequestParam(value = "searchScope", defaultValue = "ALL") SearchScope searchScope) {
-        List<ArticleFeedDTO> results = articleService.searchArticles(query, searchScope, UserContext.currentUserIdOrNull());
+            @RequestParam(value = "searchScope", defaultValue = "ALL") SearchScope searchScope,
+            @RequestParam(value = "sourceId", required = false) Long sourceId) {
+        List<ArticleFeedDTO> results = articleService.searchArticles(query, searchScope, sourceId, UserContext.currentUserIdOrNull());
         return ResponseEntity.ok(results);
     }
 

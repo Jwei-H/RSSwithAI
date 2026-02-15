@@ -264,6 +264,19 @@ watch(activeCategory, () => {
   loadSources(false)
 })
 
+watch(
+  () => route.query.q,
+  async (newVal) => {
+    const nextQuery = typeof newVal === 'string' ? newVal.trim() : ''
+    if (nextQuery === committedQuery.value && nextQuery === searchQuery.value) {
+      return
+    }
+    searchQuery.value = nextQuery
+    committedQuery.value = nextQuery
+    await search(nextQuery)
+  }
+)
+
 
 onMounted(() => {
   // 从 URL 查询参数恢复状态

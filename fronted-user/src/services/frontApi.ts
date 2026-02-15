@@ -56,10 +56,20 @@ export const feedApi = {
     get<FavoritePage>(
       `/api/front/v1/articles/favorites?page=${page}&size=${size}&sort=pubDate,desc`
     ),
-  search: (query: string, scope: 'ALL' | 'SUBSCRIBED' | 'FAVORITE') =>
-    get<ArticleFeed[]>(
-      `/api/front/v1/articles/search?query=${encodeURIComponent(query)}&searchScope=${scope}`
-    ),
+  search: (
+    query: string,
+    scope: 'ALL' | 'SUBSCRIBED' | 'FAVORITE',
+    sourceId?: number
+  ) => {
+    const params = new URLSearchParams({
+      query,
+      searchScope: scope
+    })
+    if (sourceId) {
+      params.set('sourceId', String(sourceId))
+    }
+    return get<ArticleFeed[]>(`/api/front/v1/articles/search?${params.toString()}`)
+  },
   detail: (id: number) => get<ArticleDetail>(`/api/front/v1/articles/${id}`),
   extra: (id: number) => get<ArticleExtra>(`/api/front/v1/articles/${id}/extra`),
   recommendations: (id: number) =>

@@ -145,7 +145,7 @@ Entity (Article, ArticleExtra)
 |------|------|------|
 | GET | /api/front/v1/articles/{id} | 获取文章详情（ArticleDetailDTO） |
 | GET | /api/front/v1/articles/{id}/extra | 获取文章的AI增强信息（ArticleExtraDTO，含toc；如不存在或处理失败返回404，失败仅后台可见错误信息） |
-| GET | /api/front/v1/articles/search | 智能搜索（query必填，scope可选ALL/SUBSCRIBED；返回ArticleFeedDTO列表，最多20条） |
+| GET | /api/front/v1/articles/search | 智能搜索（query必填；searchScope可选ALL/SUBSCRIBED/FAVORITE；sourceId可选，仅用于RSS源内搜索） |
 | GET | /api/front/v1/articles/{id}/recommendations | 相似文章推荐（最多2条；若当前文章无有效vector则返回空列表） |
 
 ---
@@ -166,8 +166,8 @@ Entity (Article, ArticleExtra)
 | 维度 | 旧版策略 (Old) | **优化后策略 (Optimized)** |
 |------|----------------|----------------------------|
 | **召回源** | 简单合并 (Union) | **并行双路召回** |
-| **关键词召回** | 模糊匹配 (LIMIT 20) | 模糊匹配 (Top 20 by Time) - 保底最新 |
-| **向量召回** | 阈值截断 (< 0.45) | **Top 50 by Distance** - 保证最相关 |
+| **关键词召回** | 模糊匹配 (LIMIT 20) | 模糊匹配（原query + jieba TFIDF top1关键词） |
+| **向量召回** | 阈值截断 (< 0.4) | **Top 50 by Distance** - 保证最相关 |
 | **排序逻辑** | 强制按 `pubDate` DESC | **动态加权得分 (Score)** |
 | **时间因素** | 绝对主导 (Hard Sort) | **平滑衰减 (Decay Factor)** |
 | **缺陷** | 高相关历史文章被埋没 | - |
@@ -181,6 +181,11 @@ $$ Score = (S_{semantic} \times W_{vec} + S_{keyword} \times W_{key}) \times Dec
 - **语义分 ($S_{semantic}$)**: `1.0 - CosineDistance` (权重 $W_{vec}=1.5$)
 - **关键词分 ($S_{keyword}$)**: 命中得 1.0 (权重 $W_{key}=1.0$)
 - **时间衰减 ($Decay(t)$)**: `1.0 / (1.0 + days_diff * 0.1)` (约10天衰减一半)
+
+补充说明：
+1. 当传入 `sourceId` 时，搜索限定在指定 RSS 源。
+2. 当在 Topic 订阅上下文中搜索，前端默认使用 `searchScope=ALL`。
+3. 关键词召回与向量召回并行执行，以降低整体 RT。
 
 此策略确保了：
 1. **搜得准**：语义高度相关的文章（即使是旧文）能浮上来。
