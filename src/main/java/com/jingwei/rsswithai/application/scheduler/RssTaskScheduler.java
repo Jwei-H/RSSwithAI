@@ -6,13 +6,15 @@ import com.jingwei.rsswithai.domain.model.RssSource;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.annotation.SchedulingConfigurer;
+import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -23,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class RssTaskScheduler {
+public class RssTaskScheduler implements SchedulingConfigurer {
 
     private final RssSourceRepository rssSourceRepository;
     private final RssFetcherService rssFetcherService;
@@ -35,14 +37,26 @@ public class RssTaskScheduler {
     // 防止任务重叠执行
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
+    @Override
+    public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
+        taskRegistrar.addTriggerTask(
+                this::scheduledFetch,
+                triggerContext -> {
+                    Integer intervalSeconds = appConfig.getCollectorFetchInterval();
+                    long delaySeconds = (intervalSeconds == null || intervalSeconds <= 0) ? 60L : intervalSeconds;
+                    Instant lastCompletion = triggerContext.lastCompletion();
+                    if (lastCompletion == null) {
+                        return Instant.now().plusSeconds(delaySeconds);
+                    }
+                    return lastCompletion.plus(Duration.ofSeconds(delaySeconds));
+                }
+        );
+    }
+
     /**
-     * 定时任务：每分钟检查需要抓取的源
+     * 定时任务：按配置间隔检查需要抓取的源
      * 实际抓取由各源的fetchIntervalMinutes控制
      */
-    @Scheduled(
-            timeUnit = TimeUnit.SECONDS,
-            fixedDelayString = "#{@appConfig.collectorFetchInterval}"
-    )
     public void scheduledFetch() {
         if (!isRunning.compareAndSet(false, true)) {
             log.debug("上一轮抓取任务尚未完成，跳过本次调度");
