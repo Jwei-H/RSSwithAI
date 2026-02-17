@@ -48,3 +48,27 @@ npm run dev
 
 - [项目概览 (Project Overview)](doc/project_overview.md)：架构与功能的完整指南。
 - [API 参考 (API Reference)](doc/front_api_reference.md)：详细的 API 接口文档。
+
+## 📱 PWA 支持
+
+项目已集成 `vite-plugin-pwa`，在 `production build` 下会自动生成：
+
+- `manifest.webmanifest`
+- Service Worker（Workbox）
+
+### 本地验证
+
+```bash
+npm run build
+npm run preview
+```
+
+然后在浏览器打开预览地址：
+
+- Chrome DevTools → `Application` → `Manifest` / `Service Workers`
+- 地址栏出现“安装应用”提示时即可安装
+
+### 注意事项
+
+- Service Worker 默认仅在 `localhost` 或 `https` 环境生效。
+- 当前 manifest 图标使用 `public/rss.svg` 和 `public/vite.svg`，建议后续补充 `192x192`、`512x512` 的 PNG 图标以获得更好的安装体验。
