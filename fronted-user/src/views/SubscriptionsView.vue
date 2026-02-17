@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onActivated, onDeactivated, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, onActivated, onDeactivated, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import ArticleCard from '../components/articles/ArticleCard.vue'
 import ArticlePreviewPanel from '../components/articles/ArticlePreviewPanel.vue'
@@ -56,6 +56,9 @@ const pulling = ref(false)
 const pullStartY = ref(0)
 const pullTriggered = ref(false)
 
+const dateAnchor = ref('')
+let dayRolloverTimer: ReturnType<typeof setTimeout> | null = null
+
 const wordCloud = ref<{ text: string; value: number }[]>([])
 const wordCloudLoading = ref(false)
 
@@ -95,6 +98,45 @@ const orderedSubscriptions = computed(() => {
   const topicSubscriptions = subscriptions.value.filter((item) => item.type === 'TOPIC')
   return [...rssSubscriptions, ...topicSubscriptions]
 })
+
+const toLocalDateKey = (date: Date) => {
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const resolveArticleDateKey = (pubDate: string) => {
+  const parsed = new Date(pubDate)
+  if (!Number.isNaN(parsed.getTime())) {
+    return toLocalDateKey(parsed)
+  }
+  return pubDate.split('T')[0] ?? ''
+}
+
+const refreshDateAnchor = () => {
+  dateAnchor.value = toLocalDateKey(new Date())
+}
+
+const clearDayRolloverTimer = () => {
+  if (dayRolloverTimer) {
+    clearTimeout(dayRolloverTimer)
+    dayRolloverTimer = null
+  }
+}
+
+const scheduleDayRollover = () => {
+  clearDayRolloverTimer()
+  const now = new Date()
+  const nextMidnight = new Date(now)
+  nextMidnight.setHours(24, 0, 0, 0)
+  const delay = Math.max(1000, nextMidnight.getTime() - now.getTime() + 100)
+
+  dayRolloverTimer = setTimeout(() => {
+    refreshDateAnchor()
+    scheduleDayRollover()
+  }, delay)
+}
 
 const getFeedCacheKey = (id: number | null) => (id === null ? 'all' : `sub:${id}`)
 
@@ -460,12 +502,10 @@ const feedDisplay = computed(() => {
     ? feedList.value.filter(item => !historyStore.isRead(item.id))
     : feedList.value
 
-  const today = new Date()
-  const yesterday = new Date(today)
+  const todayStr = dateAnchor.value || toLocalDateKey(new Date())
+  const yesterday = new Date()
   yesterday.setDate(yesterday.getDate() - 1)
-
-  const todayStr = today.toISOString().split('T')[0]
-  const yesterdayStr = yesterday.toISOString().split('T')[0]
+  const yesterdayStr = toLocalDateKey(yesterday)
 
   const formatDate = (dateStr: string) => {
     if (dateStr === todayStr) return '今天'
@@ -474,7 +514,7 @@ const feedDisplay = computed(() => {
   }
 
   for (const item of items) {
-    const date = item.pubDate.split('T')[0] ?? ''
+    const date = resolveArticleDateKey(item.pubDate)
     if (date !== lastDate) {
       result.push({ type: 'separator', date: formatDate(date) })
       lastDate = date
@@ -515,6 +555,9 @@ watch(
 
 
 onMounted(async () => {
+  refreshDateAnchor()
+  scheduleDayRollover()
+
   // 从 URL 查询参数恢复状态
   const subscriptionId = route.query.subscriptionId
   const articleId = route.query.articleId
@@ -547,6 +590,11 @@ onMounted(async () => {
 })
 
 onActivated(() => {
+  if (!dateAnchor.value) {
+    refreshDateAnchor()
+  }
+  scheduleDayRollover()
+
   applySubscriptionsCache()
   loadSubscriptions(true)
 
@@ -557,6 +605,14 @@ onActivated(() => {
       }
     })
   }
+})
+
+onDeactivated(() => {
+  clearDayRolloverTimer()
+})
+
+onBeforeUnmount(() => {
+  clearDayRolloverTimer()
 })
 
 onBeforeRouteLeave((to, from, next) => {
