@@ -208,6 +208,12 @@
   @apply rounded-lg border border-border my-3;
   max-width: 100%;
   height: auto;
+  cursor: zoom-in;
+  transition: transform 0.2s ease;
+}
+
+.markdown-body img:hover {
+  transform: scale(1.01);
 }
 
 .markdown-body a,

@@ -1,6 +1,9 @@
 import { reactive } from 'vue'
 import type { ArticleDetail, ArticleExtra, ArticleFeed, HotEvent, RssSource, Subscription } from '../types'
 
+const ARTICLE_CACHE_STORAGE_KEY = 'rss_article_cache_v1'
+const ARTICLE_CACHE_EXPIRY = 48 * 60 * 60 * 1000 // 48小时
+
 /**
  * 缓存项接口
  */
@@ -32,6 +35,12 @@ interface FavoritesCacheData {
     last: boolean
 }
 
+interface PersistentArticleCache {
+    articleDetails: Array<[number, CacheItem<ArticleDetail>]>
+    articleExtras: Array<[number, CacheItem<ArticleExtra>]>
+    articleMergedContents: Array<[number, CacheItem<string>]>
+}
+
 // 单例状态
 const state = reactive<{
     hotEvents: CacheItem<HotEvent[]> | null
@@ -57,6 +66,57 @@ const state = reactive<{
     wordCloud: new Map()
 })
 
+const persistArticleCaches = () => {
+    if (typeof window === 'undefined') return
+
+    try {
+        const payload: PersistentArticleCache = {
+            articleDetails: Array.from(state.articleDetails.entries()),
+            articleExtras: Array.from(state.articleExtras.entries()),
+            articleMergedContents: Array.from(state.articleMergedContents.entries())
+        }
+        window.localStorage.setItem(ARTICLE_CACHE_STORAGE_KEY, JSON.stringify(payload))
+    } catch {
+        // 忽略持久化失败
+    }
+}
+
+const hydrateArticleCaches = () => {
+    if (typeof window === 'undefined') return
+
+    try {
+        const raw = window.localStorage.getItem(ARTICLE_CACHE_STORAGE_KEY)
+        if (!raw) return
+
+        const parsed = JSON.parse(raw) as Partial<PersistentArticleCache>
+        const now = Date.now()
+
+        const details = Array.isArray(parsed.articleDetails) ? parsed.articleDetails : []
+        const extras = Array.isArray(parsed.articleExtras) ? parsed.articleExtras : []
+        const merged = Array.isArray(parsed.articleMergedContents) ? parsed.articleMergedContents : []
+
+        for (const [id, item] of details) {
+            if (now - item.timestamp < ARTICLE_CACHE_EXPIRY) {
+                state.articleDetails.set(Number(id), item)
+            }
+        }
+        for (const [id, item] of extras) {
+            if (now - item.timestamp < ARTICLE_CACHE_EXPIRY) {
+                state.articleExtras.set(Number(id), item)
+            }
+        }
+        for (const [id, item] of merged) {
+            if (now - item.timestamp < ARTICLE_CACHE_EXPIRY) {
+                state.articleMergedContents.set(Number(id), item)
+            }
+        }
+    } catch {
+        // 忽略反序列化失败
+    }
+}
+
+hydrateArticleCaches()
+
 /**
  * 缓存 Store (非 Pinia 实现)
  * 用于缓存热点事件和 RSS 源数据，减少 API 请求频率
@@ -74,13 +134,13 @@ export function useCacheStore() {
     }
 
     /**
-     * 检查长期缓存是否有效 (24小时)
+     * 检查长期缓存是否有效 (48小时)
      * @param timestamp 缓存时间戳
      * @returns 缓存是否有效
      */
     const isLongTermCacheValid = (timestamp: number): boolean => {
         const now = Date.now()
-        const cacheExpiry = 24 * 60 * 60 * 1000 // 24小时过期
+        const cacheExpiry = ARTICLE_CACHE_EXPIRY
         return now - timestamp < cacheExpiry
     }
 
@@ -172,6 +232,39 @@ export function useCacheStore() {
     }
 
     /**
+     * 添加或更新单条订阅缓存
+     */
+    const upsertSubscription = (item: Subscription): void => {
+        if (!state.subscriptions) {
+            state.subscriptions = {
+                data: [item],
+                timestamp: Date.now()
+            }
+            return
+        }
+
+        const index = state.subscriptions.data.findIndex((sub) => sub.id === item.id)
+        if (index >= 0) {
+            state.subscriptions.data[index] = item
+        } else {
+            state.subscriptions.data.unshift(item)
+        }
+        state.subscriptions.timestamp = Date.now()
+    }
+
+    /**
+     * 移除单条订阅缓存
+     */
+    const removeSubscription = (subscriptionId: number): void => {
+        if (state.subscriptions) {
+            state.subscriptions.data = state.subscriptions.data.filter((item) => item.id !== subscriptionId)
+            state.subscriptions.timestamp = Date.now()
+        }
+
+        state.subscriptionFeeds.delete(`sub:${subscriptionId}`)
+    }
+
+    /**
      * 获取订阅时间线缓存
      * @param key 订阅缓存键
      * @returns 时间线缓存或 null
@@ -231,6 +324,38 @@ export function useCacheStore() {
     }
 
     /**
+     * 从收藏缓存中移除文章
+     */
+    const removeFavorite = (articleId: number): void => {
+        if (!state.favorites) return
+        state.favorites.data.items = state.favorites.data.items.filter((item) => item.id !== articleId)
+        state.favorites.timestamp = Date.now()
+    }
+
+    /**
+     * 向收藏缓存中添加文章（若不存在）
+     */
+    const upsertFavorite = (article: ArticleFeed): void => {
+        if (!state.favorites) {
+            state.favorites = {
+                data: {
+                    items: [article],
+                    page: 1,
+                    last: false
+                },
+                timestamp: Date.now()
+            }
+            return
+        }
+
+        const exists = state.favorites.data.items.some((item) => item.id === article.id)
+        if (!exists) {
+            state.favorites.data.items.unshift(article)
+        }
+        state.favorites.timestamp = Date.now()
+    }
+
+    /**
      * 获取文章详情缓存
      * @param id 文章ID
      */
@@ -239,6 +364,7 @@ export function useCacheStore() {
         if (!cached) return null
         if (!isLongTermCacheValid(cached.timestamp)) {
             state.articleDetails.delete(id)
+            persistArticleCaches()
             return null
         }
         return cached.data
@@ -259,6 +385,7 @@ export function useCacheStore() {
             const first = state.articleDetails.keys().next().value
             if (first !== undefined) state.articleDetails.delete(first)
         }
+        persistArticleCaches()
     }
 
     /**
@@ -269,6 +396,7 @@ export function useCacheStore() {
         if (!cached) return null
         if (!isLongTermCacheValid(cached.timestamp)) {
             state.articleExtras.delete(id)
+            persistArticleCaches()
             return null
         }
         return cached.data
@@ -289,6 +417,7 @@ export function useCacheStore() {
             const first = state.articleExtras.keys().next().value
             if (first !== undefined) state.articleExtras.delete(first)
         }
+        persistArticleCaches()
     }
 
     /**
@@ -299,6 +428,7 @@ export function useCacheStore() {
         if (!cached) return null
         if (!isLongTermCacheValid(cached.timestamp)) {
             state.articleMergedContents.delete(id)
+            persistArticleCaches()
             return null
         }
         return cached.data
@@ -319,6 +449,7 @@ export function useCacheStore() {
             const first = state.articleMergedContents.keys().next().value
             if (first !== undefined) state.articleMergedContents.delete(first)
         }
+        persistArticleCaches()
     }
 
     /**
@@ -418,6 +549,26 @@ export function useCacheStore() {
     }
 
     /**
+     * 同步 RSS 源订阅状态到缓存
+     */
+    const syncRssSourceSubscription = (sourceId: number, isSubscribed: boolean, subscriptionId: number | null): void => {
+        state.rssSources.forEach((pages, category) => {
+            const nextPages = pages.map((pageItem) => ({
+                ...pageItem,
+                data: pageItem.data.map((source) => {
+                    if (source.id !== sourceId) return source
+                    return {
+                        ...source,
+                        isSubscribed,
+                        subscriptionId
+                    }
+                })
+            }))
+            state.rssSources.set(category, nextPages)
+        })
+    }
+
+    /**
      * 清除所有缓存
      */
     const clearAll = (): void => {
@@ -431,6 +582,9 @@ export function useCacheStore() {
         state.articleExtras.clear()
         state.articleMergedContents.clear()
         state.wordCloud.clear()
+        if (typeof window !== 'undefined') {
+            window.localStorage.removeItem(ARTICLE_CACHE_STORAGE_KEY)
+        }
     }
 
     /**
@@ -457,12 +611,16 @@ export function useCacheStore() {
         // 订阅
         getSubscriptions,
         setSubscriptions,
+        upsertSubscription,
+        removeSubscription,
         getSubscriptionFeed,
         setSubscriptionFeed,
 
         // 收藏
         getFavorites,
         setFavorites,
+        removeFavorite,
+        upsertFavorite,
 
         // 文章详情 & AI增强
         getArticleDetail,
@@ -475,6 +633,7 @@ export function useCacheStore() {
         // 词云
         getWordCloud,
         setWordCloud,
+        syncRssSourceSubscription,
 
         // 全局操作
         clearAll,

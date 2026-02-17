@@ -16,7 +16,7 @@ import { useUiStore } from '../stores/ui'
 import { useToastStore } from '../stores/toast'
 import { useHistoryStore } from '../stores/history'
 import { useCacheStore } from '../stores/cache'
-import { CalendarDays, ChevronDown, Eye, EyeOff, Rss, Search, X, List } from 'lucide-vue-next'
+import { CalendarDays, ChevronDown, Eye, EyeOff, Rss, Search, X, List, RefreshCw } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
@@ -50,6 +50,12 @@ const searchResults = ref<ArticleFeed[]>([])
 const showUnreadOnly = ref(false)
 const hasInitialized = ref(false)
 
+const refreshing = ref(false)
+const pullDistance = ref(0)
+const pulling = ref(false)
+const pullStartY = ref(0)
+const pullTriggered = ref(false)
+
 const wordCloud = ref<{ text: string; value: number }[]>([])
 const wordCloudLoading = ref(false)
 
@@ -60,6 +66,12 @@ const savedScrollTop = ref(0)
 let hoverTimer: number | null = null
 
 const detailOpen = computed(() => ui.detailOpen)
+const pullRefreshThreshold = 72
+const pullIndicatorText = computed(() => {
+  if (refreshing.value) return '刷新中...'
+  if (pullDistance.value >= pullRefreshThreshold) return '松开立即刷新'
+  return '下拉刷新'
+})
 
 const activeSubscription = computed(() =>
   subscriptions.value.find((item) => item.id === activeSubscriptionId.value) || null
@@ -206,7 +218,21 @@ const refreshFeed = async (silent = false) => {
   }
 }
 
-const loadWordCloud = async () => {
+const refreshAll = async () => {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    await loadSubscriptions(true)
+    await refreshFeed(true)
+    await loadWordCloud(true)
+  } catch {
+    toast.push('刷新失败，请稍后重试', 'error')
+  } finally {
+    refreshing.value = false
+  }
+}
+
+const loadWordCloud = async (forceRefresh = false) => {
   if (activeSubscription.value?.type === 'TOPIC') {
     wordCloud.value = []
     wordCloudLoading.value = false
@@ -214,11 +240,13 @@ const loadWordCloud = async () => {
   }
 
   const cacheKey = activeSourceId.value || 0
-  const cached = cache.getWordCloud(cacheKey)
-  if (cached) {
-    wordCloud.value = cached
-    wordCloudLoading.value = false
-    return
+  if (!forceRefresh) {
+    const cached = cache.getWordCloud(cacheKey)
+    if (cached) {
+      wordCloud.value = cached
+      wordCloudLoading.value = false
+      return
+    }
   }
 
   wordCloudLoading.value = true
@@ -346,6 +374,55 @@ const onLeaveArticle = () => {
   if (hoverTimer) window.clearTimeout(hoverTimer)
 }
 
+const onTimelineTouchStart = (event: TouchEvent) => {
+  if (!isMobile.value || detailOpen.value || refreshing.value) return
+  if (committedQuery.value) return
+  const container = listContainer.value
+  if (!container || container.scrollTop > 0) return
+
+  pullStartY.value = event.touches[0]?.clientY || 0
+  pullDistance.value = 0
+  pullTriggered.value = false
+  pulling.value = true
+}
+
+const onTimelineTouchMove = (event: TouchEvent) => {
+  if (!pulling.value || refreshing.value) return
+  const container = listContainer.value
+  if (!container) return
+
+  const currentY = event.touches[0]?.clientY || 0
+  const delta = currentY - pullStartY.value
+  if (delta <= 0) {
+    pullDistance.value = 0
+    return
+  }
+
+  if (container.scrollTop > 0) {
+    pullDistance.value = 0
+    return
+  }
+
+  if (event.cancelable) {
+    event.preventDefault()
+  }
+
+  pullDistance.value = Math.min(120, delta * 0.5)
+}
+
+const onTimelineTouchEnd = async () => {
+  if (!pulling.value) return
+  pulling.value = false
+
+  if (pullDistance.value >= pullRefreshThreshold && !pullTriggered.value) {
+    pullTriggered.value = true
+    await refreshAll()
+  }
+
+  pullDistance.value = 0
+  pullTriggered.value = false
+}
+
 const onOpenArticle = (id: number) => {
   // 更新 URL 查询参数
   const query = { ...route.query, articleId: String(id) }
@@ -359,16 +436,18 @@ const onOpenArticle = (id: number) => {
 const onCancelSubscription = async (item: Subscription) => {
   try {
     await subscriptionApi.remove(item.id)
+    subscriptions.value = subscriptions.value.filter((sub) => sub.id !== item.id)
+    cache.removeSubscription(item.id)
+    if (item.type === 'RSS') {
+      cache.syncRssSourceSubscription(item.targetId, false, null)
+    }
     toast.push('已取消订阅', 'success')
     const wasActive = activeSubscriptionId.value === item.id
     if (wasActive) {
       activeSubscriptionId.value = null
     }
-    await loadSubscriptions(false)
-    if (!wasActive) {
-      await refreshFeed(true)
-      loadWordCloud()
-    }
+    await refreshFeed(true)
+    await loadWordCloud(true)
   } catch (error: any) {
     toast.push(error?.message || '取消订阅失败', 'error')
   }
@@ -468,6 +547,9 @@ onMounted(async () => {
 })
 
 onActivated(() => {
+  applySubscriptionsCache()
+  loadSubscriptions(true)
+
   if (listContainer.value && savedScrollTop.value > 0) {
     requestAnimationFrame(() => {
       if (listContainer.value) {
@@ -553,7 +635,7 @@ watch(
   </div>
 
   <!-- 主布局 -->
-  <div class="flex h-screen flex-col gap-4 px-4 py-4 md:grid md:gap-6 md:px-6 md:py-6" :class="{
+  <div class="flex h-full flex-col gap-4 overflow-hidden px-4 py-4 md:grid md:h-screen md:gap-6 md:px-6 md:py-6" :class="{
     'md:grid-cols-[200px_0_1fr]': detailOpen,
     'md:grid-cols-[280px_1fr_320px]': !detailOpen
   }">
@@ -633,9 +715,17 @@ watch(
             <CalendarDays class="h-4 w-4 text-primary" />
             <h2 class="text-sm font-semibold text-foreground">时间线</h2>
           </div>
-          <span class="hidden text-xs text-muted-foreground md:inline">
-            {{ activeSubscriptionName }}
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="hidden text-xs text-muted-foreground md:inline">
+              {{ activeSubscriptionName }}
+            </span>
+            <button
+              class="hidden items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground transition hover:bg-muted md:inline-flex"
+              :disabled="refreshing" @click="refreshAll">
+              <RefreshCw class="h-3.5 w-3.5" :class="refreshing ? 'animate-spin' : ''" />
+              刷新
+            </button>
+          </div>
         </div>
         <div class="mt-3 flex items-center gap-2 md:mt-4 md:gap-3">
           <input v-model="searchQuery" placeholder="在订阅中搜索"
@@ -656,7 +746,20 @@ watch(
         </div>
       </div>
 
-      <div ref="listContainer" class="flex-1 space-y-3 overflow-y-auto scrollbar-thin">
+      <div
+        ref="listContainer"
+        class="flex-1 space-y-3 overflow-y-auto scrollbar-thin"
+        @touchstart="onTimelineTouchStart"
+        @touchmove="onTimelineTouchMove"
+        @touchend="onTimelineTouchEnd"
+        @touchcancel="onTimelineTouchEnd">
+        <div class="md:hidden overflow-hidden transition-all duration-200"
+          :style="{ height: `${refreshing ? 40 : (pulling ? pullDistance : 0)}px` }">
+          <div class="flex h-full items-end justify-center pb-2 text-xs text-muted-foreground">
+            <RefreshCw class="mr-1.5 h-3.5 w-3.5" :class="refreshing ? 'animate-spin' : ''" />
+            {{ pullIndicatorText }}
+          </div>
+        </div>
         <LoadingState v-if="feedLoading && !feedList.length && !committedQuery" />
         <EmptyState v-else-if="!feedList.length && !feedLoading && !committedQuery" title="暂无内容"
           description="订阅 RSS 或创建主题以生成时间线" />

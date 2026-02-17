@@ -59,6 +59,46 @@ const savedScrollTop = ref(0)
 
 const detailOpen = computed(() => ui.detailOpen)
 
+const toCachedRssSubscription = (source: RssSource, subscriptionId: number) => ({
+  id: subscriptionId,
+  type: 'RSS' as const,
+  targetId: source.id,
+  name: source.name,
+  icon: source.icon || null,
+  link: source.link,
+  category: source.category,
+  content: null,
+  createdAt: new Date().toISOString()
+})
+
+const syncSourcesWithSubscriptionCache = () => {
+  const cachedSubscriptions = cache.getSubscriptions() || []
+  const rssSubscriptionMap = new Map<number, number>()
+
+  cachedSubscriptions.forEach((item) => {
+    if (item.type === 'RSS') {
+      rssSubscriptionMap.set(item.targetId, item.id)
+    }
+  })
+
+  sources.value = sources.value.map((source) => {
+    const cachedSubscriptionId = rssSubscriptionMap.get(source.id)
+    if (cachedSubscriptionId) {
+      return {
+        ...source,
+        isSubscribed: true,
+        subscriptionId: cachedSubscriptionId
+      }
+    }
+
+    return {
+      ...source,
+      isSubscribed: false,
+      subscriptionId: null
+    }
+  })
+}
+
 const loadHotEvents = async (forceRefresh = false) => {
   // 尝试从缓存获取
   if (!forceRefresh) {
@@ -93,6 +133,7 @@ const loadSources = async (forceRefresh = false) => {
       sources.value = cached.sources
       page.value = cached.page
       last.value = cached.last
+      syncSourcesWithSubscriptionCache()
       return
     }
   }
@@ -102,6 +143,8 @@ const loadSources = async (forceRefresh = false) => {
     const res = await rssApi.list({ page: page.value, size: 12, category: category || undefined })
     sources.value.push(...res.content)
     last.value = res.last
+
+    syncSourcesWithSubscriptionCache()
 
     // 保存到缓存
     cache.addRssSources(category, res.content, page.value, res.last)
@@ -151,7 +194,11 @@ const onSubscribeHot = async (item: HotEvent) => {
   }
   try {
     const topic = await subscriptionApi.createTopic({ content: item.event })
-    await subscriptionApi.create({ type: 'TOPIC', targetId: topic.id })
+    const created = await subscriptionApi.create({ type: 'TOPIC', targetId: topic.id })
+    cache.upsertSubscription({
+      ...created,
+      content: created.content || topic.content
+    })
     item.isSubscribed = true
     toast.push('热点已订阅', 'success')
   } catch (error: any) {
@@ -173,7 +220,11 @@ const onCreateTopic = async () => {
   topicLoading.value = true
   try {
     const topic = await subscriptionApi.createTopic({ content })
-    await subscriptionApi.create({ type: 'TOPIC', targetId: topic.id })
+    const created = await subscriptionApi.create({ type: 'TOPIC', targetId: topic.id })
+    cache.upsertSubscription({
+      ...created,
+      content: created.content || topic.content
+    })
     toast.push('主题已订阅', 'success')
     topicInput.value = ''
   } catch (error: any) {
@@ -203,14 +254,19 @@ const onRefresh = async () => {
 const onToggleSubscribe = async (source: RssSource) => {
   try {
     if (source.isSubscribed && source.subscriptionId) {
-      await subscriptionApi.remove(source.subscriptionId)
+      const removedSubscriptionId = source.subscriptionId
+      await subscriptionApi.remove(removedSubscriptionId)
       source.isSubscribed = false
       source.subscriptionId = null
+      cache.removeSubscription(removedSubscriptionId)
+      cache.syncRssSourceSubscription(source.id, false, null)
       toast.push('已取消订阅', 'success')
     } else {
       const subscription = await subscriptionApi.create({ type: 'RSS', targetId: source.id })
       source.isSubscribed = true
       source.subscriptionId = subscription.id
+      cache.upsertSubscription(toCachedRssSubscription(source, subscription.id))
+      cache.syncRssSourceSubscription(source.id, true, subscription.id)
       toast.push('订阅成功', 'success')
     }
   } catch (error: any) {
@@ -350,6 +406,8 @@ watch(
 )
 
 onActivated(() => {
+  syncSourcesWithSubscriptionCache()
+
   if (listContainer.value && savedScrollTop.value > 0) {
     requestAnimationFrame(() => {
       if (listContainer.value) {
@@ -374,7 +432,7 @@ onBeforeRouteLeave((to, from, next) => {
       :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
   </div>
 
-  <div class="flex h-screen flex-col gap-4 px-4 py-4 md:grid md:gap-6 md:px-6 md:py-6"
+  <div class="flex h-full flex-col gap-4 overflow-hidden px-4 py-4 md:grid md:h-screen md:gap-6 md:px-6 md:py-6"
     :class="detailOpen ? 'md:grid-cols-[200px_1fr]' : 'md:grid-cols-[280px_1fr]'">
     <!-- 桌面端侧边栏 -->
     <section class="hidden h-full flex-col gap-4 overflow-hidden md:flex">

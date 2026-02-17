@@ -38,6 +38,9 @@ const isDragging = ref(false)
 const activeHeadingId = ref<string | null>(null)
 const scrollRafId = ref<number | null>(null)
 const mermaidReady = ref(false)
+const imagePreviewOpen = ref(false)
+const imagePreviewSrc = ref('')
+const imagePreviewAlt = ref('预览图片')
 
 const dividerStyle = computed(() => ({
   width: `${100 - leftWidth.value}%`
@@ -318,6 +321,53 @@ const rebuildMergedContent = () => {
   cache.setArticleMergedContent(props.articleId, content)
 }
 
+const toArticleFeed = (item: ArticleDetail): ArticleFeed => ({
+  id: item.id,
+  sourceId: item.sourceId,
+  sourceName: item.sourceName,
+  title: item.title,
+  coverImage: item.coverImage,
+  pubDate: item.pubDate,
+  wordCount: item.wordCount
+})
+
+const openImagePreview = (src: string, alt?: string) => {
+  if (!src) return
+  imagePreviewSrc.value = src
+  imagePreviewAlt.value = alt || '预览图片'
+  imagePreviewOpen.value = true
+
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = 'hidden'
+    document.body.style.touchAction = 'none'
+  }
+}
+
+const closeImagePreview = () => {
+  imagePreviewOpen.value = false
+
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = ''
+    document.body.style.touchAction = ''
+  }
+}
+
+const onMarkdownClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement | null
+  const image = target?.closest('.markdown-body img') as HTMLImageElement | null
+  if (!image) return
+
+  event.preventDefault()
+  const src = image.currentSrc || image.src
+  openImagePreview(src, image.alt)
+}
+
+const onKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && imagePreviewOpen.value) {
+    closeImagePreview()
+  }
+}
+
 const load = async () => {
   if (!props.articleId) return
   loading.value = true
@@ -392,12 +442,16 @@ const toggleFavorite = async () => {
     if (favorite.value) {
       await feedApi.unfavorite(article.value.id)
       favorite.value = false
-      article.value.isFavorite = false // Update cache reference
+      article.value.isFavorite = false
+      cache.removeFavorite(article.value.id)
+      cache.setArticleDetail(article.value.id, article.value)
       toast.push('已取消收藏', 'success')
     } else {
       await feedApi.favorite(article.value.id)
       favorite.value = true
-      article.value.isFavorite = true // Update cache reference
+      article.value.isFavorite = true
+      cache.upsertFavorite(toArticleFeed(article.value))
+      cache.setArticleDetail(article.value.id, article.value)
       toast.push('已加入收藏', 'success')
     }
   } catch (error) {
@@ -439,14 +493,18 @@ onMounted(() => {
   load()
   window.addEventListener('mousemove', onMouseMove)
   window.addEventListener('mouseup', onMouseUp)
+  window.addEventListener('keydown', onKeyDown)
 })
 
 onUnmounted(() => {
+  closeImagePreview()
+
   if (scrollRafId.value !== null) {
     window.cancelAnimationFrame(scrollRafId.value)
   }
   window.removeEventListener('mousemove', onMouseMove)
   window.removeEventListener('mouseup', onMouseUp)
+  window.removeEventListener('keydown', onKeyDown)
 })
 </script>
 
@@ -491,7 +549,7 @@ onUnmounted(() => {
               打开原文
             </a>
           </div>
-          <div class="markdown-body" v-html="renderMarkdown(mergedContent)" />
+          <div class="markdown-body" v-html="renderMarkdown(mergedContent)" @click="onMarkdownClick" />
         </div>
       </section>
 
@@ -625,7 +683,7 @@ onUnmounted(() => {
 
         <!-- 5. 文章正文 -->
         <div class="rounded-2xl border border-border bg-card p-4">
-          <div class="markdown-body" v-html="renderMarkdown(mergedContent)" />
+          <div class="markdown-body" v-html="renderMarkdown(mergedContent)" @click="onMarkdownClick" />
         </div>
 
         <!-- 6. 相似推荐 -->
@@ -647,5 +705,16 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0"
+      enter-to-class="opacity-100" leave-active-class="transition duration-150 ease-in" leave-from-class="opacity-100"
+      leave-to-class="opacity-0">
+      <div v-if="imagePreviewOpen" class="fixed inset-0 z-[80] flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm"
+        @click="closeImagePreview">
+        <img :src="imagePreviewSrc" :alt="imagePreviewAlt"
+          class="max-h-[90vh] max-w-[95vw] rounded-xl border border-border object-contain shadow-2xl transition-transform duration-200 ease-out"
+          @click.stop />
+      </div>
+    </Transition>
   </div>
 </template>
