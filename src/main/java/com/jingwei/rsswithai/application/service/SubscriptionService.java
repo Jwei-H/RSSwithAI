@@ -77,9 +77,7 @@ public class SubscriptionService {
         if (content.isBlank()) {
             throw new IllegalArgumentException("Topic content cannot be blank");
         }
-        return topicRepository.findByContent(content)
-                .map(TopicDTO::from)
-                .orElseGet(() -> createNewTopic(content));
+        return TopicDTO.from(getOrCreateTopic(content));
     }
 
     @Transactional
@@ -151,7 +149,29 @@ public class SubscriptionService {
                 feedCursor.cursorId(), pageSize);
     }
 
-    private TopicDTO createNewTopic(String content) {
+    @Transactional
+    public List<ArticleFeedDTO> getTopicFeedByContent(String content, String cursor, Integer size) {
+        String trimmedContent = content == null ? "" : content.trim();
+        if (trimmedContent.isBlank()) {
+            throw new IllegalArgumentException("Topic content cannot be blank");
+        }
+
+        Topic topic = getOrCreateTopic(trimmedContent);
+        if (topic.getVector() == null) {
+            throw new IllegalStateException("Topic vector is unavailable");
+        }
+
+        FeedCursor feedCursor = parseCursor(cursor);
+        int pageSize = (size == null || size <= 0) ? DEFAULT_FEED_SIZE : Math.min(size, MAX_FEED_SIZE);
+        return executeHybridFeed(List.of(), List.of(topic.getVector()), feedCursor.cursorTime(), feedCursor.cursorId(), pageSize);
+    }
+
+    private Topic getOrCreateTopic(String content) {
+        return topicRepository.findByContent(content)
+                .orElseGet(() -> createNewTopic(content));
+    }
+
+    private Topic createNewTopic(String content) {
         float[] vector = llmProcessService.generateVector(content);
         if (vector == null) {
             throw new IllegalStateException("Failed to generate topic vector");
@@ -162,12 +182,11 @@ public class SubscriptionService {
                 .vector(vector)
                 .build();
         try {
-            Topic saved = topicRepository.save(topic);
-            return TopicDTO.from(saved);
+            return topicRepository.save(topic);
         } catch (DataIntegrityViolationException e) {
             log.warn("Topic concurrent creation detected for content: {}", content);
             return topicRepository.findByContent(content)
-                    .map(TopicDTO::from)
+                    .filter(existing -> existing.getVector() != null)
                     .orElseThrow(() -> new IllegalStateException("Failed to persist topic"));
         }
     }

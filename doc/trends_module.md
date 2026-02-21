@@ -51,6 +51,7 @@ Entity (TrendsData)
 | --------------------- | --------------------------------------------------------- |
 | FrontTrendsController | 提供前台查询趋势数据的 REST API                           |
 | TrendsService         | 封装查询逻辑，处理 DTO 转换                               |
+| SubscriptionService   | 复用 Topic 创建/向量检索能力，提供热点事件相关文章预览能力 |
 | TrendsAnalysisService | 核心分析服务，执行 LLM 调用、数据清洗与聚合（Map-Reduce） |
 | TrendsTaskScheduler   | 定时调度器，触发分析任务                                  |
 | TrendsDataRepository  | 趋势数据存取                                              |
@@ -80,6 +81,15 @@ Entity (TrendsData)
 3. **持久化**：
   - 词云与热点事件均采用**追加写入**（append-only），不覆盖历史记录。
   - 查询时统一读取指定维度的**最新一条记录**。
+
+### 3.3 热点事件相关文章预览流程（More）
+
+1. 前端点击热点事件“更多”，调用 `/api/front/v1/trends/hotevents/articles?event=...`。
+2. 后端按 `event` 查询 Topic：
+  - 若已存在，直接复用 Topic 向量；
+  - 若不存在，创建 Topic 并调用模型生成向量。
+3. 使用该 Topic 向量执行语义检索，复用订阅模块 Hybrid Feed 的 Topic 分支检索策略。
+4. 返回 `ArticleFeedDTO` 列表，按 `pub_date DESC, id DESC` 排序并支持游标分页。
 
 ---
 
@@ -132,6 +142,7 @@ Entity (TrendsData)
 | ---- | ------------------------------ | --------------------------------------------- |
 | GET  | /api/front/v1/trends/wordcloud | 获取词云（可指定 sourceId，否则聚合用户订阅） |
 | GET  | /api/front/v1/trends/hotevents | 获取全局热点事件榜单                          |
+| GET  | /api/front/v1/trends/hotevents/articles | 获取指定热点事件的相关文章预览（Topic 语义检索） |
 
 ---
 

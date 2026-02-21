@@ -4,6 +4,7 @@ import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import ArticleCard from '../components/articles/ArticleCard.vue'
 import ArticleDetailPane from '../components/articles/ArticleDetailPane.vue'
 import HotEventsList from '../components/trends/HotEventsList.vue'
+import HotEventPreviewDialog from '../components/trends/HotEventPreviewDialog.vue'
 import RssSourceCard from '../components/discover/RssSourceCard.vue'
 import SourcePreviewDialog from '../components/discover/SourcePreviewDialog.vue'
 import LoadingState from '../components/common/LoadingState.vue'
@@ -53,6 +54,8 @@ const sourcesLoading = ref(false)
 
 const previewSource = ref<RssSource | null>(null)
 const previewOpen = ref(false)
+const previewHotEvent = ref<HotEvent | null>(null)
+const previewHotEventOpen = ref(false)
 
 const listContainer = ref<HTMLElement | null>(null)
 const savedScrollTop = ref(0)
@@ -70,6 +73,23 @@ const toCachedRssSubscription = (source: RssSource, subscriptionId: number) => (
   content: null,
   createdAt: new Date().toISOString()
 })
+
+const isHotEventSubscribed = (event: string) => {
+  const subscriptions = cache.getSubscriptions() || []
+  return subscriptions.some((sub) => sub.type === 'TOPIC' && (sub.content || '').trim() === event)
+}
+
+const withHotEventSubscriptionState = (items: HotEvent[]) => {
+  return items.map((item) => ({
+    ...item,
+    isSubscribed: isHotEventSubscribed(item.event)
+  }))
+}
+
+const syncHotEventsWithSubscriptionCache = () => {
+  if (!hotEvents.value.length) return
+  hotEvents.value = withHotEventSubscriptionState(hotEvents.value)
+}
 
 const syncSourcesWithSubscriptionCache = () => {
   const cachedSubscriptions = cache.getSubscriptions() || []
@@ -104,6 +124,7 @@ const loadSubscriptions = async () => {
     const list = await subscriptionApi.list()
     cache.setSubscriptions(list)
     syncSourcesWithSubscriptionCache()
+    syncHotEventsWithSubscriptionCache()
   } catch {
     // 订阅状态同步失败不阻塞页面渲染
   }
@@ -114,7 +135,7 @@ const loadHotEvents = async (forceRefresh = false) => {
   if (!forceRefresh) {
     const cached = cache.getHotEvents()
     if (cached) {
-      hotEvents.value = cached
+      hotEvents.value = withHotEventSubscriptionState(cached)
       return
     }
   }
@@ -122,8 +143,8 @@ const loadHotEvents = async (forceRefresh = false) => {
   hotLoading.value = true
   try {
     const list = await trendApi.hotEvents()
-    const top15 = list.slice(0, 15)
-    hotEvents.value = top15
+    const top15 = list.slice(0, 15).map((item) => ({ event: item.event, score: item.score }))
+    hotEvents.value = withHotEventSubscriptionState(top15)
     // 保存到缓存
     cache.setHotEvents(top15)
   } finally {
@@ -217,6 +238,37 @@ const onSubscribeHot = async (item: HotEvent) => {
   }
 }
 
+const onMoreHot = (item: HotEvent) => {
+  previewHotEvent.value = {
+    ...item,
+    isSubscribed: isHotEventSubscribed(item.event)
+  }
+  previewHotEventOpen.value = true
+
+  const query = { ...route.query, previewEvent: item.event }
+  router.push({ path: route.path, query }).catch(() => {
+    // 忽略导航被中止的错误
+  })
+}
+
+const onCloseSourcePreview = () => {
+  previewOpen.value = false
+  const query = { ...route.query }
+  delete query.previewSourceId
+  router.push({ path: route.path, query }).catch(() => {
+    // 忽略导航被中止的错误
+  })
+}
+
+const onCloseHotPreview = () => {
+  previewHotEventOpen.value = false
+  const query = { ...route.query }
+  delete query.previewEvent
+  router.push({ path: route.path, query }).catch(() => {
+    // 忽略导航被中止的错误
+  })
+}
+
 const onCreateTopic = async () => {
   const content = topicInput.value.trim()
   if (!content) {
@@ -298,6 +350,7 @@ const onPreview = (source: RssSource) => {
 
 const onOpenArticle = (id: number) => {
   previewOpen.value = false
+  previewHotEventOpen.value = false
 
   // 更新 URL 查询参数
   const query: Record<string, string> = { ...route.query, articleId: String(id) } as Record<string, string>
@@ -349,6 +402,7 @@ onMounted(() => {
   const category = route.query.category
   const searchQ = route.query.q
   const previewSourceId = route.query.previewSourceId
+  const previewEvent = route.query.previewEvent
   const articleId = route.query.articleId
 
   if (category) {
@@ -361,9 +415,21 @@ onMounted(() => {
     search(committedQuery.value)
   }
 
-  loadHotEvents()
+  loadHotEvents().finally(() => {
+    if (typeof previewEvent === 'string' && previewEvent.trim()) {
+      const eventText = previewEvent.trim()
+      const eventItem = hotEvents.value.find(item => item.event === eventText)
+      if (eventItem) {
+        onMoreHot(eventItem)
+      } else {
+        previewHotEvent.value = { event: eventText, score: 0, isSubscribed: isHotEventSubscribed(eventText) }
+        previewHotEventOpen.value = true
+      }
+    }
+  })
   loadSubscriptions().finally(() => {
     syncSourcesWithSubscriptionCache()
+    syncHotEventsWithSubscriptionCache()
   })
   loadSources()
 
@@ -404,6 +470,14 @@ watch(
         }
       }
     }
+    if (!newVal && route.query.previewEvent) {
+      const eventText = String(route.query.previewEvent).trim()
+      if (eventText) {
+        const eventItem = hotEvents.value.find(item => item.event === eventText)
+        previewHotEvent.value = eventItem || { event: eventText, score: 0, isSubscribed: isHotEventSubscribed(eventText) }
+        previewHotEventOpen.value = true
+      }
+    }
   }
 )
 
@@ -414,6 +488,16 @@ watch(
     if (!newVal && previewOpen.value) {
       previewOpen.value = false
       previewSource.value = null
+    }
+  }
+)
+
+watch(
+  () => route.query.previewEvent,
+  (newVal) => {
+    if (!newVal && previewHotEventOpen.value) {
+      previewHotEventOpen.value = false
+      previewHotEvent.value = null
     }
   }
 )
@@ -476,7 +560,7 @@ onBeforeRouteLeave((to, from, next) => {
           {{ topicLoading ? '创建中...' : '创建并订阅' }}
         </button>
       </div>
-      <HotEventsList :items="hotEvents" :onSubscribe="onSubscribeHot" />
+      <HotEventsList :items="hotEvents" :onMore="onMoreHot" />
     </section>
 
     <!-- 主内容区域 -->
@@ -561,9 +645,8 @@ onBeforeRouteLeave((to, from, next) => {
                       <span class="line-clamp-3 text-sm text-foreground">{{ item.event }}</span>
                     </div>
                     <button class="ml-2 flex-shrink-0 rounded-lg border border-border px-2 py-1 text-[11px]"
-                      :class="item.isSubscribed ? 'bg-muted text-muted-foreground' : 'text-muted-foreground'"
-                      :disabled="item.isSubscribed" @click="onSubscribeHot(item)">
-                      {{ item.isSubscribed ? '✓' : '订阅' }}
+                      :class="'text-muted-foreground'" @click="onMoreHot(item)">
+                      更多
                     </button>
                   </li>
                 </template>
@@ -610,6 +693,8 @@ onBeforeRouteLeave((to, from, next) => {
     </section>
   </div>
 
-  <SourcePreviewDialog :open="previewOpen" :source="previewSource" :onClose="() => (previewOpen = false)"
+  <SourcePreviewDialog :open="previewOpen" :source="previewSource" :onClose="onCloseSourcePreview"
     :onOpenArticle="onOpenArticle" />
+  <HotEventPreviewDialog :open="previewHotEventOpen" :eventItem="previewHotEvent"
+    :onClose="onCloseHotPreview" :onOpenArticle="onOpenArticle" :onSubscribe="onSubscribeHot" />
 </template>

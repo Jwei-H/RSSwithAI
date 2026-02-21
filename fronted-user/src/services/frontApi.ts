@@ -102,5 +102,11 @@ export const trendApi = {
     const query = sourceId ? `?sourceId=${sourceId}` : ''
     return get<{ text: string; value: number }[]>(`/api/front/v1/trends/wordcloud${query}`)
   },
-  hotEvents: () => get<HotEvent[]>('/api/front/v1/trends/hotevents')
+  hotEvents: () => get<HotEvent[]>('/api/front/v1/trends/hotevents'),
+  hotEventArticles: (event: string, cursor?: string, size?: number) => {
+    const query = new URLSearchParams({ event })
+    if (cursor) query.set('cursor', cursor)
+    if (size) query.set('size', String(size))
+    return get<ArticleFeed[]>(`/api/front/v1/trends/hotevents/articles?${query.toString()}`)
+  }
 }

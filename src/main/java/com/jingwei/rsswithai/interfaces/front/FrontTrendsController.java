@@ -1,5 +1,6 @@
 package com.jingwei.rsswithai.interfaces.front;
 
+import com.jingwei.rsswithai.application.dto.ArticleFeedDTO;
 import com.jingwei.rsswithai.application.dto.HotEventDTO;
 import com.jingwei.rsswithai.application.dto.WordCloudItemDTO;
 import com.jingwei.rsswithai.application.service.TrendsService;
@@ -29,8 +30,15 @@ public class FrontTrendsController {
 
     @GetMapping("/hotevents")
     public ResponseEntity<List<HotEventDTO>> getHotEvents() {
-        Long userId = UserContext.currentUserIdOrNull();
-        List<HotEventDTO> result = trendsService.getHotEvents(userId);
+        List<HotEventDTO> result = trendsService.getHotEvents();
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/hotevents/articles")
+    public ResponseEntity<List<ArticleFeedDTO>> getHotEventArticles(@RequestParam("event") String event,
+                                                                    @RequestParam(value = "cursor", required = false) String cursor,
+                                                                    @RequestParam(value = "size", required = false) Integer size) {
+        List<ArticleFeedDTO> result = trendsService.getHotEventArticles(event, cursor, size);
         return ResponseEntity.ok(result);
     }
 }

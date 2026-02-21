@@ -4,7 +4,7 @@ import { Flame } from 'lucide-vue-next'
 
 defineProps<{
   items: HotEvent[]
-  onSubscribe: (event: HotEvent) => void
+  onMore: (event: HotEvent) => void
 }>()
 </script>
 
@@ -31,24 +31,10 @@ defineProps<{
         </div>
         <button
           class="rounded-lg border border-border px-2 py-1 text-[11px] transition opacity-0 group-hover:opacity-100"
-          :class="item.isSubscribed ? 'bg-muted text-muted-foreground' : 'text-muted-foreground hover:bg-card'"
-          :disabled="item.isSubscribed"
-          @click="onSubscribe(item)"
+          :class="'text-muted-foreground hover:bg-card'"
+          @click="onMore(item)"
         >
-          <svg
-            v-if="item.isSubscribed"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="h-3.5 w-3.5"
-          >
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
-          <span v-else>订阅</span>
+          <span>更多</span>
         </button>
       </li>
     </ul>

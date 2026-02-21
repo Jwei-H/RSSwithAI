@@ -1110,18 +1110,15 @@ Invalid token
 [
   {
     "event": "OpenAI发布Sora",
-    "score": 10,
-    "isSubscribed": false
+    "score": 10
   },
   {
     "event": "Java 25发布",
-    "score": 9,
-    "isSubscribed": true
+    "score": 9
   },
   {
     "event": "Google推出Gemini 2.0",
-    "score": 8,
-    "isSubscribed": false
+    "score": 8
   }
 ]
 ```
@@ -1130,8 +1127,48 @@ Invalid token
 - 返回全网热点事件榜单
 - 热点事件由后台定时任务生成（使用 Map-Reduce 架构）
 - 事件按热度打分排序（1-10分）
-- `isSubscribed` 表示当前用户是否已订阅该事件（基于 Topic 订阅）
+- 接口不再返回订阅状态；前端在“更多/预览”场景下基于本地订阅缓存判断是否已订阅
 - 如果没有数据，返回空列表
+
+---
+
+### 3. 获取热点事件相关文章（更多/预览）
+
+基于热点事件文本获取相关文章列表，用于“更多”预览弹层。
+
+**接口**: `GET /api/front/v1/trends/hotevents/articles`
+
+**认证**: 不需要
+
+**查询参数**:
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| event | string | 是 | 热点事件文本 |
+| cursor | string | 否 | 游标，格式：`pubDate,articleId` |
+| size | int | 否 | 每页数量，默认20，最大100 |
+
+**响应** (200 OK):
+
+```json
+[
+  {
+    "id": 100,
+    "sourceId": 1,
+    "sourceName": "科技新闻",
+    "title": "OpenAI发布Sora并开放测试",
+    "coverImage": "https://example.com/cover.jpg",
+    "pubDate": "2026-01-12T10:00:00",
+    "wordCount": 1200
+  }
+]
+```
+
+**业务规则**:
+- 返回体使用 `ArticleFeedDTO`
+- 请求时先按 `event` 查找 Topic；不存在则自动创建 Topic 并生成向量
+- 使用 Topic 向量执行语义检索，逻辑与订阅时间线中的 Topic 分支一致
+- 结果按 `pubDate DESC, id DESC` 排序，支持游标翻页
 
 ---
 
