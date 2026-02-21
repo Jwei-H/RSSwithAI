@@ -385,6 +385,9 @@ const onHoverArticle = (id: number) => {
   if (isMobile.value) return
 
   if (hoverTimer) window.clearTimeout(hoverTimer)
+  previewLoading.value = true
+  previewExtra.value = null
+  previewError.value = null
   hoverTimer = window.setTimeout(async () => {
     // 尝试从缓存获取
     const cached = cache.getArticleExtra(id)
@@ -529,6 +532,7 @@ watch(activeSubscriptionId, () => {
   // 切换订阅时清空右侧 AI 增强信息
   previewExtra.value = null
   previewError.value = null
+  previewLoading.value = false
   
   const usedCache = applyFeedCache(activeSubscriptionId.value)
   if (!usedCache) resetFeed()

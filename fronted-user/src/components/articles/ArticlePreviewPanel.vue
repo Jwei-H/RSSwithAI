@@ -30,7 +30,9 @@ const props = defineProps<{
         <ListChecks class="h-4 w-4 text-primary" />
         <h4 class="text-sm font-semibold text-foreground">关键信息</h4>
       </div>
-      <ul v-if="extra?.keyInformation?.length" class="mt-2 list-decimal pl-4 text-[15px] leading-7 text-muted-foreground">
+      <p v-if="loading" class="mt-2 text-xs text-muted-foreground">加载中...</p>
+      <p v-else-if="error" class="mt-2 text-xs text-rose-600">{{ error }}</p>
+      <ul v-else-if="extra?.keyInformation?.length" class="mt-2 list-decimal pl-4 text-[15px] leading-7 text-muted-foreground">
         <li v-for="(item, index) in extra.keyInformation" :key="`${item}-${index}`">{{ item }}</li>
       </ul>
       <p v-else class="mt-2 text-xs text-muted-foreground">暂无关键信息</p>

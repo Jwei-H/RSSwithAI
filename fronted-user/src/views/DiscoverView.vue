@@ -99,6 +99,16 @@ const syncSourcesWithSubscriptionCache = () => {
   })
 }
 
+const loadSubscriptions = async () => {
+  try {
+    const list = await subscriptionApi.list()
+    cache.setSubscriptions(list)
+    syncSourcesWithSubscriptionCache()
+  } catch {
+    // 订阅状态同步失败不阻塞页面渲染
+  }
+}
+
 const loadHotEvents = async (forceRefresh = false) => {
   // 尝试从缓存获取
   if (!forceRefresh) {
@@ -352,6 +362,9 @@ onMounted(() => {
   }
 
   loadHotEvents()
+  loadSubscriptions().finally(() => {
+    syncSourcesWithSubscriptionCache()
+  })
   loadSources()
 
   // 恢复预览源状态和文章详情状态
@@ -406,6 +419,7 @@ watch(
 )
 
 onActivated(() => {
+  loadSubscriptions()
   syncSourcesWithSubscriptionCache()
 
   if (listContainer.value && savedScrollTop.value > 0) {
@@ -502,7 +516,7 @@ onBeforeRouteLeave((to, from, next) => {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <Search class="h-4 w-4 text-primary" />
-                <h2 class="text-sm font-semibold text-foreground">搜索</h2>
+                <h2 class="text-sm font-semibold text-foreground">文章搜索</h2>
               </div>
               <span class="hidden text-xs text-muted-foreground md:inline">全站范围</span>
             </div>
@@ -544,7 +558,7 @@ onBeforeRouteLeave((to, from, next) => {
                       <span class="h-6 w-6 flex-shrink-0 rounded-full bg-muted text-center leading-6 text-foreground">
                         {{ index + 1 }}
                       </span>
-                      <span class="line-clamp-2 text-sm text-foreground">{{ item.event }}</span>
+                      <span class="line-clamp-3 text-sm text-foreground">{{ item.event }}</span>
                     </div>
                     <button class="ml-2 flex-shrink-0 rounded-lg border border-border px-2 py-1 text-[11px]"
                       :class="item.isSubscribed ? 'bg-muted text-muted-foreground' : 'text-muted-foreground'"

@@ -27,7 +27,7 @@ defineProps<{
           <span class="h-6 w-6 rounded-full bg-muted text-center leading-6 text-foreground">
             {{ index + 1 }}
           </span>
-          <span class="line-clamp-2 text-sm text-foreground" :title="item.event">{{ item.event }}</span>
+          <span class="line-clamp-3 text-sm text-foreground" :title="item.event">{{ item.event }}</span>
         </div>
         <button
           class="rounded-lg border border-border px-2 py-1 text-[11px] transition opacity-0 group-hover:opacity-100"
