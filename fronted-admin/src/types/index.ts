@@ -102,7 +102,6 @@ export interface Article {
   link: string
   guid: string
   description?: string
-  rawContent?: string
   content?: string
   author?: string
   pubDate: string

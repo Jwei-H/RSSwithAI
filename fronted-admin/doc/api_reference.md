@@ -747,7 +747,6 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
       "link": "https://example.com/article/1",
       "guid": "article-1",
       "description": null,
-      "rawContent": null,
       "content": null,
       "author": "John Doe",
       "pubDate": "2025-12-27T09:00:00",
@@ -766,7 +765,7 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
 }
 ```
 
-**注意：** 列表接口不返回 `description`、`rawContent`、`content` 字段，以减少数据传输量。
+**注意：** 列表接口不返回 `description`、`content` 字段，以减少数据传输量。
 结果按照pubDate倒序返回
 ---
 
@@ -791,7 +790,6 @@ RSS 源管理接口，用于管理 RSS 订阅源的配置和抓取。
   "link": "https://example.com/article/1",
   "guid": "article-1",
   "description": "文章摘要",
-  "rawContent": "<div>HTML内容</div>",
   "content": "Markdown内容",
   "author": "John Doe",
   "pubDate": "2025-12-27T09:00:00",

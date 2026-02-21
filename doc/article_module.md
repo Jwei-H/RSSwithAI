@@ -71,7 +71,7 @@ Entity (Article, ArticleExtra)
 
 ### 3.1 文章查询流程
 
-支持分页查询和关键词搜索，列表接口不返回大字段（description、rawContent、content）以减少数据传输量。
+支持分页查询和关键词搜索，列表接口不返回大字段（description、content）以减少数据传输量。
 
 ### 3.2 文章统计流程
 
@@ -96,7 +96,6 @@ Entity (Article, ArticleExtra)
 | link | String | 文章链接 |
 | guid | String | 全局唯一标识符（唯一索引） |
 | description | String | 文章摘要 |
-| rawContent | String | 原始HTML内容 |
 | content | String | Markdown内容 |
 | author | String | 作者 |
 | pubDate | LocalDateTime | 发布日期 |

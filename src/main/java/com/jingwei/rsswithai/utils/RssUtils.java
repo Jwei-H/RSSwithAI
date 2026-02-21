@@ -426,7 +426,6 @@ public final class RssUtils {
                 .link(link != null ? link.trim() : null)
                 .guid(guid.trim())
                 .description(description)
-                .rawContent(rawContent)
                 .content(markdownContent)
                 .wordCount(wordCount)
                 .coverImage(coverImage)
