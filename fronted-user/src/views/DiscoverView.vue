@@ -122,10 +122,10 @@ const loadHotEvents = async (forceRefresh = false) => {
   hotLoading.value = true
   try {
     const list = await trendApi.hotEvents()
-    const top10 = list.slice(0, 10)
-    hotEvents.value = top10
+    const top15 = list.slice(0, 15)
+    hotEvents.value = top15
     // 保存到缓存
-    cache.setHotEvents(top10)
+    cache.setHotEvents(top15)
   } finally {
     hotLoading.value = false
   }
@@ -542,7 +542,7 @@ onBeforeRouteLeave((to, from, next) => {
                 <Sparkles class="h-4 w-4 text-primary" />
                 热点事件
                 <span class="ml-auto text-xs font-normal text-muted-foreground">
-                  {{ hotLoading ? '加载中...' : `Top ${hotEvents.length}` }}
+                  {{ hotLoading ? '加载中...' : 'Top 15' }}
                 </span>
               </summary>
               <ul class="border-t border-border p-3 space-y-2">
