@@ -109,8 +109,17 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
   return `<img src="${normalizedSrc}" alt="${alt}" title="${title}" loading="lazy" referrerpolicy="no-referrer" class="rounded-lg shadow-sm max-w-full h-auto my-4 mx-auto block" />`
 }
 
+const normalizeMarkdown = (content: string) => {
+  let normalized = content
+  const adjacentBoldPattern = /\*\*([^*\n]+?)\*\*\*\*([^*\n]+?)\*\*/g
+  while (/\*\*([^*\n]+?)\*\*\*\*([^*\n]+?)\*\*/.test(normalized)) {
+    normalized = normalized.replace(adjacentBoldPattern, '**$1$2**')
+  }
+  return normalized.replace(/\*\*(.+?)\*\*/g, '**\u200b$1\u200b**')
+}
+
 export function renderMarkdown(content: string) {
-  const normalized = content.replace(/\*\*(.+?)\*\*/g, '**\u200b$1\u200b**')
+  const normalized = normalizeMarkdown(content)
   const env = { slugger: createSlugger() }
   return md.render(normalized, env)
 }
@@ -122,7 +131,7 @@ export type MarkdownHeading = {
 }
 
 export function extractHeadings(content: string): MarkdownHeading[] {
-  const normalized = content.replace(/\*\*(.+?)\*\*/g, '**\u200b$1\u200b**')
+  const normalized = normalizeMarkdown(content)
   const slugger = createSlugger()
   const tokens = md.parse(normalized, {})
   const headings: MarkdownHeading[] = []
