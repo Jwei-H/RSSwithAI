@@ -364,8 +364,12 @@ Invalid token
 |------|------|------|--------|------|
 | page | int | 否 | 0 | 页码（从0开始） |
 | size | int | 否 | 20 | 每页大小 |
-| sort | string | 否 | id,desc | 排序字段和方向 |
+| sort | string | 否 | latestArticlePubDate,desc | 排序字段和方向 |
 | category | enum | 否 | - | 源分类（NEWS/TECH/PROGRAMMING/SOCIETY/FINANCE/LIFESTYLE/OTHER） |
+
+**默认排序规则**:
+- 按 `latestArticlePubDate` 倒序（空值置后）
+- 相同时间按 `id` 倒序
 
 **响应** (200 OK):
 
@@ -593,6 +597,11 @@ Invalid token
 **接口**: `GET /api/front/v1/subscriptions`
 
 **认证**: 需要
+
+**返回顺序规则**:
+- `RSS` 类型永远在上
+- `TOPIC` 类型永远在下
+- `RSS` 内部按 `latestArticlePubDate` 倒序（空值置后）
 
 **响应** (200 OK):
 

@@ -103,6 +103,7 @@ Entity (RssSource)
 | fetchIntervalMinutes | Integer | 抓取间隔（分钟）                                       |
 | status               | SourceStatus | 源状态（ENABLED/DISABLED）                          |
 | category             | SourceCategory | 源分类（NEWS/TECH/PROGRAMMING/SOCIETY/FINANCE/LIFESTYLE/OTHER） |
+| latestArticlePubDate | LocalDateTime | 最新一篇文章发布时间（用于前台RSS源卡片排序）                    |
 | lastFetchStatus      | FetchStatus | 最后抓取状态                                         |
 | lastFetchTime        | LocalDateTime | 最后抓取时间                                         |
 | lastFetchError       | String | 最后抓取错误                                         |
@@ -159,3 +160,9 @@ Entity (RssSource)
 - 记录失败原因到`lastFetchError`
 - 累加失败次数到`failureCount`
 - 自动重试机制
+
+### 6.5 最新文章时间维护
+
+- 抓取解析文章时，基于条目 `pubDate` 维护 `latestArticlePubDate`
+- 即使条目被去重（已存在），仍会参与“最新时间”计算
+- 前台 RSS 源分页接口使用该字段倒序（空值置后）

@@ -61,13 +61,18 @@ onMounted(loadRecent)
     <div class="mt-4">
       <div class="flex items-center justify-between">
         <span class="text-xs text-muted-foreground">最新文章</span>
-        <button class="text-xs text-primary hover:underline" @click="onPreview(source)">预览</button>
+        <button
+          class="rounded-md border border-border px-2.5 py-1 text-xs text-primary hover:bg-muted"
+          @click="onPreview(source)"
+        >
+          预览
+        </button>
       </div>
       <div v-if="loading" class="mt-3 text-xs text-muted-foreground">加载中...</div>
       <ul v-else class="mt-3 space-y-2">
-        <li v-for="item in recent" :key="item.id" class="flex items-center justify-between gap-3">
-          <span class="line-clamp-1 text-xs text-foreground">{{ item.title }}</span>
-          <span class="text-[11px] text-muted-foreground">{{ formatRelativeTime(item.pubDate) }}</span>
+        <li v-for="item in recent" :key="item.id" class="flex items-start justify-between gap-3">
+          <span class="min-w-0 flex-1 pr-1 text-xs text-foreground line-clamp-2">{{ item.title }}</span>
+          <span class="shrink-0 text-[11px] text-muted-foreground">{{ formatRelativeTime(item.pubDate) }}</span>
         </li>
         <li v-if="!recent.length" class="text-xs text-muted-foreground">暂无文章</li>
       </ul>

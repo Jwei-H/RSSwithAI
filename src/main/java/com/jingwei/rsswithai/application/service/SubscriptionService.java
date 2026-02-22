@@ -50,7 +50,7 @@ public class SubscriptionService {
             pageable.getPageNumber(),
             pageable.getPageSize(),
             Sort.by(
-                Sort.Order.desc("lastFetchTime").nullsLast(),
+                Sort.Order.desc("latestArticlePubDate").nullsLast(),
                 Sort.Order.desc("id")));
 
         Map<Long, Long> subscriptionMap;
@@ -105,8 +105,67 @@ public class SubscriptionService {
     @Transactional(readOnly = true)
     public List<SubscriptionDTO> listSubscriptions(Long userId) {
         return subscriptionRepository.findByUserIdWithDetails(userId).stream()
+                .sorted(this::compareSubscription)
                 .map(SubscriptionDTO::from)
                 .toList();
+    }
+
+    private int compareSubscription(Subscription left, Subscription right) {
+        boolean leftRss = left.getType() == SubscriptionType.RSS;
+        boolean rightRss = right.getType() == SubscriptionType.RSS;
+
+        if (leftRss != rightRss) {
+            return leftRss ? -1 : 1;
+        }
+
+        if (leftRss) {
+            LocalDateTime leftPubDate = left.getSource() != null ? left.getSource().getLatestArticlePubDate() : null;
+            LocalDateTime rightPubDate = right.getSource() != null ? right.getSource().getLatestArticlePubDate() : null;
+            int pubDateOrder = compareLocalDateTimeDescNullLast(leftPubDate, rightPubDate);
+            if (pubDateOrder != 0) {
+                return pubDateOrder;
+            }
+
+            Long leftSourceId = left.getSource() != null ? left.getSource().getId() : null;
+            Long rightSourceId = right.getSource() != null ? right.getSource().getId() : null;
+            int sourceIdOrder = compareLongDescNullLast(leftSourceId, rightSourceId);
+            if (sourceIdOrder != 0) {
+                return sourceIdOrder;
+            }
+        }
+
+        int createdAtOrder = compareLocalDateTimeDescNullLast(left.getCreatedAt(), right.getCreatedAt());
+        if (createdAtOrder != 0) {
+            return createdAtOrder;
+        }
+
+        return compareLongDescNullLast(left.getId(), right.getId());
+    }
+
+    private int compareLocalDateTimeDescNullLast(LocalDateTime left, LocalDateTime right) {
+        if (left == null && right == null) {
+            return 0;
+        }
+        if (left == null) {
+            return 1;
+        }
+        if (right == null) {
+            return -1;
+        }
+        return right.compareTo(left);
+    }
+
+    private int compareLongDescNullLast(Long left, Long right) {
+        if (left == null && right == null) {
+            return 0;
+        }
+        if (left == null) {
+            return 1;
+        }
+        if (right == null) {
+            return -1;
+        }
+        return right.compareTo(left);
     }
 
     @Transactional(readOnly = true)

@@ -104,6 +104,11 @@ public class RssSource {
     private SourceCategory category = SourceCategory.OTHER;
 
     /**
+     * 最新一篇文章发布时间
+     */
+    private LocalDateTime latestArticlePubDate;
+
+    /**
      * 创建时间
      */
     @CreationTimestamp

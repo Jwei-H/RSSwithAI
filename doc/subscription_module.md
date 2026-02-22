@@ -10,6 +10,8 @@
 - 语义主题创建（内容长度限制、生成1024维向量、主题不可变）
 - 主题订阅 / 取消订阅
 - 获取订阅列表（RSS订阅需返回源的 name/icon/category；主题订阅需返回主题 content）
+- RSS源列表按 `latestArticlePubDate DESC`（空值置后）
+- 订阅列表固定 RSS 在前、TOPIC 在后，且 RSS 部分按 `latestArticlePubDate DESC`
 - 混合时间线（RSS匹配 + 主题语义匹配），按 `pub_date DESC, id DESC` 排序
 - 基于复合游标 `(pubDate, articleId)` 的游标分页
 
@@ -138,6 +140,8 @@ Entity (Subscription / Topic / RssSource / Article / ArticleExtra)
 |------|------|------|
 | GET | /rss-sources | 展示所有可用源（仅 ENABLED），并标记当前用户是否已订阅（分页） |
 
+排序说明：默认按 `latestArticlePubDate DESC, id DESC` 返回。
+
 响应（UserRssSourceDTO）：
 
 ```json
@@ -176,6 +180,8 @@ Entity (Subscription / Topic / RssSource / Article / ArticleExtra)
 | POST | /subscriptions | 创建订阅（RSS或TOPIC） |
 | DELETE | /subscriptions/{id} | 取消订阅 |
 | GET | /subscriptions | 获取当前用户订阅列表（不分页） |
+
+排序说明：返回顺序固定为 RSS 订阅在前、TOPIC 订阅在后；RSS 订阅内部按 `latestArticlePubDate DESC` 排序。
 
 创建请求（CreateSubscriptionRequest）：
 

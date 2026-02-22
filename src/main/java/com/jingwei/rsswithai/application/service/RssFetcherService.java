@@ -18,6 +18,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -101,14 +102,20 @@ public class RssFetcherService {
                     List<RssUtils.ParsedItem> items = RssUtils.parseItems(content, source);
 
                     int savedCount = 0;
+                    LocalDateTime latestArticlePubDate = source.getLatestArticlePubDate();
                     for (RssUtils.ParsedItem item : items) {
-                        if (item.hasIdentity() && articleService.existsBySourceAndGuidOrLink(
-                                source.getId(), item.guid(), item.link())) {
+                        Article article = RssUtils.buildArticle(item, source);
+                        if (article == null) {
                             continue;
                         }
 
-                        Article article = RssUtils.buildArticle(item, source);
-                        if (article == null) {
+                        LocalDateTime pubDate = article.getPubDate();
+                        if (pubDate != null && (latestArticlePubDate == null || pubDate.isAfter(latestArticlePubDate))) {
+                            latestArticlePubDate = pubDate;
+                        }
+
+                        if (item.hasIdentity() && articleService.existsBySourceAndGuidOrLink(
+                                source.getId(), item.guid(), item.link())) {
                             continue;
                         }
 
@@ -120,6 +127,7 @@ public class RssFetcherService {
                         }
                     }
 
+                    source.setLatestArticlePubDate(latestArticlePubDate);
                     source.recordFetchSuccess();
                     rssSourceRepository.save(source);
 
