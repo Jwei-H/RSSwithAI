@@ -20,6 +20,10 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
 
     Page<Article> findBySourceIdOrderByPubDateDesc(Long sourceId, Pageable pageable);
 
+            @Query("SELECT a FROM Article a WHERE a.source.id = :sourceId AND a.pubDate IS NOT NULL AND a.pubDate >= :since ORDER BY a.pubDate DESC, a.id DESC")
+            List<Article> findBySourceIdAndPubDateSinceOrderByPubDateDesc(@Param("sourceId") Long sourceId,
+                    @Param("since") LocalDateTime since);
+
     @Query(value = "SELECT a.id as id, a.source_id as sourceId, a.source_name as sourceName, a.title as title, " +
             "a.link as link, a.cover_image as coverImage, a.pub_date as pubDate, a.word_count as wordCount " +
             "FROM articles a WHERE a.source_id = :sourceId ORDER BY a.pub_date DESC, a.id DESC",

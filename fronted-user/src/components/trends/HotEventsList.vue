@@ -15,7 +15,7 @@ defineProps<{
         <Flame class="h-4 w-4 text-primary" />
         <h3 class="text-sm font-semibold text-foreground">热点事件</h3>
       </div>
-      <span class="text-xs text-muted-foreground">Top 15</span>
+      <span class="text-xs text-muted-foreground">Top 20</span>
     </div>
     <ul class="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1 scrollbar-thin">
       <li

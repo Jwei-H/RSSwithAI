@@ -111,7 +111,7 @@ src/
 **API 位置**：`services/frontApi.ts` - `trendApi`
 
 - **词云**：`GET /api/front/v1/trends/wordcloud`（可选 sourceId 参数）
-- **热点事件**：`GET /api/front/v1/trends/hotevents`（Top10，score 1-10）
+- **热点事件**：`GET /api/front/v1/trends/hotevents`（Top20，score 1-10）
 
 ### 5. RSS 源管理（RSS Source）
 **API 位置**：`services/frontApi.ts` - `rssApi`
@@ -185,7 +185,7 @@ src/
 
 **功能**：
 - 顶部搜索框（全站搜索，searchScope=ALL）
-- 热点事件 Top10（支持一键订阅为 Topic）
+- 热点事件 Top20（支持一键订阅为 Topic）
 - RSS 源列表（卡片栅格，支持 category 筛选）
 - 源文章预览弹窗（分页展示该源文章）
 

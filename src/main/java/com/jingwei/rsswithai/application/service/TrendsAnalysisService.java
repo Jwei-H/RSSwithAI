@@ -35,6 +35,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TrendsAnalysisService {
 
+    private static final int HOT_EVENTS_MAP_CHUNK_SIZE = 30;
+    private static final int HOT_EVENTS_MAX_COUNT = 20;
+
     private final ArticleRepository articleRepository;
     private final ArticleExtraRepository articleExtraRepository;
     private final TrendsDataRepository trendsDataRepository;
@@ -213,15 +216,22 @@ public class TrendsAnalysisService {
                 List<Article> articles = fetchArticlesForHotEvents(source.getId());
                 if (articles.isEmpty())
                     continue;
-
-                String articlesOverview = buildArticlesDetailsForMap(articles);
-
                 String sourceName = resolveSourceName(source);
-                String eventsJson = fetchEventsFromLlm(articlesOverview, sourceName);
-                log.info("Source {}: Extracted events JSON: {}", source.getId(), eventsJson);
-                List<String> rankedEvents = parseRankedEvents(eventsJson);
-                if (!rankedEvents.isEmpty()) {
-                    sourceEvents.put(sourceName, rankedEvents);
+
+                List<List<Article>> chunks = splitArticlesIntoChunks(articles, HOT_EVENTS_MAP_CHUNK_SIZE);
+                for (int i = 0; i < chunks.size(); i++) {
+                    List<Article> chunk = chunks.get(i);
+                    String mapSourceName = chunks.size() > 1
+                            ? sourceName + "-part" + (i + 1)
+                            : sourceName;
+
+                    String articlesOverview = buildArticlesDetailsForMap(chunk);
+                    String eventsJson = fetchEventsFromLlm(articlesOverview, mapSourceName);
+                    log.info("Source {} [{}]: Extracted events JSON: {}", source.getId(), mapSourceName, eventsJson);
+                    List<String> rankedEvents = parseRankedEvents(eventsJson);
+                    if (!rankedEvents.isEmpty()) {
+                        sourceEvents.put(mapSourceName, rankedEvents);
+                    }
                 }
             }
 
@@ -239,10 +249,15 @@ public class TrendsAnalysisService {
 
             log.info("Global reduced events JSON: {}", globalEvents);
 
+                    List<Map<String, Object>> reducedEvents = objectMapper.readValue(globalEvents,
+                        new TypeReference<List<Map<String, Object>>>() {
+                        });
+                List<Map<String, Object>> topEvents = reducedEvents.stream()
+                    .limit(HOT_EVENTS_MAX_COUNT)
+                    .toList();
+
             // 3. Save
-            saveTrendsData(0L, "HOT_EVENTS",
-                    objectMapper.readValue(globalEvents, new TypeReference<List<Map<String, Object>>>() {
-                    }));
+                saveTrendsData(0L, "HOT_EVENTS", topEvents);
             log.info("Hot Events generated successfully");
 
         } catch (Exception e) {
@@ -251,15 +266,21 @@ public class TrendsAnalysisService {
     }
 
     private List<Article> fetchArticlesForHotEvents(Long sourceId) {
-        Pageable limit = PageRequest.of(0, 40);
-        List<Article> candidates = articleRepository.findBySourceIdOrderByPubDateDesc(sourceId, limit).getContent();
+        return articleRepository.findBySourceIdAndPubDateSinceOrderByPubDateDesc(
+                sourceId,
+                LocalDateTime.now().minusDays(4));
+    }
 
-        if (candidates.isEmpty())
+    private List<List<Article>> splitArticlesIntoChunks(List<Article> articles, int chunkSize) {
+        if (articles.isEmpty()) {
             return Collections.emptyList();
-
-        return candidates.stream()
-                .filter(a -> a.getPubDate() != null && a.getPubDate().isAfter(LocalDateTime.now().minusDays(5)))
-                .collect(Collectors.toList());
+        }
+        List<List<Article>> chunks = new ArrayList<>();
+        for (int i = 0; i < articles.size(); i += chunkSize) {
+            int end = Math.min(i + chunkSize, articles.size());
+            chunks.add(articles.subList(i, end));
+        }
+        return chunks;
     }
 
     private String fetchEventsFromLlm(String articlesDetails, String sourceName) {
