@@ -34,6 +34,7 @@ export type ArticleFeed = {
   sourceId: number
   sourceName: string
   title: string
+  link?: string | null
   coverImage?: string | null
   pubDate: string
   wordCount?: number | null

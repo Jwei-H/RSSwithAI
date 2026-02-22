@@ -486,6 +486,7 @@ public class ArticleService {
             view.getSourceId(),
             view.getSourceName(),
             view.getTitle(),
+            view.getLink(),
             view.getCoverImage(),
             view.getPubDate(),
             view.getWordCount());

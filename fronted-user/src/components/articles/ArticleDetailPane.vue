@@ -326,6 +326,7 @@ const toArticleFeed = (item: ArticleDetail): ArticleFeed => ({
   sourceId: item.sourceId,
   sourceName: item.sourceName,
   title: item.title,
+  link: item.link,
   coverImage: item.coverImage,
   pubDate: item.pubDate,
   wordCount: item.wordCount
@@ -374,66 +375,73 @@ const load = async () => {
   extraError.value = null
   favorite.value = false
   recommendations.value = []
-  try {
-    // 尝试从缓存获取文章详情
-    const cachedArticle = cache.getArticleDetail(props.articleId)
-    if (cachedArticle) {
-      article.value = cachedArticle
-      favorite.value = article.value?.isFavorite ?? false
-    } else {
-      article.value = await feedApi.detail(props.articleId)
-      if (article.value) {
-        cache.setArticleDetail(props.articleId, article.value)
-      }
-      favorite.value = article.value?.isFavorite ?? false
-    }
 
-    const cachedMergedContent = cache.getArticleMergedContent(props.articleId)
-    mergedContent.value = cachedMergedContent || article.value?.content || ''
+  const articleId = props.articleId
+  const cachedArticle = cache.getArticleDetail(articleId)
+  const cachedExtra = cache.getArticleExtra(articleId)
+  const cachedMergedContent = cache.getArticleMergedContent(articleId)
 
-    // 记录阅读历史
-    if (article.value) {
+  article.value = cachedArticle
+  extra.value = cachedExtra
+  favorite.value = cachedArticle?.isFavorite ?? false
+  mergedContent.value = cachedMergedContent || cachedArticle?.content || ''
+
+  const detailPromise = (async () => {
+    try {
+      const data = await feedApi.detail(articleId)
+      article.value = data
+      favorite.value = data?.isFavorite ?? false
+      cache.setArticleDetail(articleId, data)
+      rebuildMergedContent()
+
       historyStore.addReading({
-        articleId: article.value.id,
-        title: article.value.title,
-        sourceName: article.value.sourceName,
-        coverImage: article.value.coverImage,
-        pubDate: article.value.pubDate
+        articleId: data.id,
+        title: data.title,
+        sourceName: data.sourceName,
+        coverImage: data.coverImage,
+        pubDate: data.pubDate
       })
-    }
-  } catch {
-    toast.push('文章加载失败，请稍后重试', 'error')
-  } finally {
-    loading.value = false
-    // 延迟初始化进度，等待 DOM 渲染完成
-    setTimeout(() => {
-      updateReadingProgress()
-    }, 300)
-  }
-
-  try {
-    // 尝试从缓存获取 AI 增强信息
-    const cachedExtra = cache.getArticleExtra(props.articleId)
-    if (cachedExtra) {
-      extra.value = cachedExtra
-    } else {
-      extra.value = await feedApi.extra(props.articleId)
-      if (extra.value && extra.value.status === 'SUCCESS') {
-        cache.setArticleExtra(props.articleId, extra.value)
+    } catch {
+      if (!article.value) {
+        toast.push('文章加载失败，请稍后重试', 'error')
       }
+    } finally {
+      loading.value = false
+      setTimeout(() => {
+        updateReadingProgress()
+      }, 300)
     }
-    rebuildMergedContent()
-  } catch {
-    extra.value = null
-    extraError.value = 'AI 增强信息暂不可用'
-    rebuildMergedContent()
-  }
+  })()
 
-  try {
-    recommendations.value = await feedApi.recommendations(props.articleId)
-  } catch {
-    recommendations.value = []
-  }
+  const extraPromise = (async () => {
+    if (cachedExtra) {
+      rebuildMergedContent()
+      return
+    }
+
+    try {
+      const data = await feedApi.extra(articleId)
+      extra.value = data
+      if (data && data.status === 'SUCCESS') {
+        cache.setArticleExtra(articleId, data)
+      }
+    } catch {
+      extra.value = null
+      extraError.value = 'AI 增强信息暂不可用'
+    } finally {
+      rebuildMergedContent()
+    }
+  })()
+
+  const recommendationPromise = (async () => {
+    try {
+      recommendations.value = await feedApi.recommendations(articleId)
+    } catch {
+      recommendations.value = []
+    }
+  })()
+
+  await Promise.allSettled([detailPromise, extraPromise, recommendationPromise])
 }
 
 const toggleFavorite = async () => {
@@ -475,7 +483,8 @@ watch(
   () => props.articleId,
   () => {
     load()
-  }
+  },
+  { immediate: true }
 )
 
 watch(
@@ -490,7 +499,6 @@ watch(
 )
 
 onMounted(() => {
-  load()
   window.addEventListener('mousemove', onMouseMove)
   window.addEventListener('mouseup', onMouseUp)
   window.addEventListener('keydown', onKeyDown)
@@ -534,7 +542,7 @@ onUnmounted(() => {
     <div class="hidden flex-1 overflow-hidden md:flex">
       <section class="h-full overflow-y-auto border-r border-border px-2 py-6 scrollbar-thin"
         :style="{ width: `${leftWidth}%` }" ref="leftPaneRef" @scroll.passive="onLeftPaneScroll">
-        <div v-if="loading" class="text-sm text-muted-foreground">加载中...</div>
+        <div v-if="!article && loading" class="text-sm text-muted-foreground">加载中...</div>
         <div v-else-if="article" class="space-y-4">
           <div>
             <h1 class="text-2xl font-semibold text-foreground">{{ article.title }}</h1>
@@ -549,7 +557,8 @@ onUnmounted(() => {
               打开原文
             </a>
           </div>
-          <div class="markdown-body" v-html="renderMarkdown(mergedContent)" @click="onMarkdownClick" />
+          <div v-if="mergedContent" class="markdown-body" v-html="renderMarkdown(mergedContent)" @click="onMarkdownClick" />
+          <p v-else class="text-sm text-muted-foreground">正文加载中...</p>
         </div>
       </section>
 
@@ -620,7 +629,7 @@ onUnmounted(() => {
     <!-- 移动端：单栏垂直滚动布局 -->
     <div ref="mobileScrollRef" class="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:hidden" @scroll.passive="onLeftPaneScroll"
       @touchend.passive="onMobileTouchEnd">
-      <div v-if="loading" class="text-sm text-muted-foreground">加载中...</div>
+      <div v-if="!article && loading" class="text-sm text-muted-foreground">加载中...</div>
       <div v-else-if="article" class="space-y-4">
         <!-- 1. 文章元信息 -->
         <div class="rounded-2xl border border-border bg-card p-4">
@@ -683,7 +692,8 @@ onUnmounted(() => {
 
         <!-- 5. 文章正文 -->
         <div class="rounded-2xl border border-border bg-card p-4">
-          <div class="markdown-body" v-html="renderMarkdown(mergedContent)" @click="onMarkdownClick" />
+          <div v-if="mergedContent" class="markdown-body" v-html="renderMarkdown(mergedContent)" @click="onMarkdownClick" />
+          <p v-else class="text-sm text-muted-foreground">正文加载中...</p>
         </div>
 
         <!-- 6. 相似推荐 -->

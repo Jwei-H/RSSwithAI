@@ -209,6 +209,7 @@ Entity (Subscription / Topic / RssSource / Article / ArticleExtra)
   "sourceId": 1,
   "sourceName": "科技新闻",
   "title": "...",
+  "link": "https://example.com/article/100",
   "coverImage": "http://...",
   "pubDate": "2026-01-12T10:00:00",
   "wordCount": 1200

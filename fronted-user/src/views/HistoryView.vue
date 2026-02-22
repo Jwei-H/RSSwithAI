@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ArticleDetailPane from '../components/articles/ArticleDetailPane.vue'
 import EmptyState from '../components/common/EmptyState.vue'
+import { useDevice } from '../composables/useDevice'
 import { useUiStore } from '../stores/ui'
 import { useHistoryStore } from '../stores/history'
 import { formatRelativeTime } from '../utils/time'
@@ -14,6 +15,7 @@ const ui = useUiStore()
 const historyStore = useHistoryStore()
 const route = useRoute()
 const router = useRouter()
+const { isMobile } = useDevice()
 
 const listContainer = ref<HTMLElement | null>(null)
 
@@ -54,7 +56,7 @@ watch(
 
 <template>
   <!-- 移动端文章详情覆盖层 -->
-  <div v-if="detailOpen" class="fixed inset-0 z-[60] flex flex-col bg-background md:hidden">
+  <div v-if="detailOpen && isMobile" class="fixed inset-0 z-[60] flex flex-col bg-background md:hidden">
     <ArticleDetailPane :articleId="ui.detailArticleId" :onClose="ui.closeDetail"
       :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
   </div>
@@ -92,7 +94,7 @@ watch(
     <!-- 主内容区域 -->
     <section class="flex flex-1 flex-col gap-4 overflow-hidden">
       <!-- 桌面端文章详情 -->
-      <ArticleDetailPane v-if="detailOpen" class="hidden md:flex" :articleId="ui.detailArticleId"
+      <ArticleDetailPane v-if="detailOpen && !isMobile" class="hidden md:flex" :articleId="ui.detailArticleId"
         :onClose="ui.closeDetail" :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
       <template v-if="!detailOpen">
         <div class="rounded-2xl border border-border bg-card p-3 md:p-4">

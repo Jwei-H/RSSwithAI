@@ -371,7 +371,7 @@ export function useCacheStore() {
     }
 
     /**
-     * 设置文章详情缓存 (LRU max 50)
+     * 设置文章详情缓存 (LRU max 100)
      */
     const setArticleDetail = (id: number, data: ArticleDetail): void => {
         if (state.articleDetails.has(id)) {
@@ -381,7 +381,7 @@ export function useCacheStore() {
             data,
             timestamp: Date.now()
         })
-        if (state.articleDetails.size > 50) {
+        if (state.articleDetails.size > 100) {
             const first = state.articleDetails.keys().next().value
             if (first !== undefined) state.articleDetails.delete(first)
         }
@@ -403,7 +403,7 @@ export function useCacheStore() {
     }
 
     /**
-     * 设置文章AI增强信息缓存 (LRU max 50)
+     * 设置文章AI增强信息缓存 (LRU max 100)
      */
     const setArticleExtra = (id: number, data: ArticleExtra): void => {
         if (state.articleExtras.has(id)) {
@@ -413,7 +413,7 @@ export function useCacheStore() {
             data,
             timestamp: Date.now()
         })
-        if (state.articleExtras.size > 50) {
+        if (state.articleExtras.size > 100) {
             const first = state.articleExtras.keys().next().value
             if (first !== undefined) state.articleExtras.delete(first)
         }
@@ -435,7 +435,7 @@ export function useCacheStore() {
     }
 
     /**
-     * 设置拼接后的文章正文缓存 (LRU max 50)
+     * 设置拼接后的文章正文缓存 (LRU max 100)
      */
     const setArticleMergedContent = (id: number, content: string): void => {
         if (state.articleMergedContents.has(id)) {
@@ -445,7 +445,7 @@ export function useCacheStore() {
             data: content,
             timestamp: Date.now()
         })
-        if (state.articleMergedContents.size > 50) {
+        if (state.articleMergedContents.size > 100) {
             const first = state.articleMergedContents.keys().next().value
             if (first !== undefined) state.articleMergedContents.delete(first)
         }

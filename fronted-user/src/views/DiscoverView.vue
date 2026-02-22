@@ -16,6 +16,7 @@ import { useToastStore } from '../stores/toast'
 import { useUiStore } from '../stores/ui'
 import { useCacheStore } from '../stores/cache'
 import { useInfiniteScroll } from '../composables/useInfiniteScroll'
+import { useDevice } from '../composables/useDevice'
 import { Compass, Search, Sparkles, RefreshCw, Rss } from 'lucide-vue-next'
 
 const ui = useUiStore()
@@ -23,6 +24,7 @@ const toast = useToastStore()
 const cache = useCacheStore()
 const route = useRoute()
 const router = useRouter()
+const { isMobile } = useDevice()
 
 const searchQuery = ref('')
 const committedQuery = ref('')
@@ -525,7 +527,7 @@ onBeforeRouteLeave((to, from, next) => {
 
 <template>
   <!-- 移动端文章详情覆盖层 -->
-  <div v-if="detailOpen" class="fixed inset-0 z-[60] flex flex-col bg-background md:hidden">
+  <div v-if="detailOpen && isMobile" class="fixed inset-0 z-[60] flex flex-col bg-background md:hidden">
     <ArticleDetailPane :articleId="ui.detailArticleId" :onClose="ui.closeDetail"
       :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
   </div>
@@ -566,7 +568,7 @@ onBeforeRouteLeave((to, from, next) => {
     <!-- 主内容区域 -->
     <section class="flex flex-1 flex-col gap-4 overflow-hidden">
       <!-- 桌面端文章详情 -->
-      <ArticleDetailPane v-if="detailOpen" class="hidden md:flex" :articleId="ui.detailArticleId"
+      <ArticleDetailPane v-if="detailOpen && !isMobile" class="hidden md:flex" :articleId="ui.detailArticleId"
         :onClose="ui.closeDetail" :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
       <template v-if="!detailOpen">
         <!-- 移动端：页面标题和主题创建入口 -->

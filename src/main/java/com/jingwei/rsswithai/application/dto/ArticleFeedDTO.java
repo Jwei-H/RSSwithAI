@@ -9,6 +9,7 @@ public record ArticleFeedDTO(
         Long sourceId,
         String sourceName,
         String title,
+    String link,
         String coverImage,
         LocalDateTime pubDate,
         Long wordCount
@@ -17,17 +18,20 @@ public record ArticleFeedDTO(
                                     Long sourceId,
                                     String sourceName,
                                     String title,
+                                    String link,
                                     String coverImage,
                                     LocalDateTime pubDate,
                                     Long wordCount) {
-        return new ArticleFeedDTO(id, sourceId, sourceName, title, coverImage, pubDate,wordCount);
+        return new ArticleFeedDTO(id, sourceId, sourceName, title, link, coverImage, pubDate, wordCount);
     }
-    public static ArticleFeedDTO from(Article article){
+
+    public static ArticleFeedDTO from(Article article) {
         return new ArticleFeedDTO(
                 article.getId(),
                 article.getSource() != null ? article.getSource().getId() : null,
                 article.getSourceName(),
                 article.getTitle(),
+                article.getLink(),
                 article.getCoverImage(),
                 article.getPubDate(),
                 article.getWordCount()

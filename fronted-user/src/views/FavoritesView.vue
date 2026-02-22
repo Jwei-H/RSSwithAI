@@ -7,6 +7,7 @@ import EmptyState from '../components/common/EmptyState.vue'
 import { feedApi } from '../services/frontApi'
 import type { ArticleFeed } from '../types'
 import { useInfiniteScroll } from '../composables/useInfiniteScroll'
+import { useDevice } from '../composables/useDevice'
 import { useUiStore } from '../stores/ui'
 import { useHistoryStore } from '../stores/history'
 import { useCacheStore } from '../stores/cache'
@@ -18,6 +19,7 @@ const historyStore = useHistoryStore()
 const cache = useCacheStore()
 const route = useRoute()
 const router = useRouter()
+const { isMobile } = useDevice()
 
 // 移动端 Tab 切换
 const activeTab = ref<'favorites' | 'history'>('favorites')
@@ -190,7 +192,7 @@ watch(activeTab, (newTab) => {
 
 <template>
   <!-- 移动端文章详情覆盖层 -->
-  <div v-if="detailOpen" class="fixed inset-0 z-[60] flex flex-col bg-background md:hidden">
+  <div v-if="detailOpen && isMobile" class="fixed inset-0 z-[60] flex flex-col bg-background md:hidden">
     <ArticleDetailPane :articleId="ui.detailArticleId" :onClose="ui.closeDetail"
       :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
   </div>
@@ -222,7 +224,7 @@ watch(activeTab, (newTab) => {
     <!-- 主内容区域 -->
     <section class="flex flex-1 flex-col gap-4 overflow-hidden">
       <!-- 桌面端文章详情 -->
-      <ArticleDetailPane v-if="detailOpen" class="hidden md:flex" :articleId="ui.detailArticleId"
+      <ArticleDetailPane v-if="detailOpen && !isMobile" class="hidden md:flex" :articleId="ui.detailArticleId"
         :onClose="ui.closeDetail" :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
       <template v-if="!detailOpen">
         <div class="rounded-2xl border border-border bg-card p-3 md:p-4">

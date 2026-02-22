@@ -661,6 +661,7 @@ Invalid token
     "sourceId": 1,
     "sourceName": "科技新闻",
     "title": "OpenAI发布Sora",
+    "link": "https://example.com/article/100",
     "coverImage": "https://example.com/cover.jpg",
     "pubDate": "2026-01-12T10:00:00",
     "wordCount": 1200
@@ -877,6 +878,7 @@ Invalid token
     "sourceId": 1,
     "sourceName": "科技新闻",
     "title": "OpenAI发布Sora",
+    "link": "https://example.com/article/100",
     "coverImage": "https://example.com/cover.jpg",
     "pubDate": "2026-01-12T10:00:00",
     "wordCount": 1200
@@ -1041,6 +1043,7 @@ Invalid token
       "sourceId": 1,
       "sourceName": "科技新闻",
       "title": "OpenAI发布Sora",
+      "link": "https://example.com/article/100",
       "coverImage": "https://example.com/cover.jpg",
       "pubDate": "2026-01-12T10:00:00",
       "wordCount": 1200
@@ -1166,6 +1169,7 @@ Invalid token
     "sourceId": 1,
     "sourceName": "科技新闻",
     "title": "OpenAI发布Sora并开放测试",
+    "link": "https://example.com/article/100",
     "coverImage": "https://example.com/cover.jpg",
     "pubDate": "2026-01-12T10:00:00",
     "wordCount": 1200

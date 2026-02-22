@@ -289,7 +289,7 @@ public class SubscriptionService {
             int size) {
         List<String> branches = new ArrayList<>();
         if (!sourceIds.isEmpty()) {
-            branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.cover_image, a.pub_date, a.word_count " +
+            branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.link, a.cover_image, a.pub_date, a.word_count " +
                     "FROM articles a WHERE a.source_id IN (:sourceIds) " +
                     "AND (a.pub_date < :cursorTime OR (a.pub_date = :cursorTime AND a.id < :cursorId))");
         }
@@ -297,7 +297,7 @@ public class SubscriptionService {
             String vectorConditions = IntStream.range(0, topicVectors.size())
                     .mapToObj(i -> "(ae.vector <=> CAST(:vector" + i + " AS vector)) < :threshold")
                     .collect(Collectors.joining(" OR "));
-            branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.cover_image, a.pub_date, a.word_count " +
+            branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.link, a.cover_image, a.pub_date, a.word_count " +
                     "FROM articles a JOIN article_extra ae ON a.id = ae.article_id WHERE (" + vectorConditions + ") " +
                     "AND (a.pub_date < :cursorTime OR (a.pub_date = :cursorTime AND a.id < :cursorId))");
         }
@@ -356,19 +356,20 @@ public class SubscriptionService {
         Long sourceId = row[1] != null ? ((Number) row[1]).longValue() : null;
         String sourceName = row[2] != null ? row[2].toString() : null;
         String title = row[3] != null ? row[3].toString() : null;
-        String coverImage = row[4] != null ? row[4].toString() : null;
+        String link = row[4] != null ? row[4].toString() : null;
+        String coverImage = row[5] != null ? row[5].toString() : null;
 
         LocalDateTime pubDate = null;
-        Object dateObj = row[5];
+        Object dateObj = row[6];
         if (dateObj instanceof Timestamp timestamp) {
             pubDate = timestamp.toLocalDateTime();
         } else if (dateObj instanceof LocalDateTime time) {
             pubDate = time;
         }
 
-        Long wordCount = row.length > 6 && row[6] != null ? ((Number) row[6]).longValue() : null;
+        Long wordCount = row.length > 7 && row[7] != null ? ((Number) row[7]).longValue() : null;
 
-        return ArticleFeedDTO.of(id, sourceId, sourceName, title, coverImage, pubDate, wordCount);
+        return ArticleFeedDTO.of(id, sourceId, sourceName, title, link, coverImage, pubDate, wordCount);
     }
 
     private String toPgVectorLiteral(float[] vector) {

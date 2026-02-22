@@ -67,6 +67,12 @@ const previewExtra = ref<ArticleExtra | null>(null)
 const previewError = ref<string | null>(null)
 const savedScrollTop = ref(0)
 let hoverTimer: number | null = null
+let visibleFeedObserver: IntersectionObserver | null = null
+const observedFeedCards = new Map<number, HTMLElement>()
+const inFlightExtraRequests = new Map<number, Promise<ArticleExtra | null>>()
+const queuedPrefetchIds = new Set<number>()
+let prefetchingCount = 0
+const maxPrefetchConcurrency = 3
 
 const detailOpen = computed(() => ui.detailOpen)
 const pullRefreshThreshold = 72
@@ -139,6 +145,128 @@ const scheduleDayRollover = () => {
 }
 
 const getFeedCacheKey = (id: number | null) => (id === null ? 'all' : `sub:${id}`)
+
+const createPrefilledDetail = (item: ArticleFeed) => ({
+  id: item.id,
+  sourceId: item.sourceId,
+  sourceName: item.sourceName,
+  title: item.title,
+  link: item.link || null,
+  coverImage: item.coverImage || null,
+  pubDate: item.pubDate,
+  wordCount: item.wordCount ?? null,
+  content: ''
+})
+
+const findArticleInCurrentList = (id: number) => {
+  const inSearch = searchResults.value.find((item) => item.id === id)
+  if (inSearch) return inSearch
+  return feedList.value.find((item) => item.id === id) || null
+}
+
+const getOrFetchArticleExtra = (id: number): Promise<ArticleExtra | null> => {
+  const cached = cache.getArticleExtra(id)
+  if (cached) {
+    return Promise.resolve(cached)
+  }
+
+  const inFlight = inFlightExtraRequests.get(id)
+  if (inFlight) {
+    return inFlight
+  }
+
+  const request = feedApi.extra(id)
+    .then((data) => {
+      if (data && data.status === 'SUCCESS') {
+        cache.setArticleExtra(id, data)
+      }
+      return data || null
+    })
+    .catch(() => null)
+    .finally(() => {
+      inFlightExtraRequests.delete(id)
+    })
+
+  inFlightExtraRequests.set(id, request)
+  return request
+}
+
+const runPrefetchQueue = () => {
+  while (prefetchingCount < maxPrefetchConcurrency && queuedPrefetchIds.size > 0) {
+    const next = queuedPrefetchIds.values().next().value
+    if (next === undefined) return
+    queuedPrefetchIds.delete(next)
+    prefetchingCount += 1
+
+    getOrFetchArticleExtra(next).finally(() => {
+      prefetchingCount -= 1
+      runPrefetchQueue()
+    })
+  }
+}
+
+const enqueueVisibleArticlePrefetch = (id: number) => {
+  if (committedQuery.value) return
+  if (cache.getArticleExtra(id)) return
+  if (queuedPrefetchIds.has(id)) return
+  if (inFlightExtraRequests.has(id)) return
+
+  queuedPrefetchIds.add(id)
+  runPrefetchQueue()
+}
+
+const rebuildVisibleFeedObserver = () => {
+  visibleFeedObserver?.disconnect()
+  visibleFeedObserver = null
+
+  if (!listContainer.value || committedQuery.value) {
+    return
+  }
+
+  visibleFeedObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        const target = entry.target as HTMLElement
+        const articleId = Number(target.dataset.articleId)
+        if (Number.isNaN(articleId) || articleId <= 0) continue
+        enqueueVisibleArticlePrefetch(articleId)
+      }
+    },
+    {
+      root: listContainer.value,
+      rootMargin: '160px 0px',
+      threshold: 0.1
+    }
+  )
+
+  observedFeedCards.forEach((element) => {
+    visibleFeedObserver?.observe(element)
+  })
+}
+
+const registerFeedCardElement = (id: number, element: Element | null) => {
+  const current = observedFeedCards.get(id)
+  if (current && current !== element) {
+    visibleFeedObserver?.unobserve(current)
+    observedFeedCards.delete(id)
+  }
+
+  if (!element) {
+    if (current) {
+      visibleFeedObserver?.unobserve(current)
+      observedFeedCards.delete(id)
+    }
+    return
+  }
+
+  const htmlElement = element as HTMLElement
+  htmlElement.dataset.articleId = String(id)
+  observedFeedCards.set(id, htmlElement)
+  if (!committedQuery.value) {
+    visibleFeedObserver?.observe(htmlElement)
+  }
+}
 
 const isSameFeed = (next: ArticleFeed[], current: ArticleFeed[]) => {
   if (next.length !== current.length) return false
@@ -389,29 +517,17 @@ const onHoverArticle = (id: number) => {
   previewExtra.value = null
   previewError.value = null
   hoverTimer = window.setTimeout(async () => {
-    // 尝试从缓存获取
-    const cached = cache.getArticleExtra(id)
-    if (cached) {
-      previewExtra.value = cached
-      previewLoading.value = false
-      previewError.value = null
-      return
-    }
-
     previewLoading.value = true
     previewError.value = null
-    try {
-      const data = await feedApi.extra(id)
+    const data = await getOrFetchArticleExtra(id)
+    if (data) {
       previewExtra.value = data
-      if (data && data.status === 'SUCCESS') {
-        cache.setArticleExtra(id, data)
-      }
-    } catch {
+      previewError.value = null
+    } else {
       previewExtra.value = null
       previewError.value = 'AI 增强信息暂不可用'
-    } finally {
-      previewLoading.value = false
     }
+    previewLoading.value = false
   }, 200)
 }
 
@@ -469,6 +585,15 @@ const onTimelineTouchEnd = async () => {
 }
 
 const onOpenArticle = (id: number) => {
+  const feedItem = findArticleInCurrentList(id)
+  if (feedItem) {
+    const cachedDetail = cache.getArticleDetail(id)
+    if (!cachedDetail || !cachedDetail.content) {
+      cache.setArticleDetail(id, createPrefilledDetail(feedItem))
+    }
+  }
+  void getOrFetchArticleExtra(id)
+
   // 更新 URL 查询参数
   const query = { ...route.query, articleId: String(id) }
   router.push({ path: route.path, query }).catch(() => {
@@ -542,6 +667,8 @@ watch(activeSubscriptionId, () => {
   if (committedQuery.value) {
     search(committedQuery.value)
   }
+
+  rebuildVisibleFeedObserver()
 })
 
 watch(
@@ -554,6 +681,14 @@ watch(
     searchQuery.value = nextQuery
     committedQuery.value = nextQuery
     await search(nextQuery)
+    rebuildVisibleFeedObserver()
+  }
+)
+
+watch(
+  () => [feedDisplay.value.length, committedQuery.value],
+  () => {
+    rebuildVisibleFeedObserver()
   }
 )
 
@@ -582,6 +717,7 @@ onMounted(async () => {
 
   const usedFeedCache = applyFeedCache(activeSubscriptionId.value)
   await refreshFeed(usedFeedCache)
+  rebuildVisibleFeedObserver()
 
   loadWordCloud()
 
@@ -609,14 +745,25 @@ onActivated(() => {
       }
     })
   }
+
+  rebuildVisibleFeedObserver()
 })
 
 onDeactivated(() => {
   clearDayRolloverTimer()
+  visibleFeedObserver?.disconnect()
+  visibleFeedObserver = null
 })
 
 onBeforeUnmount(() => {
   clearDayRolloverTimer()
+  if (hoverTimer) {
+    window.clearTimeout(hoverTimer)
+  }
+  visibleFeedObserver?.disconnect()
+  visibleFeedObserver = null
+  observedFeedCards.clear()
+  queuedPrefetchIds.clear()
 })
 
 onBeforeRouteLeave((to, from, next) => {
@@ -637,7 +784,7 @@ watch(
 
 <template>
   <!-- 移动端文章详情覆盖层 -->
-  <div v-if="detailOpen" class="fixed inset-0 z-[60] flex flex-col bg-background md:hidden">
+  <div v-if="detailOpen && isMobile" class="fixed inset-0 z-[60] flex flex-col bg-background md:hidden">
     <ArticleDetailPane :articleId="ui.detailArticleId" :onClose="ui.closeDetail"
       :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
   </div>
@@ -836,14 +983,17 @@ watch(
             <WordCloudCard :data="wordCloud" :loading="wordCloudLoading" :minimized="true" />
           </div>
 
-          <template v-for="(entry, index) in feedDisplay" :key="`feed-${index}`">
+          <template v-for="(entry, index) in feedDisplay"
+            :key="entry.type === 'separator' ? `sep-${entry.date}-${index}` : `article-${entry.item.id}`">
             <div v-if="entry.type === 'separator'" class="flex items-center gap-4 py-2 text-xs text-muted-foreground">
               <span class="h-px flex-1 bg-border" />
               <span class="rounded-full bg-muted px-3 py-1">{{ entry.date }}</span>
               <span class="h-px flex-1 bg-border" />
             </div>
-            <ArticleCard v-else :article="entry.item" :isRead="historyStore.isRead(entry.item.id)" @open="onOpenArticle"
-              @hover="onHoverArticle" @leave="onLeaveArticle" />
+            <div v-else :ref="(el) => registerFeedCardElement(entry.item.id, el)">
+              <ArticleCard :article="entry.item" :isRead="historyStore.isRead(entry.item.id)" @open="onOpenArticle"
+                @hover="onHoverArticle" @leave="onLeaveArticle" />
+            </div>
           </template>
         </div>
 
@@ -859,7 +1009,7 @@ watch(
 
     <!-- 右侧面板（仅桌面端显示） -->
     <section class="hidden h-full flex-col gap-4 overflow-hidden md:flex">
-      <ArticleDetailPane v-if="detailOpen" :articleId="ui.detailArticleId" :onClose="ui.closeDetail"
+      <ArticleDetailPane v-if="detailOpen && !isMobile" :articleId="ui.detailArticleId" :onClose="ui.closeDetail"
         :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
       <template v-else>
         <WordCloudCard :data="wordCloud" :loading="wordCloudLoading" />

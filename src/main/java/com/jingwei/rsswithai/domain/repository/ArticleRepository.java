@@ -21,7 +21,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     Page<Article> findBySourceIdOrderByPubDateDesc(Long sourceId, Pageable pageable);
 
     @Query(value = "SELECT a.id as id, a.source_id as sourceId, a.source_name as sourceName, a.title as title, " +
-            "a.cover_image as coverImage, a.pub_date as pubDate, a.word_count as wordCount " +
+            "a.link as link, a.cover_image as coverImage, a.pub_date as pubDate, a.word_count as wordCount " +
             "FROM articles a WHERE a.source_id = :sourceId ORDER BY a.pub_date DESC, a.id DESC",
             countQuery = "SELECT count(*) FROM articles a WHERE a.source_id = :sourceId",
             nativeQuery = true)
@@ -49,7 +49,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     List<Long> searchIdsByFuzzyInFavorites(@Param("likePattern") String likePattern, @Param("userId") Long userId, @Param("limit") int limit);
 
     @Query(value = "SELECT a.id as id, a.source_id as sourceId, a.source_name as sourceName, a.title as title, " +
-            "a.cover_image as coverImage, a.pub_date as pubDate, a.word_count as wordCount " +
+            "a.link as link, a.cover_image as coverImage, a.pub_date as pubDate, a.word_count as wordCount " +
             "FROM articles a JOIN article_favorites af ON a.id = af.article_id " +
             "WHERE af.user_id = :userId ORDER BY a.pub_date DESC, a.id DESC",
             countQuery = "SELECT count(*) FROM article_favorites af WHERE af.user_id = :userId",
@@ -57,7 +57,7 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     Page<ArticleFeedView> findFavoriteFeedByUserId(@Param("userId") Long userId, Pageable pageable);
 
     @Query(value = "SELECT a.id as id, a.source_id as sourceId, a.source_name as sourceName, a.title as title, " +
-            "a.cover_image as coverImage, a.pub_date as pubDate, a.word_count as wordCount " +
+            "a.link as link, a.cover_image as coverImage, a.pub_date as pubDate, a.word_count as wordCount " +
             "FROM articles a WHERE a.id IN (:ids)",
             nativeQuery = true)
     List<ArticleFeedView> findFeedByIds(@Param("ids") List<Long> ids);
@@ -80,6 +80,8 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
         String getSourceName();
 
         String getTitle();
+
+        String getLink();
 
         String getCoverImage();
 
