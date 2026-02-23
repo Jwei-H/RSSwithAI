@@ -150,6 +150,7 @@ public class RssSource {
     public void recordFetchFailure(String errorMessage) {
         this.lastFetchStatus = FetchStatus.FAILED;
         this.lastFetchError = errorMessage;
+        this.lastFetchTime = LocalDateTime.now();
         this.failureCount++;
     }
 

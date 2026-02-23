@@ -37,7 +37,7 @@ public class DatabaseIndexInitializer implements ApplicationListener<Application
             // 3. Covered index for list query (Idempotent)
             jdbcTemplate.execute("CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_article_source_pubdate_covered " +
                     "ON articles (source_id, pub_date) " +
-                    "INCLUDE (source_name, title, word_count, cover_image)");
+                    "INCLUDE (source_name, title, word_count, cover_image, author, link)");
 
             // 4. pgvector extension
             jdbcTemplate.execute("CREATE EXTENSION IF NOT EXISTS vector");

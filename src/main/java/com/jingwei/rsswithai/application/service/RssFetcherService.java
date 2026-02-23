@@ -104,6 +104,10 @@ public class RssFetcherService {
                     int savedCount = 0;
                     LocalDateTime latestArticlePubDate = source.getLatestArticlePubDate();
                     for (RssUtils.ParsedItem item : items) {
+                        if (item.hasIdentity() && articleService.existsBySourceAndGuidOrLink(
+                                source.getId(), item.guid(), item.link())) {
+                            continue;
+                        }
                         Article article = RssUtils.buildArticle(item, source);
                         if (article == null) {
                             continue;
@@ -114,10 +118,6 @@ public class RssFetcherService {
                             latestArticlePubDate = pubDate;
                         }
 
-                        if (item.hasIdentity() && articleService.existsBySourceAndGuidOrLink(
-                                source.getId(), item.guid(), item.link())) {
-                            continue;
-                        }
 
                         Article savedArticle = articleService.saveArticleIfNotExists(article);
                         if (savedArticle != null) {

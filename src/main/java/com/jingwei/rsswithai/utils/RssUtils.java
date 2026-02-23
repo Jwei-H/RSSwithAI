@@ -35,6 +35,7 @@ public final class RssUtils {
 
     private static final Pattern FONT_SIZE_PATTERN = Pattern.compile("font-size\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)px", Pattern.CASE_INSENSITIVE);
     private static final Pattern META_SEPARATOR_PATTERN = Pattern.compile("[|｜丨/\\-]");
+    private static final Pattern BASE64_MARKDOWN_IMAGE_PATTERN = Pattern.compile("!\\[[^\\]]*\\]\\(\\s*data:image/[^\\s)]*;base64,[^)]*\\)", Pattern.CASE_INSENSITIVE);
 
     private static final List<DateTimeFormatter> DATE_FORMATTERS = List.of(
             DateTimeFormatter.RFC_1123_DATE_TIME,
@@ -401,6 +402,7 @@ public final class RssUtils {
         if (rawContent != null && !rawContent.isBlank()) {
             long begin = System.currentTimeMillis();
             markdownContent = converter.convert(rawContent);
+            markdownContent = removeBase64Images(markdownContent);
             log.debug("HTML转Markdown耗时: {} ms", System.currentTimeMillis() - begin);
         }
 
@@ -697,6 +699,17 @@ public final class RssUtils {
         }
 
         return null;
+    }
+
+    /**
+     * 移除Markdown中base64内联图片（data:image/...;base64,...）
+     */
+    private static String removeBase64Images(String markdown) {
+        if (isBlank(markdown)) {
+            return markdown;
+        }
+
+        return BASE64_MARKDOWN_IMAGE_PATTERN.matcher(markdown).replaceAll("");
     }
 
     /**

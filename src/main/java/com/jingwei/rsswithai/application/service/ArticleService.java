@@ -15,7 +15,6 @@ import com.qianxinyao.analysis.jieba.keyword.TFIDFAnalyzer;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -466,8 +465,8 @@ public class ArticleService {
         }
         try {
             return articleRepository.save(article);
-        } catch (DataIntegrityViolationException e) {
-            log.debug("文章保存跳过（并发重复）: guid={}", article.getGuid());
+        } catch (Exception e) {
+            log.debug("文章报错失败: title={}", article.getTitle());
             return null;
         }
     }
