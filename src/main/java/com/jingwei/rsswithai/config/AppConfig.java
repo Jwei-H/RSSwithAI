@@ -4,6 +4,8 @@ import lombok.Data;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 
+import java.util.List;
+
 @Component
 @Data
 public class AppConfig {
@@ -16,6 +18,9 @@ public class AppConfig {
 
     @SettingKey("collector_fetch_max_retries")
     private Integer collectorFetchMaxRetries = 3;
+
+    @SettingKey("collector_title_filter_words")
+    private List<String> collectorTitleFilterWords = List.of();
 
     @SettingKey("rsshub_host")
     private String rsshubHost = "http://rsshub.app";
@@ -78,10 +83,10 @@ public class AppConfig {
     @SettingKey("trends_hot_events_map_prompt")
     private String trendsHotEventsMapPrompt = """
               你是一个专业的新闻分析师。请基于以下RSS源最近文章的“标题+概览”，提炼 0-10 个具有明确时效性的关键事件。
-              请忽略日常维护日志、版本微小更新、单纯教程或非时效性内容。
+              请忽略单纯教程、版本更新或非时效性内容。
               如果多篇文章指向同一事件，请合并为一个事件。
               输出结果必须按重要程度降序排列（你可参考事件影响范围、涉及主体和出现频次），最多取前10个。
-              宁缺毋滥：如果没有值得关注的事件，请返回空数组 []。
+              宁缺毋滥：事件要求少而精，如果没有值得关注的事件，请返回空数组 []。
             
               RSS源名称：
               {sourcename}

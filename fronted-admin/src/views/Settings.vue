@@ -132,6 +132,16 @@ onMounted(() => {
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">标题过滤词列表</label>
+            <textarea
+              v-model="settings['collector_title_filter_words']"
+              rows="4"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="每行一个或用逗号分隔，例如：广告, 抽奖, 促销"
+            />
+            <p class="mt-1 text-xs text-gray-500">当文章标题包含任一过滤词时将跳过入库</p>
+          </div>
         </div>
       </div>
 

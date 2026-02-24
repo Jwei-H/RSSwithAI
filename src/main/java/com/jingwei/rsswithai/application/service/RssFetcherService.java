@@ -20,6 +20,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * RSS抓取执行器服务（Fetcher）
@@ -100,10 +101,17 @@ public class RssFetcherService {
                     }
 
                     List<RssUtils.ParsedItem> items = RssUtils.parseItems(content, source);
+                    List<String> titleFilterWords = appConfig.getCollectorTitleFilterWords();
 
                     int savedCount = 0;
                     LocalDateTime latestArticlePubDate = source.getLatestArticlePubDate();
                     for (RssUtils.ParsedItem item : items) {
+
+                        if (shouldSkipByTitle(item.title(), titleFilterWords)) {
+                            continue;
+                        }
+
+                        
                         if (item.hasIdentity() && articleService.existsBySourceAndGuidOrLink(
                                 source.getId(), item.guid(), item.link())) {
                             continue;
@@ -197,6 +205,24 @@ public class RssFetcherService {
         }
 
         return response.body();
+    }
+
+    private boolean shouldSkipByTitle(String title, List<String> filterWords) {
+        if (title == null || title.isBlank() || filterWords == null || filterWords.isEmpty()) {
+            return false;
+        }
+
+        String normalizedTitle = title.toLowerCase(Locale.ROOT);
+        for (String word : filterWords) {
+            if (word == null || word.isBlank()) {
+                continue;
+            }
+            if (normalizedTitle.contains(word.toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }

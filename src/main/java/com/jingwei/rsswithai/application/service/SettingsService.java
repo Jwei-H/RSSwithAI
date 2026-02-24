@@ -13,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -90,9 +93,33 @@ public class SettingsService {
                 field.set(appConfig, Float.parseFloat(value));
             } else if (type == Boolean.class || type == boolean.class) {
                 field.set(appConfig, Boolean.parseBoolean(value));
+            } else if (List.class.isAssignableFrom(type) && isStringList(field)) {
+                field.set(appConfig, parseStringList(value));
             }
         } catch (Exception e) {
             log.error("Failed to set field {} with value {}", field.getName(), value, e);
         }
+    }
+
+    private boolean isStringList(Field field) {
+        Type genericType = field.getGenericType();
+        if (!(genericType instanceof ParameterizedType parameterizedType)) {
+            return false;
+        }
+
+        Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
+        return actualTypeArguments.length == 1 && actualTypeArguments[0] == String.class;
+    }
+
+    private List<String> parseStringList(String value) {
+        if (value == null || value.isBlank()) {
+            return List.of();
+        }
+
+        return Arrays.stream(value.split("[\\r\\n,，]+"))
+                .map(String::trim)
+                .filter(part -> !part.isBlank())
+                .distinct()
+                .toList();
     }
 }
