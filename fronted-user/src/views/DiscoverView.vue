@@ -33,6 +33,31 @@ const searchLoading = ref(false)
 
 const hotEvents = ref<HotEvent[]>([])
 const hotLoading = ref(false)
+const HOT_EVENTS_DEFAULT_VISIBLE_COUNT = 15
+const mobileShowAllHotEvents = ref(false)
+
+const mobileCanToggleHotEvents = computed(
+  () => hotEvents.value.length > HOT_EVENTS_DEFAULT_VISIBLE_COUNT
+)
+
+const mobileVisibleCount = computed(() =>
+  mobileShowAllHotEvents.value
+    ? hotEvents.value.length
+    : Math.min(HOT_EVENTS_DEFAULT_VISIBLE_COUNT, hotEvents.value.length)
+)
+
+const mobileHotEventsTopLabel = computed(() => {
+  if (!mobileCanToggleHotEvents.value) return `Top ${mobileVisibleCount.value}`
+  return mobileShowAllHotEvents.value
+    ? `Top ${mobileVisibleCount.value}`
+    : `Top ${mobileVisibleCount.value}`
+})
+const mobileVisibleHotEvents = computed(() => hotEvents.value.slice(0, mobileVisibleCount.value))
+
+const toggleMobileHotEvents = () => {
+  if (!mobileCanToggleHotEvents.value) return
+  mobileShowAllHotEvents.value = !mobileShowAllHotEvents.value
+}
 
 const topicInput = ref('')
 const topicLoading = ref(false)
@@ -145,10 +170,10 @@ const loadHotEvents = async (forceRefresh = false) => {
   hotLoading.value = true
   try {
     const list = await trendApi.hotEvents()
-    const top20 = list.slice(0, 20).map((item) => ({ event: item.event, score: item.score }))
-    hotEvents.value = withHotEventSubscriptionState(top20)
+    const allEvents = list.map((item) => ({ event: item.event, score: item.score }))
+    hotEvents.value = withHotEventSubscriptionState(allEvents)
     // 保存到缓存
-    cache.setHotEvents(top20)
+    cache.setHotEvents(allEvents)
   } finally {
     hotLoading.value = false
   }
@@ -627,9 +652,18 @@ onBeforeRouteLeave((to, from, next) => {
               <summary class="flex cursor-pointer items-center gap-2 p-4 text-sm font-semibold text-foreground">
                 <Sparkles class="h-4 w-4 text-primary" />
                 热点事件
-                <span class="ml-auto text-xs font-normal text-muted-foreground">
-                  {{ hotLoading ? '加载中...' : 'Top 20' }}
-                </span>
+                <button
+                  class="ml-auto rounded-lg border px-2 py-1 text-xs font-normal text-muted-foreground transition"
+                  :class="
+                    mobileCanToggleHotEvents
+                      ? 'cursor-pointer border-border'
+                      : 'cursor-default border-transparent'
+                  "
+                  :title="mobileCanToggleHotEvents ? '点击切换显示数量' : undefined"
+                  @click.prevent.stop="toggleMobileHotEvents"
+                >
+                  {{ hotLoading ? '加载中...' : mobileHotEventsTopLabel }}
+                </button>
               </summary>
               <ul class="border-t border-border p-3 space-y-2">
                 <!-- 加载中 -->
@@ -638,7 +672,7 @@ onBeforeRouteLeave((to, from, next) => {
                 </li>
                 <!-- 有数据时循环显示 -->
                 <template v-else-if="hotEvents.length">
-                  <li v-for="(item, index) in hotEvents" :key="`mobile-hot-${index}`"
+                  <li v-for="(item, index) in mobileVisibleHotEvents" :key="`mobile-hot-${index}`"
                     class="flex items-center justify-between rounded-xl py-2 text-xs">
                     <div class="flex items-center gap-2">
                       <span class="h-6 w-6 flex-shrink-0 rounded-full bg-muted text-center leading-6 text-foreground">
