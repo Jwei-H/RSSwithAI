@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
 public class TrendsAnalysisService {
 
     private static final int HOT_EVENTS_MAP_CHUNK_SIZE = 30;
-    private static final int HOT_EVENTS_MAX_COUNT = 20;
 
     private final ArticleRepository articleRepository;
     private final ArticleExtraRepository articleExtraRepository;
@@ -249,15 +248,12 @@ public class TrendsAnalysisService {
 
             log.info("Global reduced events JSON: {}", globalEvents);
 
-                    List<Map<String, Object>> reducedEvents = objectMapper.readValue(globalEvents,
-                        new TypeReference<List<Map<String, Object>>>() {
-                        });
-                List<Map<String, Object>> topEvents = reducedEvents.stream()
-                    .limit(HOT_EVENTS_MAX_COUNT)
-                    .toList();
+            List<Map<String, Object>> reducedEvents = objectMapper.readValue(globalEvents,
+                    new TypeReference<List<Map<String, Object>>>() {
+                    });
 
             // 3. Save
-                saveTrendsData(0L, "HOT_EVENTS", topEvents);
+            saveTrendsData(0L, "HOT_EVENTS", reducedEvents);
             log.info("Hot Events generated successfully");
 
         } catch (Exception e) {
