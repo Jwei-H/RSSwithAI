@@ -7,7 +7,7 @@ services:
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
-      - DB_TIME_ZONE=UTC
+      - DB_TIME_ZONE=Asia/Shanghai
       - APP_TIME_ZONE=Asia/Shanghai
       
       # Security (JWT)
