@@ -94,10 +94,10 @@ public class AppConfig {
     private Integer concurrentLimit = 1;
 
     @SettingKey("admin_username")
-    private String adminUsername;
+    private String adminUsername = "admin";
 
     @SettingKey("admin_password")
-    private String adminPassword;
+    private String adminPassword = "admin";
 
     @SettingKey("trends_word_cloud_prompt")
     private String trendsWordCloudPrompt = """

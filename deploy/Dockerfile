@@ -1,7 +1,7 @@
 # ========== Stage 1: Build Backend (Java) ==========
 FROM maven:3.9-eclipse-temurin-25 AS build-backend
 WORKDIR /app
-COPY settings.xml /usr/share/maven/conf/settings.xml
+COPY deploy/settings.xml /usr/share/maven/conf/settings.xml
 COPY pom.xml .
 COPY src ./src
 # Skip tests to speed up build, adding retry to help with network flakes
@@ -62,10 +62,10 @@ COPY --from=build-user /app/dist /app/static/user
 COPY --from=build-admin /app/dist /app/static/admin
 
 # Copy Nginx Config
-COPY nginx-unified.conf /etc/nginx/nginx.conf
+COPY deploy/nginx-unified.conf /etc/nginx/nginx.conf
 
 # Copy Startup Script
-COPY start_services.sh /app/start_services.sh
+COPY deploy/start_services.sh /app/start_services.sh
 RUN chmod +x /app/start_services.sh
 
 # Expose ports: 8080 (API), 5777 (User Web), 5173 (Admin Web)

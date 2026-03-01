@@ -1,21 +1,23 @@
 services:
   rsswithai-all-in-one:
-    build: .
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
     container_name: rsswithai-server
     environment:
       # Database Configuration
-      - DB_USERNAME=${DB_USERNAME}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - DB_USERNAME=${DB_USERNAME:-rsswithai}
+      - DB_PASSWORD=${DB_PASSWORD:-rsswithai}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/rsswithai}
       - DB_TIME_ZONE=Asia/Shanghai
       - APP_TIME_ZONE=Asia/Shanghai
-      
-      # Security (JWT)
-      - JWT_SECRET=${JWT_SECRET}
-      
+
       # Timezone
       - TZ=Asia/Shanghai
       - JAVA_TOOL_OPTIONS=-Duser.timezone=Asia/Shanghai
+
+    volumes:
+      - rsswithai_app_data:/app/data
     
     ports:
       - "9090:8080"  # 后端 API (Tauri 或外部调用, 内部8080暴露为9090)
@@ -23,3 +25,26 @@ services:
       - "5173:5173"  # 管理端 Web (映射到容器内 5173)
 
     restart: always
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: rsswithai-postgres
+    profiles:
+      - postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-rsswithai}
+      - POSTGRES_USER=${DB_USERNAME:-rsswithai}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-rsswithai}
+      - TZ=Asia/Shanghai
+    volumes:
+      - rsswithai_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-rsswithai} -d ${POSTGRES_DB:-rsswithai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: always
+
+volumes:
+  rsswithai_app_data:
+  rsswithai_postgres_data:

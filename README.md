@@ -2,7 +2,7 @@
 
 RSSwithAI 是一个基于 RSS 信息源的智能情报收集、分析与展示系统。它将传统的信息聚合技术与前沿的 AI 分析能力（LLM + 向量检索）深度结合，构建了一个从"信息采集"到"智能分析"再到"精准展示"的全流程自动化情报平台。
 
-在线使用: [rssflow.top](https://rssflow.top)
+欢迎在线使用: [rssflow.top](https://rssflow.top)
 
 ## 🌟 核心特性
 
@@ -78,6 +78,18 @@ cp .env.example .env && vim .env
 # 启动项目
 docker compose up -d --build
 ```
+
+`.env` 支持两种数据库模式（二选一）：
+
+1. **内置 PostgreSQL（默认）**
+   - `COMPOSE_PROFILES=postgres`
+   - 可使用 `docker-compose.yml` 中的默认值，或在 `.env` 自定义 `DB_USERNAME` / `DB_PASSWORD` / `POSTGRES_DB`
+
+2. **外部 PostgreSQL**
+   - `COMPOSE_PROFILES=`（留空）
+   - 设置 `SPRING_DATASOURCE_URL` 为你自己的数据库地址
+   - 设置 `DB_USERNAME` / `DB_PASSWORD`
+
 用户端默认运行在 `http://localhost:5777`。
 管理端默认运行在 `http://localhost:5173`。
 - **用户名**: `admin`
@@ -89,7 +101,7 @@ docker compose up -d --build
 #### 1. 环境准备
 
 - **JDK**: Java 25
-- **Database**: PostgreSQL 17 (必须安装 `vector` 扩展)
+- **Database**: PostgreSQL 17 (必须安装 `vector` 扩展，[参考](https://github.com/pgvector/pgvector))
 - **Node.js**: v18+ (用于前端构建)
 - **Maven**: 3.x
 
@@ -102,7 +114,6 @@ docker compose up -d --build
 
 2. 启用 pgvector 扩展：
    ```sql
-   \c rsswithai
    CREATE EXTENSION vector;
    ```
 
@@ -118,7 +129,7 @@ docker compose up -d --build
 ```bash
 mvn spring-boot:run
 ```
-服务默认运行在 `http://localhost:9090`。
+服务默认运行在 `http://localhost:8080`。
 
 #### 4. 启动前端服务
 

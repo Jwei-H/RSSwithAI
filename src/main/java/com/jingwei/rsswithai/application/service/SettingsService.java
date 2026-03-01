@@ -16,8 +16,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,13 +27,56 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SettingsService {
 
+    private static final Set<String> NON_EDITABLE_SETTING_KEYS = Set.of(
+            "trends_word_cloud_prompt",
+            "subscription_topic_threshold",
+            "trends_hot_events_map_prompt",
+            "trends_hot_events_reduce_prompt");
+
     private final SettingRepository settingRepository;
     private final AppConfig appConfig;
     private final ApplicationEventPublisher eventPublisher;
 
     @PostConstruct
     public void init() {
+        backfillMissingSettings();
         loadSettings();
+    }
+
+    private void backfillMissingSettings() {
+        Field[] fields = AppConfig.class.getDeclaredFields();
+        Set<String> existingKeys = new HashSet<>(settingRepository.findAll().stream()
+                .map(Setting::getKey)
+                .toList());
+
+        int createdCount = 0;
+        for (Field field : fields) {
+            if (!field.isAnnotationPresent(SettingKey.class)) {
+                continue;
+            }
+
+            SettingKey annotation = field.getAnnotation(SettingKey.class);
+            String key = annotation.value();
+            if (isNonEditableSetting(key)) {
+                continue;
+            }
+            if (existingKeys.contains(key)) {
+                continue;
+            }
+
+            String defaultValue = getFieldDefaultValue(field);
+            if (defaultValue == null) {
+                continue;
+            }
+
+            settingRepository.save(new Setting(key, defaultValue, null));
+            createdCount++;
+            log.info("Backfilled missing setting key: {}", key);
+        }
+
+        if (createdCount > 0) {
+            log.info("Backfilled {} missing settings with default values.", createdCount);
+        }
     }
 
     private void loadSettings() {
@@ -53,6 +98,11 @@ public class SettingsService {
         for (Map.Entry<String, String> entry : newSettings.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
+
+            if (isNonEditableSetting(key)) {
+                log.warn("Skip updating non-editable setting key: {}", key);
+                continue;
+            }
 
             Setting setting = settingRepository.findByKey(key)
                     .orElse(new Setting(key, value, null));
@@ -121,5 +171,26 @@ public class SettingsService {
                 .filter(part -> !part.isBlank())
                 .distinct()
                 .toList();
+    }
+
+    private String getFieldDefaultValue(Field field) {
+        try {
+            field.setAccessible(true);
+            Object value = field.get(appConfig);
+            if (value == null) {
+                return null;
+            }
+            if (value instanceof List<?> listValue) {
+                return listValue.stream().map(String::valueOf).collect(Collectors.joining("\n"));
+            }
+            return String.valueOf(value);
+        } catch (IllegalAccessException e) {
+            log.error("Failed to read default value for field {}", field.getName(), e);
+            return null;
+        }
+    }
+
+    private boolean isNonEditableSetting(String key) {
+        return NON_EDITABLE_SETTING_KEYS.contains(key);
     }
 }
