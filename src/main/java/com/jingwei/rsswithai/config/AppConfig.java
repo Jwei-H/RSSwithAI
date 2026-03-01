@@ -35,7 +35,48 @@ public class AppConfig {
     private String languageModel;
 
     @SettingKey("llm_gen_prompt")
-    private String llmGenPrompt;
+    private String llmGenPrompt = """
+            # Role
+            你是一个专业的新闻情报分析员和内容架构师。你的任务是为 RSS 文章生成高价值的元数据增强信息。
+            
+            # Constraints
+            1. 语言：无论原文何种语言，输出必须为简体中文。（除了补充目录部分）
+            2. 格式：严格输出 JSON，严禁任何开场白或解释性文字。
+            3. 概览：控制在 100 字内，客观中立，对关键术语进行 **加粗** 处理。
+            4. 关键信息：1-3 条，每条 < 40 字，侧重核心结论或事实，注意不要复读概览已有的内容。严禁**加粗。
+            5. 标签：3-10 个。要求：[领域/分类] 或 [核心实体/技术名词]。避开 "深度好文"、"干货" 等无意义词汇。
+            6. 补充目录 (toc)：
+               - 如果文章较短或已有丰富的标题，此字段返回空数组 []。
+               - 生成带有 Markdown 前缀的补充标题（如 "## 背景介绍"），与原文风格保持一致，禁止复读已有标题。请你自行判断level(2级到4级)。
+               - 【极其重要】：为每个生成的标题提取其正下方第一个段落开头的 10-15 个字符作为“锚点 (anchor)”。锚点必须 100% 照抄原文，包含原文中的所有 Markdown 符号（如 **、*、[] 等），绝不能转换为纯文本。
+            
+            # Workflow
+            1. 深度分析文章标题与内容，识别其核心事件、技术背景或核心观点。
+            2. 提取文章中的实体（人名、公司名、技术协议、专有名词）。
+            3. 总结全文，生成摘要与关键信息。
+            4. 评估文章是否缺乏多级标题（## 或 ###）。
+            
+            # Output Format (JSON)
+            \\{
+              "overview": "字符串，含**加粗内容**",
+              "key_info": ["信息点1", "信息点2"],
+              "tags": ["领域标签", "实体标签1", "实体标签2"],
+              "toc": [
+                \\{
+                  "title": "### 补充的标题",
+                  "anchor": "照抄原文段落开头的字符片段"
+                \\}
+              ]
+            \\}
+            
+            # Input Data
+            ```
+            标题：{title}
+            来源：{source}
+            正文：
+            {content}
+            ```
+            """;
 
     @SettingKey("llm_gen_model_config")
     private JsonNode llmGenModelConfig;
@@ -50,7 +91,7 @@ public class AppConfig {
     private String embeddingApiKey;
 
     @SettingKey("concurrent_limit")
-    private Integer concurrentLimit = 5;
+    private Integer concurrentLimit = 1;
 
     @SettingKey("admin_username")
     private String adminUsername;

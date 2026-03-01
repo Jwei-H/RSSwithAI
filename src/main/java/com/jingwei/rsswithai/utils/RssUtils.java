@@ -17,6 +17,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.StringReader;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -32,6 +33,8 @@ import java.util.regex.Pattern;
  */
 @Slf4j
 public final class RssUtils {
+
+    private static final ZoneId SYSTEM_ZONE_ID = ZoneId.systemDefault();
 
     private static final Pattern FONT_SIZE_PATTERN = Pattern.compile("font-size\\s*:\\s*([0-9]+(?:\\.[0-9]+)?)px", Pattern.CASE_INSENSITIVE);
     private static final Pattern META_SEPARATOR_PATTERN = Pattern.compile("[|｜丨/\\-]");
@@ -546,7 +549,7 @@ public final class RssUtils {
         for (DateTimeFormatter formatter : DATE_FORMATTERS) {
             try {
                 ZonedDateTime zdt = ZonedDateTime.parse(trimmed, formatter);
-                return zdt.toLocalDateTime();
+                return zdt.withZoneSameInstant(SYSTEM_ZONE_ID).toLocalDateTime();
             } catch (DateTimeParseException ignored) {
                 // 继续尝试
             }
