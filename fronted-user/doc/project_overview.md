@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-**RSSwithAI 前台**是一个基于 Vue 3 的现代化 RSS 阅读器应用，集成了 AI 增强功能，为用户提供智能化的内容订阅和阅读体验。
+**RSSwithAI 前台**是一个基于 Vue 3 的现代化 RSS 阅读器应用，集成了 AI 增强功能，为用户提供智能化的内容订阅和阅读体验。属于完整项目中面向用户的前端部分。
 
 ### 核心特性
 - **智能订阅系统**：支持 RSS 源订阅和基于语义的主题订阅
@@ -112,6 +112,7 @@ src/
 
 - **词云**：`GET /api/front/v1/trends/wordcloud`（可选 sourceId 参数）
 - **热点事件**：`GET /api/front/v1/trends/hotevents`（Top20，score 1-10）
+- **事件相关文章**：`GET /api/front/v1/trends/hotevents/articles`（无限滚动）
 
 ### 5. RSS 源管理（RSS Source）
 **API 位置**：`services/frontApi.ts` - `rssApi`
@@ -137,8 +138,9 @@ src/
     - 源文章列表
     - 文章详情、AI增强信息、拼接后的正文
 - **策略**：
-    - 内存缓存（非持久化）
-    - 有效期 5 分钟
+    - 混合时效缓存：短效 5 分钟（热点、RSS源、时间线）、中效 12 小时（词云）、长效 48 小时（文章详情及 AI 增强）。
+    - LRU管控：长效缓存施加 `max 100` 软上限。
+    - 持久化：长效使用 LocalStorage 写入，短效采用纯内存响应式状态。
     - 支持手动强制刷新
 
 ---
