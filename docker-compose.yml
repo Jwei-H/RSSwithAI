@@ -7,12 +7,15 @@ services:
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - DB_TIME_ZONE=UTC
+      - APP_TIME_ZONE=Asia/Shanghai
       
       # Security (JWT)
       - JWT_SECRET=${JWT_SECRET}
       
       # Timezone
       - TZ=Asia/Shanghai
+      - JAVA_TOOL_OPTIONS=-Duser.timezone=Asia/Shanghai
     
     ports:
       - "9090:8080"  # 后端 API (Tauri 或外部调用, 内部8080暴露为9090)
