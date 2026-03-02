@@ -260,6 +260,7 @@ public class LlmProcessService {
                 keyInfoList = objectMapper.convertValue(
                         jsonResponse.get("key_info"),
                         objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+                keyInfoList = keyInfoList.stream().map(s -> s.replace("**", "")).toList();
             }
 
             if (jsonResponse.has("tags") && jsonResponse.get("tags").isArray()) {

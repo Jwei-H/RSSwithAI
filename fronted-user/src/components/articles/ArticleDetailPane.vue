@@ -116,7 +116,7 @@ const getScrollContainer = () => (window.innerWidth < 768 ? mobileScrollRef.valu
 const setupCollapseToggle = () => {
   // 获取 markdown 内容容器（优先选择可见容器）
   const markdownBodies = document.querySelectorAll<HTMLElement>('.markdown-body')
-  
+
   // 对所有 markdown 内容应用折叠逻辑
   markdownBodies.forEach((markdownBody) => {
     let lastTouchToggleAt = 0
@@ -219,7 +219,7 @@ const getContentBetweenHeadings = (startHeading: HTMLElement, container: HTMLEle
   const currentLevel = parseInt(startHeading.tagName.charAt(1))
   let currentElement = startHeading.nextElementSibling as HTMLElement | null
   const contentElements: Element[] = []
-  
+
   while (currentElement && container.contains(currentElement)) {
     // 如果遇到标题
     if (currentElement.tagName.match(/^H[1-6]$/)) {
@@ -232,7 +232,7 @@ const getContentBetweenHeadings = (startHeading: HTMLElement, container: HTMLEle
     contentElements.push(currentElement)
     currentElement = currentElement.nextElementSibling as HTMLElement | null
   }
-  
+
   // 如果没有内容元素，尝试委托到后续标题块（兼容 AI 拼接标题后紧跟原生标题的场景）
   if (contentElements.length === 0) {
     let sibling = startHeading.nextElementSibling as HTMLElement | null
@@ -244,25 +244,25 @@ const getContentBetweenHeadings = (startHeading: HTMLElement, container: HTMLEle
     }
     return null
   }
-  
+
   // 检查是否已经有包装容器
   const firstElement = contentElements[0]
   if (firstElement && firstElement.classList?.contains('md-heading-content')) {
     return firstElement as HTMLElement
   }
-  
+
   // 创建包装容器
   const wrapper = document.createElement('div')
   wrapper.className = 'md-heading-content'
-  
+
   // 将所有内容元素移入包装容器
   contentElements.forEach((el) => {
     wrapper.appendChild(el)
   })
-  
+
   // 将包装容器插入到标题后面
   startHeading.after(wrapper)
-  
+
   return wrapper
 }
 
@@ -412,7 +412,6 @@ const rebuildMergedContent = () => {
   }
   const content = mergeAiTocIntoContent(article.value.content, extra.value?.toc)
   mergedContent.value = content
-  cache.setArticleMergedContent(props.articleId, content)
 }
 
 const toArticleFeed = (item: ArticleDetail): ArticleFeed => ({
@@ -473,12 +472,11 @@ const load = async () => {
   const articleId = props.articleId
   const cachedArticle = cache.getArticleDetail(articleId)
   const cachedExtra = cache.getArticleExtra(articleId)
-  const cachedMergedContent = cache.getArticleMergedContent(articleId)
 
   article.value = cachedArticle
   extra.value = cachedExtra
   favorite.value = cachedArticle?.isFavorite ?? false
-  mergedContent.value = cachedMergedContent || cachedArticle?.content || ''
+  mergedContent.value = cachedArticle?.content ? mergeAiTocIntoContent(cachedArticle.content, cachedExtra?.toc) : ''
 
   const detailPromise = (async () => {
     try {
@@ -695,9 +693,11 @@ onUnmounted(() => {
     </header>
 
     <!-- 桌面端：双栏分割布局 -->
-    <div ref="desktopSplitRef" class="hidden flex-1 overflow-hidden md:grid" :class="isDragging ? 'transition-none' : 'transition-[grid-template-columns] duration-150 ease-out'" :style="desktopSplitStyle">
-      <section class="h-full overflow-y-auto border-r border-border px-2 py-6 scrollbar-thin"
-        ref="leftPaneRef" @scroll.passive="onLeftPaneScroll">
+    <div ref="desktopSplitRef" class="hidden flex-1 overflow-hidden md:grid"
+      :class="isDragging ? 'transition-none' : 'transition-[grid-template-columns] duration-150 ease-out'"
+      :style="desktopSplitStyle">
+      <section class="h-full overflow-y-auto border-r border-border px-2 py-6 scrollbar-thin" ref="leftPaneRef"
+        @scroll.passive="onLeftPaneScroll">
         <div v-if="!article && loading" class="text-sm text-muted-foreground">加载中...</div>
         <div v-else-if="article" class="space-y-4">
           <div>
@@ -713,17 +713,15 @@ onUnmounted(() => {
               打开原文
             </a>
           </div>
-          <div v-if="mergedContent" class="markdown-body" v-html="renderMarkdown(mergedContent)" @click="onMarkdownClick" />
+          <div v-if="mergedContent" class="markdown-body" v-html="renderMarkdown(mergedContent)"
+            @click="onMarkdownClick" />
           <p v-else class="text-sm text-muted-foreground">正文加载中...</p>
         </div>
       </section>
 
-      <button
-        type="button"
+      <button type="button"
         class="group relative flex h-full w-3 cursor-col-resize items-center justify-center bg-transparent outline-none transition-colors hover:bg-muted/60"
-        aria-label="拖动调整正文与信息栏宽度"
-        @mouseenter="isResizerHovered = true"
-        @mouseleave="isResizerHovered = false"
+        aria-label="拖动调整正文与信息栏宽度" @mouseenter="isResizerHovered = true" @mouseleave="isResizerHovered = false"
         @pointerdown="onResizerPointerDown">
         <span class="h-20 w-[2px] rounded-full transition-colors"
           :class="isDragging ? 'bg-primary' : 'bg-border group-hover:bg-primary/70'" />
@@ -796,14 +794,13 @@ onUnmounted(() => {
     </div>
 
     <!-- 移动端：单栏垂直滚动布局 -->
-    <div ref="mobileScrollRef" class="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-0 md:hidden" @scroll.passive="onLeftPaneScroll"
-      @touchend.passive="onMobileTouchEnd">
-      <div v-if="showMobileHeadingTrail && activeHeadingTrail.length"
-        class="sticky top-0 z-20 mb-3 px-2">
+    <div ref="mobileScrollRef" class="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-0 md:hidden"
+      @scroll.passive="onLeftPaneScroll" @touchend.passive="onMobileTouchEnd">
+      <div v-if="showMobileHeadingTrail && activeHeadingTrail.length" class="sticky top-0.5 z-20 mb-3 px-2">
         <div
           class="inline-flex max-w-full flex-col rounded-xl border border-border bg-card/95 px-3 py-0.5 backdrop-blur supports-[backdrop-filter]:bg-card/80">
           <button v-for="item in activeHeadingTrail" :key="`mobile-trail-${item.id}`" type="button"
-            class="inline-block max-w-full truncate py-0.5 text-left text-xs text-muted-foreground transition-colors hover:text-primary"
+            class="inline-block max-w-full truncate py-0.5 text-left text-sm text-muted-foreground transition-colors hover:text-primary"
             :style="{ paddingLeft: `${(item.level - 1) * 10}px` }" @click="scrollToHeading(item.id)">
             {{ item.text }}
           </button>
@@ -843,8 +840,7 @@ onUnmounted(() => {
             <ListChecks class="h-4 w-4 text-primary" />
             <h3 class="text-sm font-semibold text-foreground">关键信息</h3>
           </div>
-          <ul v-if="extra?.keyInformation?.length"
-            class="mt-3 list-decimal pl-4 text-sm leading-6 text-foreground">
+          <ul v-if="extra?.keyInformation?.length" class="mt-3 list-decimal pl-4 text-sm leading-6 text-foreground">
             <li v-for="(item, index) in extra.keyInformation" :key="`mobile-key-${index}`">
               {{ item }}
             </li>
@@ -859,7 +855,8 @@ onUnmounted(() => {
             <h3 class="text-sm font-semibold text-foreground">目录</h3>
           </div>
           <ul class="mt-3 space-y-2 text-sm text-muted-foreground/70">
-            <li v-for="item in tocItems" :key="`mobile-toc-${item.id}`" :style="{ paddingLeft: `${(item.level - 1) * 12}px` }">
+            <li v-for="item in tocItems" :key="`mobile-toc-${item.id}`"
+              :style="{ paddingLeft: `${(item.level - 1) * 12}px` }">
               <button type="button"
                 class="line-clamp-1 w-full text-left underline-offset-4 hover:text-sky-600 hover:underline" :class="activeHeadingId === item.id
                   ? 'font-semibold text-sky-600'
@@ -873,7 +870,8 @@ onUnmounted(() => {
 
         <!-- 5. 文章正文 -->
         <div class="rounded-2xl border border-border bg-card p-4">
-          <div v-if="mergedContent" class="markdown-body" v-html="renderMarkdown(mergedContent)" @click="onMarkdownClick" />
+          <div v-if="mergedContent" class="markdown-body" v-html="renderMarkdown(mergedContent)"
+            @click="onMarkdownClick" />
           <p v-else class="text-sm text-muted-foreground">正文加载中...</p>
         </div>
 
@@ -900,7 +898,8 @@ onUnmounted(() => {
     <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0"
       enter-to-class="opacity-100" leave-active-class="transition duration-150 ease-in" leave-from-class="opacity-100"
       leave-to-class="opacity-0">
-      <div v-if="imagePreviewOpen" class="fixed inset-0 z-[80] flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm"
+      <div v-if="imagePreviewOpen"
+        class="fixed inset-0 z-[80] flex items-center justify-center bg-background/70 p-4 backdrop-blur-sm"
         @click="closeImagePreview">
         <img :src="imagePreviewSrc" :alt="imagePreviewAlt"
           class="max-h-[90vh] max-w-[95vw] rounded-xl border border-border object-contain shadow-2xl transition-transform duration-200 ease-out"

@@ -9,14 +9,14 @@ import LoadingState from '../components/common/LoadingState.vue'
 import EmptyState from '../components/common/EmptyState.vue'
 import ErrorState from '../components/common/ErrorState.vue'
 import { subscriptionApi, feedApi, trendApi } from '../services/frontApi'
-import type { ArticleExtra, ArticleFeed, Subscription } from '../types'
+import type { ArticleDetail, ArticleExtra, ArticleFeed, Subscription } from '../types'
 import { useInfiniteScroll } from '../composables/useInfiniteScroll'
 import { useDevice } from '../composables/useDevice'
 import { useUiStore } from '../stores/ui'
 import { useToastStore } from '../stores/toast'
 import { useHistoryStore } from '../stores/history'
 import { useCacheStore } from '../stores/cache'
-import { CalendarDays, ChevronDown, Eye, EyeOff, Rss, Search, X, List, RefreshCw } from 'lucide-vue-next'
+import { CalendarDays, ChevronDown, Eye, EyeOff, Rss, Search, X, List, RefreshCw, Trash2 } from 'lucide-vue-next'
 
 const ui = useUiStore()
 const toast = useToastStore()
@@ -70,9 +70,13 @@ let hoverTimer: number | null = null
 let visibleFeedObserver: IntersectionObserver | null = null
 const observedFeedCards = new Map<number, HTMLElement>()
 const inFlightExtraRequests = new Map<number, Promise<ArticleExtra | null>>()
+const inFlightDetailRequests = new Map<number, Promise<ArticleDetail | null>>()
 const queuedPrefetchIds = new Set<number>()
 let prefetchingCount = 0
 const maxPrefetchConcurrency = 3
+
+const visibleArticleIds = new Set<number>()
+let prefetchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const detailOpen = computed(() => ui.detailOpen)
 const desktopGridColumns = computed(() =>
@@ -195,6 +199,33 @@ const getOrFetchArticleExtra = (id: number): Promise<ArticleExtra | null> => {
   return request
 }
 
+const getOrFetchArticleDetail = (id: number): Promise<ArticleDetail | null> => {
+  const cached = cache.getArticleDetail(id)
+  if (cached && cached.content) {
+    return Promise.resolve(cached)
+  }
+
+  const inFlight = inFlightDetailRequests.get(id)
+  if (inFlight) {
+    return inFlight
+  }
+
+  const request = feedApi.detail(id)
+    .then((data) => {
+      if (data) {
+        cache.setArticleDetail(id, data)
+      }
+      return data || null
+    })
+    .catch(() => null)
+    .finally(() => {
+      inFlightDetailRequests.delete(id)
+    })
+
+  inFlightDetailRequests.set(id, request)
+  return request
+}
+
 const runPrefetchQueue = () => {
   while (prefetchingCount < maxPrefetchConcurrency && queuedPrefetchIds.size > 0) {
     const next = queuedPrefetchIds.values().next().value
@@ -202,7 +233,14 @@ const runPrefetchQueue = () => {
     queuedPrefetchIds.delete(next)
     prefetchingCount += 1
 
-    getOrFetchArticleExtra(next).finally(() => {
+    const promises: Promise<any>[] = [getOrFetchArticleExtra(next)]
+
+    // Web 端额外预加载详情（正文）
+    if (!isMobile.value) {
+      promises.push(getOrFetchArticleDetail(next))
+    }
+
+    Promise.allSettled(promises).finally(() => {
       prefetchingCount -= 1
       runPrefetchQueue()
     })
@@ -211,9 +249,14 @@ const runPrefetchQueue = () => {
 
 const enqueueVisibleArticlePrefetch = (id: number) => {
   if (committedQuery.value) return
-  if (cache.getArticleExtra(id)) return
+
+  const hasExtra = !!cache.getArticleExtra(id)
+  // 移动端不涉及 Detail 预拉取，所以只要 Extra 有了就可以跳过；桌面端要确保 Detail(带纯正文) 也存在
+  const hasDetail = isMobile.value ? true : !!cache.getArticleDetail(id)?.content
+
+  if (hasExtra && hasDetail) return
   if (queuedPrefetchIds.has(id)) return
-  if (inFlightExtraRequests.has(id)) return
+  if (inFlightExtraRequests.has(id) || inFlightDetailRequests.has(id)) return
 
   queuedPrefetchIds.add(id)
   runPrefetchQueue()
@@ -222,6 +265,11 @@ const enqueueVisibleArticlePrefetch = (id: number) => {
 const rebuildVisibleFeedObserver = () => {
   visibleFeedObserver?.disconnect()
   visibleFeedObserver = null
+  visibleArticleIds.clear()
+  if (prefetchDebounceTimer) {
+    clearTimeout(prefetchDebounceTimer)
+    prefetchDebounceTimer = null
+  }
 
   if (!listContainer.value || committedQuery.value) {
     return
@@ -230,12 +278,26 @@ const rebuildVisibleFeedObserver = () => {
   visibleFeedObserver = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
-        if (!entry.isIntersecting) continue
         const target = entry.target as HTMLElement
         const articleId = Number(target.dataset.articleId)
         if (Number.isNaN(articleId) || articleId <= 0) continue
-        enqueueVisibleArticlePrefetch(articleId)
+
+        if (entry.isIntersecting) {
+          visibleArticleIds.add(articleId)
+        } else {
+          visibleArticleIds.delete(articleId)
+        }
       }
+
+      if (prefetchDebounceTimer) {
+        clearTimeout(prefetchDebounceTimer)
+      }
+
+      prefetchDebounceTimer = setTimeout(() => {
+        for (const id of visibleArticleIds) {
+          enqueueVisibleArticlePrefetch(id)
+        }
+      }, 500)
     },
     {
       root: listContainer.value,
@@ -662,7 +724,7 @@ watch(activeSubscriptionId, () => {
   previewExtra.value = null
   previewError.value = null
   previewLoading.value = false
-  
+
   const usedCache = applyFeedCache(activeSubscriptionId.value)
   if (!usedCache) resetFeed()
   refreshFeed(usedCache)
@@ -764,10 +826,14 @@ onBeforeUnmount(() => {
   if (hoverTimer) {
     window.clearTimeout(hoverTimer)
   }
+  if (prefetchDebounceTimer) {
+    clearTimeout(prefetchDebounceTimer)
+  }
   visibleFeedObserver?.disconnect()
   visibleFeedObserver = null
   observedFeedCards.clear()
   queuedPrefetchIds.clear()
+  visibleArticleIds.clear()
 })
 
 onBeforeRouteLeave((to, from, next) => {
@@ -834,9 +900,10 @@ watch(
                   </p>
                 </div>
               </div>
-              <button class="text-xs text-muted-foreground hover:text-foreground"
-                @click.stop="onCancelSubscription(item)">
-                取消
+              <button
+                class="p-1 flex-shrink-0 text-muted-foreground hover:text-red-500 transition-colors rounded-md hover:bg-red-500/10"
+                @click.stop="onCancelSubscription(item)" title="取消订阅">
+                <Trash2 class="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -848,8 +915,7 @@ watch(
   <!-- 主布局 -->
   <div
     class="flex h-full flex-col gap-4 overflow-hidden px-4 py-4 md:grid md:h-screen md:gap-y-6 md:px-6 md:py-6 md:[transition:grid-template-columns_320ms_cubic-bezier(0.22,1,0.36,1)]"
-    :class="desktopGridGapClass"
-    :style="{ gridTemplateColumns: desktopGridColumns }">
+    :class="desktopGridGapClass" :style="{ gridTemplateColumns: desktopGridColumns }">
     <!-- 桌面端侧边栏 -->
     <section class="hidden h-full flex-col gap-4 overflow-hidden md:flex">
       <div class="rounded-2xl border border-border bg-card p-4">
@@ -882,7 +948,7 @@ watch(
             :onRetry="() => loadSubscriptions(false)" />
           <div v-else class="mt-4 space-y-2">
             <div v-for="item in orderedSubscriptions" :key="item.id"
-              class="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-left text-xs"
+              class="group flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-left text-xs"
               :class="activeSubscriptionId === item.id ? 'bg-muted' : 'bg-card'" role="button" tabindex="0"
               @click="onSelectSubscription(item.id)">
               <div class="flex min-w-0 flex-1 items-center gap-2">
@@ -899,9 +965,10 @@ watch(
                   </p>
                 </div>
               </div>
-              <button v-if="!detailOpen" class="text-[11px] text-muted-foreground hover:text-foreground"
-                @click.stop="onCancelSubscription(item)">
-                取消
+              <button v-if="!detailOpen"
+                class="p-1 flex-shrink-0 text-muted-foreground hover:text-red-500 transition-all rounded-md hover:bg-red-500/10 opacity-0 group-hover:opacity-100"
+                @click.stop="onCancelSubscription(item)" title="取消订阅">
+                <Trash2 class="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
@@ -910,7 +977,7 @@ watch(
     </section>
 
     <!-- 时间线区域（移动端和桌面端共用） -->
-    <section class="flex flex-1 flex-col gap-4 overflow-hidden transition-all duration-300 ease-out"
+    <section class="flex flex-1 flex-col overflow-hidden transition-all duration-300 ease-out"
       :class="detailOpen ? 'pointer-events-none opacity-0 md:-translate-x-4' : 'translate-x-0 opacity-100'">
       <div class="rounded-2xl border border-border bg-card p-3 md:p-4">
         <!-- 移动端订阅切换按钮 -->
@@ -957,12 +1024,8 @@ watch(
         </div>
       </div>
 
-      <div
-        ref="listContainer"
-        class="flex-1 space-y-3 overflow-y-auto scrollbar-thin"
-        @touchstart="onTimelineTouchStart"
-        @touchmove="onTimelineTouchMove"
-        @touchend="onTimelineTouchEnd"
+      <div ref="listContainer" class="flex-1 space-y-3 overflow-y-auto scrollbar-thin"
+        @touchstart="onTimelineTouchStart" @touchmove="onTimelineTouchMove" @touchend="onTimelineTouchEnd"
         @touchcancel="onTimelineTouchEnd">
         <div class="md:hidden overflow-hidden transition-all duration-200"
           :style="{ height: `${refreshing ? 40 : (pulling ? pullDistance : 0)}px` }">

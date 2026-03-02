@@ -2,7 +2,7 @@ import { reactive } from 'vue'
 import type { ArticleDetail, ArticleExtra, ArticleFeed, HotEvent, RssSource, Subscription } from '../types'
 
 const ARTICLE_CACHE_STORAGE_KEY = 'rss_article_cache_v1'
-const ARTICLE_CACHE_EXPIRY = 48 * 60 * 60 * 1000 // 48小时
+const ARTICLE_CACHE_EXPIRY = 72 * 60 * 60 * 1000 // 72小时
 
 /**
  * 缓存项接口
@@ -38,7 +38,6 @@ interface FavoritesCacheData {
 interface PersistentArticleCache {
     articleDetails: Array<[number, CacheItem<ArticleDetail>]>
     articleExtras: Array<[number, CacheItem<ArticleExtra>]>
-    articleMergedContents: Array<[number, CacheItem<string>]>
 }
 
 // 单例状态
@@ -51,7 +50,6 @@ const state = reactive<{
     favorites: CacheItem<FavoritesCacheData> | null
     articleDetails: Map<number, CacheItem<ArticleDetail>>
     articleExtras: Map<number, CacheItem<ArticleExtra>>
-    articleMergedContents: Map<number, CacheItem<string>>
     wordCloud: Map<number, CacheItem<{ text: string; value: number }[]>>
 }>({
     hotEvents: null,
@@ -62,7 +60,6 @@ const state = reactive<{
     favorites: null,
     articleDetails: new Map(),
     articleExtras: new Map(),
-    articleMergedContents: new Map(),
     wordCloud: new Map()
 })
 
@@ -72,8 +69,7 @@ const persistArticleCaches = () => {
     try {
         const payload: PersistentArticleCache = {
             articleDetails: Array.from(state.articleDetails.entries()),
-            articleExtras: Array.from(state.articleExtras.entries()),
-            articleMergedContents: Array.from(state.articleMergedContents.entries())
+            articleExtras: Array.from(state.articleExtras.entries())
         }
         window.localStorage.setItem(ARTICLE_CACHE_STORAGE_KEY, JSON.stringify(payload))
     } catch {
@@ -93,7 +89,6 @@ const hydrateArticleCaches = () => {
 
         const details = Array.isArray(parsed.articleDetails) ? parsed.articleDetails : []
         const extras = Array.isArray(parsed.articleExtras) ? parsed.articleExtras : []
-        const merged = Array.isArray(parsed.articleMergedContents) ? parsed.articleMergedContents : []
 
         for (const [id, item] of details) {
             if (now - item.timestamp < ARTICLE_CACHE_EXPIRY) {
@@ -103,11 +98,6 @@ const hydrateArticleCaches = () => {
         for (const [id, item] of extras) {
             if (now - item.timestamp < ARTICLE_CACHE_EXPIRY) {
                 state.articleExtras.set(Number(id), item)
-            }
-        }
-        for (const [id, item] of merged) {
-            if (now - item.timestamp < ARTICLE_CACHE_EXPIRY) {
-                state.articleMergedContents.set(Number(id), item)
             }
         }
     } catch {
@@ -371,7 +361,7 @@ export function useCacheStore() {
     }
 
     /**
-     * 设置文章详情缓存 (LRU max 100)
+     * 设置文章详情缓存 (LRU max 200)
      */
     const setArticleDetail = (id: number, data: ArticleDetail): void => {
         if (state.articleDetails.has(id)) {
@@ -381,7 +371,7 @@ export function useCacheStore() {
             data,
             timestamp: Date.now()
         })
-        if (state.articleDetails.size > 100) {
+        if (state.articleDetails.size > 200) {
             const first = state.articleDetails.keys().next().value
             if (first !== undefined) state.articleDetails.delete(first)
         }
@@ -403,7 +393,7 @@ export function useCacheStore() {
     }
 
     /**
-     * 设置文章AI增强信息缓存 (LRU max 100)
+     * 设置文章AI增强信息缓存 (LRU max 200)
      */
     const setArticleExtra = (id: number, data: ArticleExtra): void => {
         if (state.articleExtras.has(id)) {
@@ -413,41 +403,9 @@ export function useCacheStore() {
             data,
             timestamp: Date.now()
         })
-        if (state.articleExtras.size > 100) {
+        if (state.articleExtras.size > 200) {
             const first = state.articleExtras.keys().next().value
             if (first !== undefined) state.articleExtras.delete(first)
-        }
-        persistArticleCaches()
-    }
-
-    /**
-     * 获取拼接后的文章正文缓存
-     */
-    const getArticleMergedContent = (id: number): string | null => {
-        const cached = state.articleMergedContents.get(id)
-        if (!cached) return null
-        if (!isLongTermCacheValid(cached.timestamp)) {
-            state.articleMergedContents.delete(id)
-            persistArticleCaches()
-            return null
-        }
-        return cached.data
-    }
-
-    /**
-     * 设置拼接后的文章正文缓存 (LRU max 100)
-     */
-    const setArticleMergedContent = (id: number, content: string): void => {
-        if (state.articleMergedContents.has(id)) {
-            state.articleMergedContents.delete(id)
-        }
-        state.articleMergedContents.set(id, {
-            data: content,
-            timestamp: Date.now()
-        })
-        if (state.articleMergedContents.size > 100) {
-            const first = state.articleMergedContents.keys().next().value
-            if (first !== undefined) state.articleMergedContents.delete(first)
         }
         persistArticleCaches()
     }
@@ -580,7 +538,6 @@ export function useCacheStore() {
         state.favorites = null
         state.articleDetails.clear()
         state.articleExtras.clear()
-        state.articleMergedContents.clear()
         state.wordCloud.clear()
         if (typeof window !== 'undefined') {
             window.localStorage.removeItem(ARTICLE_CACHE_STORAGE_KEY)
@@ -627,8 +584,6 @@ export function useCacheStore() {
         setArticleDetail,
         getArticleExtra,
         setArticleExtra,
-        getArticleMergedContent,
-        setArticleMergedContent,
 
         // 词云
         getWordCloud,

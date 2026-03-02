@@ -123,7 +123,7 @@ watch(
           </div>
         </div>
 
-        <div ref="listContainer" class="flex-1 space-y-3 overflow-y-auto scrollbar-thin">
+        <div ref="listContainer" class="flex-1 space-y-3 overflow-y-auto pt-4 scrollbar-thin">
           <EmptyState v-if="!historyStore.historyList.value.length" title="暂无阅读历史" description="阅读文章后会自动记录" />
           <div v-else class="space-y-3">
             <div v-for="item in historyStore.historyList.value" :key="item.articleId"

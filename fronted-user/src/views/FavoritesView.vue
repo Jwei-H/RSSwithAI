@@ -283,7 +283,7 @@ watch(activeTab, (newTab) => {
           </div>
         </div>
 
-        <div ref="listContainer" class="flex-1 space-y-3 overflow-y-auto scrollbar-thin">
+        <div ref="listContainer" class="flex-1 space-y-3 overflow-y-auto pt-4 scrollbar-thin">
           <!-- 收藏列表 -->
           <template v-if="activeTab === 'favorites'">
             <div v-if="committedQuery" class="space-y-3">
