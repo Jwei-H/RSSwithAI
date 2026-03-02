@@ -11,7 +11,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
-      includeAssets: ['rss.svg', 'vite.svg'],
+      includeAssets: ['rss.svg', 'pwa-icon.svg'],
       manifest: {
         name: 'RSSwithAI',
         short_name: 'RSSwithAI',
@@ -29,10 +29,10 @@ export default defineConfig({
             purpose: 'any',
           },
           {
-            src: '/vite.svg',
-            sizes: 'any',
+            src: '/pwa-icon.svg',
+            sizes: '512x512',
             type: 'image/svg+xml',
-            purpose: 'maskable',
+            purpose: 'any maskable',
           },
         ],
       },
