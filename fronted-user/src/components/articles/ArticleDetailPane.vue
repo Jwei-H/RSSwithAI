@@ -29,22 +29,49 @@ const loading = ref(true)
 const extraError = ref<string | null>(null)
 const favorite = ref(false)
 
+const desktopSplitRef = ref<HTMLElement | null>(null)
 const leftPaneRef = ref<HTMLElement | null>(null)
 const mobileScrollRef = ref<HTMLElement | null>(null)
 const collapsedHeadings = ref<Set<string>>(new Set())
 
 const leftWidth = ref(60)
+const MIN_LEFT_WIDTH = 35
+const MAX_LEFT_WIDTH = 72
+const LEFT_WIDTH_STORAGE_KEY = 'rsswithai:article-detail:left-width'
 const isDragging = ref(false)
+const isResizerHovered = ref(false)
 const activeHeadingId = ref<string | null>(null)
+const showMobileHeadingTrail = ref(false)
 const scrollRafId = ref<number | null>(null)
 const mermaidReady = ref(false)
 const imagePreviewOpen = ref(false)
 const imagePreviewSrc = ref('')
 const imagePreviewAlt = ref('预览图片')
 
-const dividerStyle = computed(() => ({
-  width: `${100 - leftWidth.value}%`
+const desktopSplitStyle = computed(() => ({
+  gridTemplateColumns: `${leftWidth.value}% 12px minmax(320px, 1fr)`
 }))
+
+const showResizeHint = computed(() => isDragging.value || isResizerHovered.value)
+
+const clampLeftWidth = (value: number) => Math.min(MAX_LEFT_WIDTH, Math.max(MIN_LEFT_WIDTH, value))
+
+const restoreLeftWidth = () => {
+  if (typeof window === 'undefined') return
+  const saved = window.localStorage.getItem(LEFT_WIDTH_STORAGE_KEY)
+  if (!saved) return
+  const parsed = Number(saved)
+  if (!Number.isFinite(parsed)) {
+    window.localStorage.removeItem(LEFT_WIDTH_STORAGE_KEY)
+    return
+  }
+  leftWidth.value = clampLeftWidth(parsed)
+}
+
+const persistLeftWidth = (value: number) => {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(LEFT_WIDTH_STORAGE_KEY, String(Math.round(value * 100) / 100))
+}
 
 const tocItems = computed(() => {
   if (!mergedContent.value) return []
@@ -58,6 +85,23 @@ const tocItems = computed(() => {
     ...item,
     level: item.level - minLevel + 1
   }))
+})
+
+const activeHeadingTrail = computed(() => {
+  if (!activeHeadingId.value || !tocItems.value.length) return []
+  const activeIndex = tocItems.value.findIndex((item) => item.id === activeHeadingId.value)
+  if (activeIndex < 0) return []
+
+  const stack: Array<(typeof tocItems.value)[number]> = []
+  for (let index = 0; index <= activeIndex; index += 1) {
+    const item = tocItems.value[index]
+    if (!item) continue
+    while (stack.length && stack[stack.length - 1]!.level >= item.level) {
+      stack.pop()
+    }
+    stack.push(item)
+  }
+  return stack
 })
 
 const escapeSelector = (value: string) => {
@@ -75,6 +119,8 @@ const setupCollapseToggle = () => {
   
   // 对所有 markdown 内容应用折叠逻辑
   markdownBodies.forEach((markdownBody) => {
+    let lastTouchToggleAt = 0
+
     // 找到所有折叠按钮
     const toggleButtons = markdownBody.querySelectorAll<HTMLButtonElement>('.md-heading-toggle')
 
@@ -98,9 +144,9 @@ const setupCollapseToggle = () => {
       if (btn.dataset.setupDone === 'true') return
       btn.dataset.setupDone = 'true'
 
-      btn.addEventListener('click', (e) => {
-        e.preventDefault()
-        e.stopPropagation()
+      const triggerToggle = (event: Event) => {
+        event.preventDefault()
+        event.stopPropagation()
 
         const headingId = btn.getAttribute('data-toggle-id')
         if (!headingId) return
@@ -109,6 +155,15 @@ const setupCollapseToggle = () => {
         if (!heading) return
 
         toggleHeading(heading, btn)
+      }
+
+      btn.addEventListener('click', (e) => {
+        if (Date.now() - lastTouchToggleAt < 450) {
+          e.preventDefault()
+          e.stopPropagation()
+          return
+        }
+        triggerToggle(e)
       })
     })
 
@@ -119,10 +174,15 @@ const setupCollapseToggle = () => {
       if (!btn) return
       heading.dataset.collapseSetup = 'true'
 
-      heading.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement
+      const triggerToggle = (event: Event) => {
+        const target = event.target as HTMLElement
         if (target.closest('.md-heading-toggle')) return
+        event.preventDefault()
         toggleHeading(heading, btn)
+      }
+      heading.addEventListener('click', (e) => {
+        if (Date.now() - lastTouchToggleAt < 450) return
+        triggerToggle(e)
       })
     })
   })
@@ -173,8 +233,17 @@ const getContentBetweenHeadings = (startHeading: HTMLElement, container: HTMLEle
     currentElement = currentElement.nextElementSibling as HTMLElement | null
   }
   
-  // 如果没有内容元素，返回 null
-  if (contentElements.length === 0) return null
+  // 如果没有内容元素，尝试委托到后续标题块（兼容 AI 拼接标题后紧跟原生标题的场景）
+  if (contentElements.length === 0) {
+    let sibling = startHeading.nextElementSibling as HTMLElement | null
+    while (sibling && container.contains(sibling)) {
+      if (sibling.tagName.match(/^H[1-6]$/)) {
+        return getContentBetweenHeadings(sibling, container)
+      }
+      sibling = sibling.nextElementSibling as HTMLElement | null
+    }
+    return null
+  }
   
   // 检查是否已经有包装容器
   const firstElement = contentElements[0]
@@ -225,12 +294,37 @@ const updateActiveHeading = () => {
   activeHeadingId.value = current.id
 }
 
+const updateMobileHeadingTrailVisibility = () => {
+  if (typeof window === 'undefined' || window.innerWidth >= 768) {
+    showMobileHeadingTrail.value = false
+    return
+  }
+
+  const container = mobileScrollRef.value
+  if (!container || !activeHeadingId.value) {
+    showMobileHeadingTrail.value = false
+    return
+  }
+
+  const headings = Array.from(container.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6')).filter(
+    (el) => !!el.id
+  )
+  if (!headings.length) {
+    showMobileHeadingTrail.value = false
+    return
+  }
+
+  const firstHeading = headings[0]!
+  showMobileHeadingTrail.value = container.scrollTop > firstHeading.offsetTop + 8
+}
+
 
 const onLeftPaneScroll = () => {
   if (scrollRafId.value !== null) return
   scrollRafId.value = window.requestAnimationFrame(() => {
     scrollRafId.value = null
     updateActiveHeading()
+    updateMobileHeadingTrailVisibility()
     updateReadingProgress()
   })
 }
@@ -442,6 +536,10 @@ const load = async () => {
   })()
 
   await Promise.allSettled([detailPromise, extraPromise, recommendationPromise])
+
+  if (props.articleId !== articleId) return
+  if (!article.value || !mergedContent.value) return
+  await setupRenderedMarkdownState()
 }
 
 const toggleFavorite = async () => {
@@ -468,15 +566,40 @@ const toggleFavorite = async () => {
   }
 }
 
-const onMouseMove = (event: MouseEvent) => {
-  if (!isDragging.value) return
-  const total = window.innerWidth
-  const percentage = Math.min(72, Math.max(35, (event.clientX / total) * 100))
-  leftWidth.value = percentage
+const applySplitByClientX = (clientX: number) => {
+  const container = desktopSplitRef.value
+  if (!container) return
+  const rect = container.getBoundingClientRect()
+  if (rect.width <= 0) return
+
+  const offset = clientX - rect.left
+  const percentage = (offset / rect.width) * 100
+  leftWidth.value = clampLeftWidth(percentage)
 }
 
-const onMouseUp = () => {
+const beginResize = (clientX: number) => {
+  isDragging.value = true
+  applySplitByClientX(clientX)
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+}
+
+const stopResize = () => {
+  if (!isDragging.value) return
   isDragging.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
+const onResizerPointerDown = (event: PointerEvent) => {
+  if (event.button !== 0) return
+  event.preventDefault()
+  beginResize(event.clientX)
+}
+
+const onPointerMove = (event: PointerEvent) => {
+  if (!isDragging.value) return
+  applySplitByClientX(event.clientX)
 }
 
 watch(
@@ -487,31 +610,64 @@ watch(
   { immediate: true }
 )
 
+const setupRenderedMarkdownState = async () => {
+  await nextTick()
+  updateActiveHeading()
+  updateMobileHeadingTrailVisibility()
+  setupCollapseToggle()
+  await renderMermaidDiagrams()
+}
+
 watch(
   () => mergedContent.value,
   async () => {
     collapsedHeadings.value.clear()
-    await nextTick()
-    updateActiveHeading()
-    setupCollapseToggle()
-    await renderMermaidDiagrams()
+    await setupRenderedMarkdownState()
+  }
+)
+
+watch(
+  () => article.value?.id,
+  async () => {
+    if (!article.value || !mergedContent.value) return
+    await setupRenderedMarkdownState()
+  }
+)
+
+watch(
+  () => activeHeadingId.value,
+  () => {
+    updateMobileHeadingTrailVisibility()
+  }
+)
+
+watch(
+  () => leftWidth.value,
+  (value) => {
+    persistLeftWidth(value)
   }
 )
 
 onMounted(() => {
-  window.addEventListener('mousemove', onMouseMove)
-  window.addEventListener('mouseup', onMouseUp)
+  restoreLeftWidth()
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', stopResize)
+  window.addEventListener('pointercancel', stopResize)
+  window.addEventListener('blur', stopResize)
   window.addEventListener('keydown', onKeyDown)
 })
 
 onUnmounted(() => {
+  stopResize()
   closeImagePreview()
 
   if (scrollRafId.value !== null) {
     window.cancelAnimationFrame(scrollRafId.value)
   }
-  window.removeEventListener('mousemove', onMouseMove)
-  window.removeEventListener('mouseup', onMouseUp)
+  window.removeEventListener('pointermove', onPointerMove)
+  window.removeEventListener('pointerup', stopResize)
+  window.removeEventListener('pointercancel', stopResize)
+  window.removeEventListener('blur', stopResize)
   window.removeEventListener('keydown', onKeyDown)
 })
 </script>
@@ -539,9 +695,9 @@ onUnmounted(() => {
     </header>
 
     <!-- 桌面端：双栏分割布局 -->
-    <div class="hidden flex-1 overflow-hidden md:flex">
+    <div ref="desktopSplitRef" class="hidden flex-1 overflow-hidden md:grid" :class="isDragging ? 'transition-none' : 'transition-[grid-template-columns] duration-150 ease-out'" :style="desktopSplitStyle">
       <section class="h-full overflow-y-auto border-r border-border px-2 py-6 scrollbar-thin"
-        :style="{ width: `${leftWidth}%` }" ref="leftPaneRef" @scroll.passive="onLeftPaneScroll">
+        ref="leftPaneRef" @scroll.passive="onLeftPaneScroll">
         <div v-if="!article && loading" class="text-sm text-muted-foreground">加载中...</div>
         <div v-else-if="article" class="space-y-4">
           <div>
@@ -562,16 +718,29 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <div class="w-1 cursor-col-resize bg-border" @mousedown="() => (isDragging = true)" />
+      <button
+        type="button"
+        class="group relative flex h-full w-3 cursor-col-resize items-center justify-center bg-transparent outline-none transition-colors hover:bg-muted/60"
+        aria-label="拖动调整正文与信息栏宽度"
+        @mouseenter="isResizerHovered = true"
+        @mouseleave="isResizerHovered = false"
+        @pointerdown="onResizerPointerDown">
+        <span class="h-20 w-[2px] rounded-full transition-colors"
+          :class="isDragging ? 'bg-primary' : 'bg-border group-hover:bg-primary/70'" />
+        <span v-if="showResizeHint"
+          class="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-[10px] text-muted-foreground shadow-sm">
+          拖动调整宽度
+        </span>
+      </button>
 
-      <section class="h-full flex-1 overflow-y-auto px-8 pb-6 pt-2 scrollbar-thin" :style="dividerStyle">
+      <section class="h-full min-w-0 overflow-y-auto px-2 pb-6 pt-2 scrollbar-thin">
         <div class="space-y-2">
           <div class="rounded-2xl border border-border bg-card p-4">
             <div class="flex items-center gap-2">
               <FileText class="h-4 w-4 text-primary" />
               <h3 class="text-sm font-semibold text-foreground">精华速览</h3>
             </div>
-            <p v-if="extra" class="mt-3 text-[15px] leading-7 text-muted-foreground"
+            <p v-if="extra" class="article-overview-content mt-3 text-[15px] leading-7 text-foreground"
               v-html="formatOverview(extra.overview)" />
             <p v-else class="mt-2 text-sm text-muted-foreground">{{ extraError || '暂无内容' }}</p>
           </div>
@@ -581,7 +750,7 @@ onUnmounted(() => {
               <h3 class="text-sm font-semibold text-foreground">关键信息</h3>
             </div>
             <ul v-if="extra?.keyInformation?.length"
-              class="mt-3 list-decimal pl-4 text-[15px] leading-7 text-muted-foreground">
+              class="mt-3 list-decimal pl-4 text-[15px] leading-7 text-foreground">
               <li v-for="(item, index) in extra.keyInformation" :key="`${item}-${index}`">
                 {{ item }}
               </li>
@@ -627,8 +796,20 @@ onUnmounted(() => {
     </div>
 
     <!-- 移动端：单栏垂直滚动布局 -->
-    <div ref="mobileScrollRef" class="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 md:hidden" @scroll.passive="onLeftPaneScroll"
+    <div ref="mobileScrollRef" class="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-0 md:hidden" @scroll.passive="onLeftPaneScroll"
       @touchend.passive="onMobileTouchEnd">
+      <div v-if="showMobileHeadingTrail && activeHeadingTrail.length"
+        class="sticky top-0 z-20 mb-3 px-2">
+        <div
+          class="inline-flex max-w-full flex-col rounded-xl border border-border bg-card/95 px-3 py-0.5 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+          <button v-for="item in activeHeadingTrail" :key="`mobile-trail-${item.id}`" type="button"
+            class="inline-block max-w-full truncate py-0.5 text-left text-xs text-muted-foreground transition-colors hover:text-primary"
+            :style="{ paddingLeft: `${(item.level - 1) * 10}px` }" @click="scrollToHeading(item.id)">
+            {{ item.text }}
+          </button>
+        </div>
+      </div>
+
       <div v-if="!article && loading" class="text-sm text-muted-foreground">加载中...</div>
       <div v-else-if="article" class="space-y-4">
         <!-- 1. 文章元信息 -->
@@ -647,23 +828,23 @@ onUnmounted(() => {
 
         <!-- 2. 精华速览 -->
         <div class="rounded-2xl border border-border bg-card p-4">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1">
             <FileText class="h-4 w-4 text-primary" />
             <h3 class="text-sm font-semibold text-foreground">精华速览</h3>
           </div>
-          <p v-if="extra" class="mt-3 text-sm leading-6 text-muted-foreground"
+          <p v-if="extra" class="article-overview-content mt-3 text-sm leading-6 text-foreground"
             v-html="formatOverview(extra.overview)" />
           <p v-else class="mt-2 text-sm text-muted-foreground">{{ extraError || '加载中...' }}</p>
         </div>
 
         <!-- 3. 关键信息 -->
         <div class="rounded-2xl border border-border bg-card p-4">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1">
             <ListChecks class="h-4 w-4 text-primary" />
             <h3 class="text-sm font-semibold text-foreground">关键信息</h3>
           </div>
           <ul v-if="extra?.keyInformation?.length"
-            class="mt-3 list-decimal pl-4 text-sm leading-6 text-muted-foreground">
+            class="mt-3 list-decimal pl-4 text-sm leading-6 text-foreground">
             <li v-for="(item, index) in extra.keyInformation" :key="`mobile-key-${index}`">
               {{ item }}
             </li>
@@ -673,7 +854,7 @@ onUnmounted(() => {
 
         <!-- 4. 目录 -->
         <div v-if="tocItems.length" class="rounded-2xl border border-border bg-card p-4">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1">
             <ListTree class="h-4 w-4 text-primary" />
             <h3 class="text-sm font-semibold text-foreground">目录</h3>
           </div>
@@ -698,7 +879,7 @@ onUnmounted(() => {
 
         <!-- 6. 相似推荐 -->
         <div class="rounded-2xl border border-border bg-card p-4">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1">
             <ThumbsUp class="h-4 w-4 text-primary" />
             <h3 class="text-sm font-semibold text-foreground">相似推荐</h3>
           </div>

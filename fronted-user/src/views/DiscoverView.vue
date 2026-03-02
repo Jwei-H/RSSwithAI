@@ -88,6 +88,9 @@ const listContainer = ref<HTMLElement | null>(null)
 const savedScrollTop = ref(0)
 
 const detailOpen = computed(() => ui.detailOpen)
+const desktopGridColumns = computed(() =>
+  detailOpen.value ? '200px minmax(0, 1fr)' : '280px minmax(0, 1fr)'
+)
 
 const toCachedRssSubscription = (source: RssSource, subscriptionId: number) => ({
   id: subscriptionId,
@@ -557,8 +560,9 @@ onBeforeRouteLeave((to, from, next) => {
       :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
   </div>
 
-  <div class="flex h-full flex-col gap-4 overflow-hidden px-4 py-4 md:grid md:h-screen md:gap-6 md:px-6 md:py-6"
-    :class="detailOpen ? 'md:grid-cols-[200px_1fr]' : 'md:grid-cols-[280px_1fr]'">
+  <div
+    class="flex h-full flex-col gap-4 overflow-hidden px-4 py-4 md:grid md:h-screen md:gap-6 md:px-6 md:py-6 md:[transition:grid-template-columns_320ms_cubic-bezier(0.22,1,0.36,1)]"
+    :style="{ gridTemplateColumns: desktopGridColumns }">
     <!-- 桌面端侧边栏 -->
     <section class="hidden h-full flex-col gap-4 overflow-hidden md:flex">
       <div class="rounded-2xl border border-border bg-card p-4">
@@ -595,7 +599,8 @@ onBeforeRouteLeave((to, from, next) => {
       <!-- 桌面端文章详情 -->
       <ArticleDetailPane v-if="detailOpen && !isMobile" class="hidden md:flex" :articleId="ui.detailArticleId"
         :onClose="ui.closeDetail" :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
-      <template v-if="!detailOpen">
+      <div class="flex h-full flex-1 flex-col overflow-hidden transition-all duration-300 ease-out"
+        :class="detailOpen ? 'pointer-events-none opacity-0 md:-translate-x-4' : 'translate-x-0 opacity-100'">
         <!-- 移动端：页面标题和主题创建入口 -->
         <div class="rounded-2xl border border-border bg-card p-3 md:hidden">
           <div class="flex items-center justify-between">
@@ -725,7 +730,7 @@ onBeforeRouteLeave((to, from, next) => {
             </div>
           </div>
         </div>
-      </template>
+      </div>
     </section>
   </div>
 

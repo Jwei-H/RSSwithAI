@@ -94,6 +94,9 @@ const refreshFavorites = async (silent = false) => {
 const { sentinel } = useInfiniteScroll(loadMore, listContainer)
 
 const detailOpen = computed(() => ui.detailOpen)
+const desktopGridColumns = computed(() =>
+  detailOpen.value ? '200px minmax(0, 1fr)' : '280px minmax(0, 1fr)'
+)
 
 const search = async (query: string) => {
   if (!query) {
@@ -197,8 +200,9 @@ watch(activeTab, (newTab) => {
       :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
   </div>
 
-  <div class="flex h-full flex-col gap-4 overflow-hidden px-4 py-4 md:grid md:h-screen md:gap-6 md:px-6 md:py-6"
-    :class="detailOpen ? 'md:grid-cols-[200px_1fr]' : 'md:grid-cols-[280px_1fr]'">
+  <div
+    class="flex h-full flex-col gap-4 overflow-hidden px-4 py-4 md:grid md:h-screen md:gap-6 md:px-6 md:py-6 md:[transition:grid-template-columns_320ms_cubic-bezier(0.22,1,0.36,1)]"
+    :style="{ gridTemplateColumns: desktopGridColumns }">
     <!-- 桌面端侧边栏 -->
     <section class="hidden h-full flex-col gap-4 overflow-hidden md:flex">
       <div class="rounded-2xl border border-border bg-card p-4">
@@ -226,7 +230,8 @@ watch(activeTab, (newTab) => {
       <!-- 桌面端文章详情 -->
       <ArticleDetailPane v-if="detailOpen && !isMobile" class="hidden md:flex" :articleId="ui.detailArticleId"
         :onClose="ui.closeDetail" :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
-      <template v-if="!detailOpen">
+      <div class="flex h-full flex-1 flex-col overflow-hidden transition-all duration-300 ease-out"
+        :class="detailOpen ? 'pointer-events-none opacity-0 md:-translate-x-4' : 'translate-x-0 opacity-100'">
         <div class="rounded-2xl border border-border bg-card p-3 md:p-4">
           <!-- 移动端 Tab 切换 -->
           <div class="mb-3 flex gap-2 md:hidden">
@@ -333,7 +338,7 @@ watch(activeTab, (newTab) => {
             </div>
           </template>
         </div>
-      </template>
+      </div>
     </section>
   </div>
 </template>

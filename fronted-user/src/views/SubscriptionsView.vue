@@ -75,6 +75,10 @@ let prefetchingCount = 0
 const maxPrefetchConcurrency = 3
 
 const detailOpen = computed(() => ui.detailOpen)
+const desktopGridColumns = computed(() =>
+  detailOpen.value ? '200px minmax(0, 0fr) minmax(0, 1fr)' : '280px minmax(0, 1fr) 320px'
+)
+const desktopGridGapClass = computed(() => (detailOpen.value ? 'md:gap-x-3' : 'md:gap-x-6'))
 const pullRefreshThreshold = 72
 const pullIndicatorText = computed(() => {
   if (refreshing.value) return '刷新中...'
@@ -842,10 +846,10 @@ watch(
   </div>
 
   <!-- 主布局 -->
-  <div class="flex h-full flex-col gap-4 overflow-hidden px-4 py-4 md:grid md:h-screen md:gap-6 md:px-6 md:py-6" :class="{
-    'md:grid-cols-[200px_0_1fr]': detailOpen,
-    'md:grid-cols-[280px_1fr_320px]': !detailOpen
-  }">
+  <div
+    class="flex h-full flex-col gap-4 overflow-hidden px-4 py-4 md:grid md:h-screen md:gap-y-6 md:px-6 md:py-6 md:[transition:grid-template-columns_320ms_cubic-bezier(0.22,1,0.36,1)]"
+    :class="desktopGridGapClass"
+    :style="{ gridTemplateColumns: desktopGridColumns }">
     <!-- 桌面端侧边栏 -->
     <section class="hidden h-full flex-col gap-4 overflow-hidden md:flex">
       <div class="rounded-2xl border border-border bg-card p-4">
@@ -895,7 +899,7 @@ watch(
                   </p>
                 </div>
               </div>
-              <button class="text-[11px] text-muted-foreground hover:text-foreground"
+              <button v-if="!detailOpen" class="text-[11px] text-muted-foreground hover:text-foreground"
                 @click.stop="onCancelSubscription(item)">
                 取消
               </button>
@@ -906,8 +910,8 @@ watch(
     </section>
 
     <!-- 时间线区域（移动端和桌面端共用） -->
-    <section class="flex flex-1 flex-col gap-4 overflow-hidden transition"
-      :class="detailOpen ? 'opacity-0 pointer-events-none md:opacity-0' : 'opacity-100'">
+    <section class="flex flex-1 flex-col gap-4 overflow-hidden transition-all duration-300 ease-out"
+      :class="detailOpen ? 'pointer-events-none opacity-0 md:-translate-x-4' : 'translate-x-0 opacity-100'">
       <div class="rounded-2xl border border-border bg-card p-3 md:p-4">
         <!-- 移动端订阅切换按钮 -->
         <button
@@ -1008,7 +1012,7 @@ watch(
     </section>
 
     <!-- 右侧面板（仅桌面端显示） -->
-    <section class="hidden h-full flex-col gap-4 overflow-hidden md:flex">
+    <section class="hidden h-full flex-col gap-4 overflow-hidden transition-all duration-300 ease-out md:flex">
       <ArticleDetailPane v-if="detailOpen && !isMobile" :articleId="ui.detailArticleId" :onClose="ui.closeDetail"
         :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
       <template v-else>

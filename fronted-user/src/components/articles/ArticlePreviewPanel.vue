@@ -20,7 +20,7 @@ const props = defineProps<{
     <div v-else-if="error" class="text-xs text-rose-600">{{ error }}</div>
     <p
       v-else-if="extra"
-      class="text-[15px] leading-7 text-muted-foreground"
+      class="article-overview-content text-[15px] leading-7 text-foreground"
       v-html="formatOverview(extra.overview)"
     />
     <p v-else class="text-xs text-muted-foreground">悬停文章以查看 AI 预览</p>
@@ -32,7 +32,7 @@ const props = defineProps<{
       </div>
       <p v-if="loading" class="mt-2 text-xs text-muted-foreground">加载中...</p>
       <p v-else-if="error" class="mt-2 text-xs text-rose-600">{{ error }}</p>
-      <ul v-else-if="extra?.keyInformation?.length" class="mt-2 list-decimal pl-4 text-[15px] leading-7 text-muted-foreground">
+      <ul v-else-if="extra?.keyInformation?.length" class="mt-2 list-decimal pl-4 text-[15px] leading-7 text-foreground">
         <li v-for="(item, index) in extra.keyInformation" :key="`${item}-${index}`">{{ item }}</li>
       </ul>
       <p v-else class="mt-2 text-xs text-muted-foreground">暂无关键信息</p>
