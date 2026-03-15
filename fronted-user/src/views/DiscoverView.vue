@@ -626,7 +626,7 @@ onBeforeRouteLeave((to, from, next) => {
 
 
 
-        <div ref="listContainer" class="flex-1 overflow-y-auto pt-4 scrollbar-thin">
+        <div ref="listContainer" class="flex-1 overflow-y-auto pt-4 md:pt-0 scrollbar-thin">
           <!-- 搜索栏 -->
           <div class="rounded-2xl border border-border bg-card p-3 md:p-4 mb-4">
             <div class="flex items-center justify-between">

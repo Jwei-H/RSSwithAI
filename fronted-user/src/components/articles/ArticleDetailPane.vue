@@ -794,7 +794,7 @@ onUnmounted(() => {
     </div>
 
     <!-- 移动端：单栏垂直滚动布局 -->
-    <div ref="mobileScrollRef" class="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-0 md:hidden"
+    <div ref="mobileScrollRef" class="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-4 pt-4 md:hidden"
       @scroll.passive="onLeftPaneScroll" @touchend.passive="onMobileTouchEnd">
       <div v-if="showMobileHeadingTrail && activeHeadingTrail.length" class="sticky top-0.5 z-20 mb-3 px-2">
         <div
