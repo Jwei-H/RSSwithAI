@@ -3,7 +3,7 @@ import { getToken, useSessionStore } from '../stores/session'
 import { useToastStore } from '../stores/toast'
 
 const BASE_URL = import.meta.
-env.VITE_API_BASE_URL ??''
+  env.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
   status: number
@@ -106,7 +106,10 @@ export async function apiRequest<T>(
   if (response.status === 401) {
     const session = useSessionStore()
     session.clear()
-    handleUnauthorized(path)
+    const current = router.currentRoute.value
+    if (shouldPromptLogin(path, method) || !current.meta.public) {
+      handleUnauthorized(path)
+    }
   }
 
   if (!response.ok) {
