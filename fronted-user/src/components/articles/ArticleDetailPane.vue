@@ -8,7 +8,7 @@ import type { ArticleDetail, ArticleExtra, ArticleFeed } from '../../types'
 import { useToastStore } from '../../stores/toast'
 import { useHistoryStore } from '../../stores/history'
 import { useCacheStore } from '../../stores/cache'
-import { FileText, ListChecks, ListTree, ThumbsUp } from 'lucide-vue-next'
+import { FileText, ListChecks, ListTree, ThumbsUp, Share } from 'lucide-vue-next'
 let mermaidModule: typeof import('mermaid') | null = null
 
 const props = defineProps<{
@@ -582,6 +582,23 @@ const beginResize = (clientX: number) => {
   document.body.style.userSelect = 'none'
 }
 
+const copyShareLink = async () => {
+  if (!article.value?.id) return
+  const link = `https://rsswithai.top/a/${article.value.id}`
+  try {
+    await navigator.clipboard.writeText(link)
+    toast.push('已复制分享链接', 'success')
+  } catch (error) {
+    const tempInput = document.createElement('input')
+    tempInput.value = link
+    document.body.appendChild(tempInput)
+    tempInput.select()
+    document.execCommand('copy')
+    document.body.removeChild(tempInput)
+    toast.push('已复制分享链接', 'success')
+  }
+}
+
 const stopResize = () => {
   if (!isDragging.value) return
   isDragging.value = false
@@ -688,6 +705,12 @@ onUnmounted(() => {
               points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
           {{ favorite ? '已收藏' : '收藏' }}
+        </button>
+        <button
+          class="md:hidden flex items-center gap-1.5 rounded-lg border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted"
+          @click="copyShareLink" title="分享">
+          <Share class="h-4 w-4" />
+          分享
         </button>
       </div>
     </header>
