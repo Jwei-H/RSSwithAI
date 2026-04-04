@@ -11,7 +11,6 @@ import { computed, watch } from 'vue'
 const ui = useUiStore()
 const route = useRoute()
 const showShell = computed(() => route.meta.shell !== false)
-const allowMobileOuterScroll = computed(() => route.path.startsWith('/profile'))
 const showOverlay = computed(
   () =>
     ui.detailOpen &&
@@ -57,25 +56,24 @@ watch(
 </script>
 
 <template>
-  <div class="h-dvh bg-muted/40 text-foreground md:min-h-screen md:overflow-visible"
-    :class="allowMobileOuterScroll ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'">
+  <div class="h-dvh overflow-hidden bg-muted/40 text-foreground md:min-h-screen">
     <ToastHost />
     <WelcomePopup />
     <ArticleDetailOverlay v-if="showOverlay" />
     <div v-else class="h-full">
-      <div v-if="showShell" class="flex h-full flex-col md:min-h-screen md:flex-row md:overflow-visible"
-        :class="allowMobileOuterScroll ? 'overflow-visible' : 'overflow-hidden'">
+      <div v-if="showShell" class="flex h-full flex-col overflow-hidden md:min-h-screen md:flex-row md:overflow-visible">
         <!-- 桌面端侧边导航 -->
         <IconRail class="hidden md:flex" />
         <!-- 移动端底部导航 -->
         <MobileBottomNav class="md:hidden" />
-        <main class="h-full flex-1 pb-16 md:min-h-screen md:overflow-visible md:pb-0"
-          :class="allowMobileOuterScroll ? 'overflow-visible' : 'overflow-hidden'">
-          <RouterView v-slot="{ Component }">
-            <KeepAlive>
-              <component :is="Component" />
-            </KeepAlive>
-          </RouterView>
+        <main class="h-full flex-1 overflow-hidden pb-16 md:min-h-screen md:overflow-visible md:pb-0">
+          <div class="page-zoom-wrapper h-full">
+            <RouterView v-slot="{ Component }">
+              <KeepAlive>
+                <component :is="Component" />
+              </KeepAlive>
+            </RouterView>
+          </div>
         </main>
       </div>
       <div v-else class="h-full">

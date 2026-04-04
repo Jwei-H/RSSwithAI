@@ -119,6 +119,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -330,3 +331,20 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+@media (max-width: 767px) {
+
+  /* Page zoom scaling (Mobile Only) — does NOT affect html/body font-size */
+  /* Level 2 is default (100%), each step = ±10% */
+  html.mobile-font-level-1 .page-zoom-wrapper {
+    zoom: 0.95;
+  }
+
+  /* Level 2: zoom: 1.0, no rule needed */
+  html.mobile-font-level-3 .page-zoom-wrapper {
+    zoom: 1.05;
+  }
+
+  html.mobile-font-level-4 .page-zoom-wrapper {
+    zoom: 1.1;
+  }
+}

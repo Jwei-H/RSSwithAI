@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import {ref} from 'vue'
+import { ref, computed } from 'vue'
 import PageShell from '../components/layout/PageShell.vue'
-import {authApi} from '../services/frontApi'
-import {useSessionStore} from '../stores/session'
-import {useToastStore} from '../stores/toast'
-import {useRouter} from 'vue-router'
-import {useThemeStore} from '../stores/theme'
-import {ShieldCheck, UserRound} from 'lucide-vue-next'
+import { authApi } from '../services/frontApi'
+import { useSessionStore } from '../stores/session'
+import { useToastStore } from '../stores/toast'
+import { useRouter } from 'vue-router'
+import { useThemeStore } from '../stores/theme'
+import { ShieldCheck, UserRound, CaseSensitive } from 'lucide-vue-next'
+import { Slider } from '../components/ui/slider'
 
 const session = useSessionStore()
 const toast = useToastStore()
@@ -18,11 +19,26 @@ const newPassword = ref('')
 const oldPassword = ref('')
 const loading = ref(false)
 
+// Slider is 1-indexed [1,4], bind as array
+const fontSizeSlider = computed({
+  get: () => [theme.state.fontSizeLevel],
+  set: (val: number[]) => {
+    if (val[0] !== undefined) theme.setFontSizeLevel(val[0])
+  }
+})
+
+const fontSizeLabelMap: Record<number, string> = {
+  1: '小',
+  2: '标准',
+  3: '大',
+  4: '特大',
+}
+
 const updateUsername = async () => {
   if (!username.value.trim()) return
   loading.value = true
   try {
-    const profile = await authApi.updateUsername({newUsername: username.value.trim()})
+    const profile = await authApi.updateUsername({ newUsername: username.value.trim() })
     session.setProfile(profile)
     toast.push('用户名已更新', 'success')
   } catch (error: any) {
@@ -36,7 +52,7 @@ const updatePassword = async () => {
   if (!oldPassword.value || !newPassword.value) return
   loading.value = true
   try {
-    await authApi.updatePassword({oldPassword: oldPassword.value, newPassword: newPassword.value})
+    await authApi.updatePassword({ oldPassword: oldPassword.value, newPassword: newPassword.value })
     oldPassword.value = ''
     newPassword.value = ''
     toast.push('密码已更新', 'success')
@@ -58,7 +74,7 @@ const logout = () => {
     <template #sidebar>
       <div class="rounded-2xl border border-border bg-card p-4">
         <div class="flex items-center gap-2">
-          <UserRound class="h-4 w-4 text-primary"/>
+          <UserRound class="h-4 w-4 text-primary" />
           <h2 class="text-sm font-semibold text-foreground">个人中心</h2>
         </div>
         <p class="mt-2 text-xs text-muted-foreground">偏好与安全设置</p>
@@ -71,18 +87,18 @@ const logout = () => {
         <p class="mt-2 text-xs text-muted-foreground">主题将影响全部页面与卡片</p>
         <div class="mt-4 flex flex-wrap gap-2">
           <button class="rounded-xl border border-border px-3 py-2 text-xs transition"
-                  :class="theme.state.mode === 'system' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-foreground hover:bg-muted'"
-                  @click="theme.setMode('system')">
+            :class="theme.state.mode === 'system' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-foreground hover:bg-muted'"
+            @click="theme.setMode('system')">
             跟随系统
           </button>
           <button class="rounded-xl border border-border px-3 py-2 text-xs transition"
-                  :class="theme.state.mode === 'light' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-foreground hover:bg-muted'"
-                  @click="theme.setMode('light')">
+            :class="theme.state.mode === 'light' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-foreground hover:bg-muted'"
+            @click="theme.setMode('light')">
             浅色
           </button>
           <button class="rounded-xl border border-border px-3 py-2 text-xs transition"
-                  :class="theme.state.mode === 'dark' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-foreground hover:bg-muted'"
-                  @click="theme.setMode('dark')">
+            :class="theme.state.mode === 'dark' ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-foreground hover:bg-muted'"
+            @click="theme.setMode('dark')">
             深色
           </button>
         </div>
@@ -91,6 +107,29 @@ const logout = () => {
           <span v-if="theme.state.mode === 'system'">（跟随系统）</span>
         </p>
       </div>
+
+      <!-- 移动端：阅读设置（字体大小等） -->
+      <div class="rounded-2xl border border-border bg-card p-4 md:hidden">
+        <div class="flex items-center gap-2">
+          <CaseSensitive class="h-4 w-4 text-primary" />
+          <h3 class="text-sm font-semibold text-foreground">阅读字号</h3>
+        </div>
+
+        <!-- Slider -->
+        <div class="mt-4 px-1">
+          <Slider v-model="fontSizeSlider" :min="1" :max="4" :step="1" class="w-full" />
+          <!-- Tick labels -->
+          <div class="mt-2 flex justify-between">
+            <span v-for="n in 4" :key="n" class="text-[11px] transition-colors"
+              :class="theme.state.fontSizeLevel === n ? 'font-semibold text-primary' : 'text-muted-foreground'">
+              {{ fontSizeLabelMap[n] }}
+            </span>
+          </div>
+        </div>
+
+      </div>
+
+
       <!-- <div class="rounded-2xl border border-border bg-card p-4 md:p-6">
         <h3 class="text-sm font-semibold text-foreground">账号信息</h3>
         <div class="mt-4 space-y-4">
@@ -111,15 +150,15 @@ const logout = () => {
           <div>
             <label class="text-xs text-muted-foreground">原密码</label>
             <input v-model="oldPassword" type="password"
-                   class="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm"/>
+              class="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm" />
           </div>
           <div>
             <label class="text-xs text-muted-foreground">新密码</label>
             <input v-model="newPassword" type="password"
-                   class="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm"/>
+              class="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm" />
           </div>
           <button class="rounded-xl bg-primary px-3 py-2 text-xs text-primary-foreground" :disabled="loading"
-                  @click="updatePassword">
+            @click="updatePassword">
             更新密码
           </button>
         </div>
@@ -129,7 +168,7 @@ const logout = () => {
       <!-- 移动端：账户操作 -->
       <div class="rounded-2xl border border-border bg-card p-4 md:hidden">
         <div class="flex items-center gap-2">
-          <ShieldCheck class="h-4 w-4 text-primary"/>
+          <ShieldCheck class="h-4 w-4 text-primary" />
           <h3 class="text-sm font-semibold text-foreground">账户状态</h3>
         </div>
         <p class="mt-2 text-xs text-muted-foreground">当前用户：{{ session.state.profile?.username }}</p>
@@ -142,7 +181,7 @@ const logout = () => {
     <template #right>
       <div class="rounded-2xl border border-border bg-card p-4">
         <div class="flex items-center gap-2">
-          <ShieldCheck class="h-4 w-4 text-primary"/>
+          <ShieldCheck class="h-4 w-4 text-primary" />
           <h3 class="text-sm font-semibold text-foreground">账户状态</h3>
         </div>
         <p class="mt-3 text-xs text-muted-foreground">当前用户：{{ session.state.profile?.username }}</p>

@@ -24,13 +24,13 @@ defineEmits<{
     @mouseenter="$emit('hover', article.id)" @mouseleave="$emit('leave')" @click="$emit('open', article.id)">
     <!-- 封面图 -->
     <div v-if="article.coverImage"
-      class="h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-border md:h-16 md:w-24">
+      class="w-24 aspect-[4/3] shrink-0 overflow-hidden rounded-xl border border-border md:aspect-auto md:h-16 md:w-24">
       <img :src="rewriteUrl(unescapeUrl(article.coverImage))" :alt="article.title" class="h-full w-full object-cover"
         loading="lazy" referrerpolicy="no-referrer" />
     </div>
     <div class="flex min-w-0 flex-1 flex-col gap-1 md:gap-2">
       <div class="flex items-start justify-between gap-2 md:gap-4">
-        <h3 class="line-clamp-2 text-sm font-semibold text-foreground">
+        <h3 class="line-clamp-3 text-sm font-semibold text-foreground">
           {{ article.title }}
         </h3>
         <span class="flex-shrink-0 text-xs text-muted-foreground">{{ formatRelativeTime(article.pubDate) }}</span>
