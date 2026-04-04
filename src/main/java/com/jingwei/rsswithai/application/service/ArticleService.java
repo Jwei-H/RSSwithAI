@@ -154,11 +154,12 @@ public class ArticleService {
     @Transactional(readOnly = true)
     public Page<ArticleFeedDTO> listFavoriteArticles(Long userId, Pageable pageable) {
         return articleRepository.findFavoriteFeedByUserId(userId, pageable)
-            .map(this::toFeedDto);
+                .map(this::toFeedDto);
     }
 
     @Transactional(readOnly = true)
-    public List<ArticleFeedDTO> searchArticles(String query, FrontArticleController.SearchScope scope, Long sourceId, Long userId) {
+    public List<ArticleFeedDTO> searchArticles(String query, FrontArticleController.SearchScope scope, Long sourceId,
+            Long userId) {
         String normalizedQuery = normalizeSearchQuery(query);
 
         if (isSourceScopedSearch(sourceId)) {
@@ -288,18 +289,20 @@ public class ArticleService {
         }
 
         if (fuzzyIdSet.contains(feed.getId())) {
-            score += 1.0;
+            score += 0.6; // 稍微降低模糊命中权重，避免过度影响排名
         }
 
-        long daysDiff = getDaysDiff(feed.getPubDate());
-        double decay = 1.0 / (1.0 + daysDiff * 0.1);
+        // 以小时为单位做平滑衰减，避免天粒度的粗糙跳变
+        // 系数 0.002/h ≈ 20天衰减一半，平滑窗口更大
+        long hoursDiff = getHoursDiff(feed.getPubDate());
+        double decay = 1.0 / (1.0 + hoursDiff * 0.002);
         return score * decay;
     }
 
-    private long getDaysDiff(LocalDateTime pubDate) {
-        long daysDiff = pubDate == null ? 0
-                : java.time.temporal.ChronoUnit.DAYS.between(pubDate, LocalDateTime.now());
-        return Math.max(daysDiff, 0);
+    private long getHoursDiff(LocalDateTime pubDate) {
+        long hoursDiff = pubDate == null ? 0
+                : java.time.temporal.ChronoUnit.HOURS.between(pubDate, LocalDateTime.now());
+        return Math.max(hoursDiff, 0);
     }
 
     private List<Long> searchIdsByFuzzyAll(String query) {
@@ -353,6 +356,9 @@ public class ArticleService {
     }
 
     private String extractTopKeyword(String query) {
+        if (query.length() < 8) {
+            return null;
+        }
         try {
             TFIDFAnalyzer tfidfAnalyzer = new TFIDFAnalyzer();
             List<Keyword> keywords = tfidfAnalyzer.analyze(query, TFIDF_TOP_N);
@@ -377,7 +383,8 @@ public class ArticleService {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
         }
-        return articleExtraRepository.searchIdsByVector(toPgVectorLiteral(vector), VECTOR_SIMILARITY_THRESHOLD, VECTOR_RECALL_LIMIT);
+        return articleExtraRepository.searchIdsByVector(toPgVectorLiteral(vector), VECTOR_SIMILARITY_THRESHOLD,
+                VECTOR_RECALL_LIMIT);
     }
 
     private List<ArticleExtraRepository.IdWithDistance> searchIdsByVectorInSources(String query, List<Long> sourceIds) {
@@ -386,7 +393,8 @@ public class ArticleService {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
         }
-        return articleExtraRepository.searchIdsByVectorInSources(toPgVectorLiteral(vector), sourceIds, VECTOR_SIMILARITY_THRESHOLD, VECTOR_RECALL_LIMIT);
+        return articleExtraRepository.searchIdsByVectorInSources(toPgVectorLiteral(vector), sourceIds,
+                VECTOR_SIMILARITY_THRESHOLD, VECTOR_RECALL_LIMIT);
     }
 
     private List<ArticleExtraRepository.IdWithDistance> searchIdsByVectorInFavorites(String query, Long userId) {
@@ -395,7 +403,8 @@ public class ArticleService {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
         }
-        return articleExtraRepository.searchIdsByVectorInFavorites(toPgVectorLiteral(vector), userId, VECTOR_SIMILARITY_THRESHOLD, VECTOR_RECALL_LIMIT);
+        return articleExtraRepository.searchIdsByVectorInFavorites(toPgVectorLiteral(vector), userId,
+                VECTOR_SIMILARITY_THRESHOLD, VECTOR_RECALL_LIMIT);
     }
 
     @Transactional(readOnly = true)
@@ -418,9 +427,9 @@ public class ArticleService {
 
         Map<Long, ArticleRepository.ArticleFeedView> feedMap = toFeedViewMap(similarIds);
         return similarIds.stream()
-            .map(feedMap::get)
+                .map(feedMap::get)
                 .filter(Objects::nonNull)
-            .map(this::toFeedDto)
+                .map(this::toFeedDto)
                 .toList();
     }
 
@@ -458,7 +467,8 @@ public class ArticleService {
     public Article saveArticleIfNotExists(Article article) {
         boolean exists = Optional.ofNullable(article.getSource())
                 .map(RssSource::getId)
-                .map(sourceId -> articleRepository.existsBySourceIdAndGuidOrLink(sourceId, article.getGuid(), article.getLink()))
+                .map(sourceId -> articleRepository.existsBySourceIdAndGuidOrLink(sourceId, article.getGuid(),
+                        article.getLink()))
                 .orElse(false);
         if (exists) {
             return null;
@@ -476,19 +486,19 @@ public class ArticleService {
      */
     public Page<ArticleFeedDTO> getArticleFeedsBySource(Long sourceId, Pageable pageable) {
         return articleRepository.findFeedBySourceId(sourceId, pageable)
-            .map(this::toFeedDto);
+                .map(this::toFeedDto);
     }
 
     private ArticleFeedDTO toFeedDto(ArticleRepository.ArticleFeedView view) {
         return ArticleFeedDTO.of(
-            view.getId(),
-            view.getSourceId(),
-            view.getSourceName(),
-            view.getTitle(),
-            view.getLink(),
-            view.getCoverImage(),
-            view.getPubDate(),
-            view.getWordCount());
+                view.getId(),
+                view.getSourceId(),
+                view.getSourceName(),
+                view.getTitle(),
+                view.getLink(),
+                view.getCoverImage(),
+                view.getPubDate(),
+                view.getWordCount());
     }
 
     private boolean hasVector(Long articleId) {
