@@ -38,6 +38,12 @@ const routes = [
     component: () => import('../views/HistoryView.vue')
   },
   {
+    path: '/a/:id',
+    redirect: (to: any) => {
+      return { path: '/discover', query: { articleId: to.params.id } }
+    }
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('../views/NotFound.vue'),
     meta: { public: true, shell: false }

@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import type { ArticleFeed, RssSource } from '../../types'
 import { feedApi } from '../../services/frontApi'
 import ArticleCard from '../articles/ArticleCard.vue'
+import FaviconImg from '../common/FaviconImg.vue'
 import LoadingState from '../common/LoadingState.vue'
 import EmptyState from '../common/EmptyState.vue'
 import { useInfiniteScroll } from '../../composables/useInfiniteScroll'
@@ -64,7 +65,7 @@ watch(
       <header class="flex items-center justify-between border-b border-border px-4 py-3 md:px-6 md:py-4">
         <div class="flex items-center gap-3">
           <div class="h-8 w-8 overflow-hidden rounded-xl border border-border bg-muted md:h-10 md:w-10">
-            <img v-if="source?.icon" :src="source.icon" :alt="source?.name" class="h-full w-full object-cover" />
+            <FaviconImg :src="source?.icon" :alt="source?.name" :link="source?.link" />
           </div>
           <div>
             <p class="text-sm font-semibold text-foreground">{{ source?.name }}</p>

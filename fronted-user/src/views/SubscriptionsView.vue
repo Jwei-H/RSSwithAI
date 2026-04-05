@@ -8,6 +8,7 @@ import WordCloudCard from '../components/trends/WordCloudCard.vue'
 import LoadingState from '../components/common/LoadingState.vue'
 import EmptyState from '../components/common/EmptyState.vue'
 import ErrorState from '../components/common/ErrorState.vue'
+import FaviconImg from '../components/common/FaviconImg.vue'
 import { subscriptionApi, feedApi, trendApi } from '../services/frontApi'
 import type { ArticleDetail, ArticleExtra, ArticleFeed, Subscription } from '../types'
 import { useInfiniteScroll } from '../composables/useInfiniteScroll'
@@ -887,9 +888,8 @@ watch(
               :class="activeSubscriptionId === item.id ? 'bg-muted' : 'bg-card'" role="button" tabindex="0"
               @click="onSelectSubscription(item.id)">
               <div class="flex min-w-0 flex-1 items-center gap-2">
-                <div v-if="item.type === 'RSS' && item.icon" class="h-6 w-6 flex-shrink-0">
-                  <img :src="item.icon" :alt="item.name" class="h-full w-full rounded object-cover"
-                    @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
+                <div v-if="item.type === 'RSS'" class="h-6 w-6 flex-shrink-0 overflow-hidden rounded">
+                  <FaviconImg :src="item.icon" :alt="item.name ?? ''" :link="item.link" />
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="text-foreground" :class="item.type === 'TOPIC' ? 'line-clamp-2' : 'line-clamp-1'">
@@ -952,9 +952,8 @@ watch(
               :class="activeSubscriptionId === item.id ? 'bg-muted' : 'bg-card'" role="button" tabindex="0"
               @click="onSelectSubscription(item.id)">
               <div class="flex min-w-0 flex-1 items-center gap-2">
-                <div v-if="item.type === 'RSS' && item.icon" class="h-5 w-5 flex-shrink-0">
-                  <img :src="item.icon" :alt="item.name" class="h-full w-full rounded object-cover"
-                    @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
+                <div v-if="item.type === 'RSS'" class="h-5 w-5 flex-shrink-0 overflow-hidden rounded">
+                  <FaviconImg :src="item.icon" :alt="item.name ?? ''" :link="item.link" />
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="text-foreground" :class="item.type === 'TOPIC' ? 'line-clamp-2' : 'line-clamp-1'">

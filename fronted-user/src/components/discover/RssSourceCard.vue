@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue'
 import type { ArticleFeed, RssSource } from '../../types'
 import { feedApi } from '../../services/frontApi'
 import { formatRelativeTime } from '../../utils/time'
-
+import FaviconImg from '../common/FaviconImg.vue'
 import { useCacheStore } from '../../stores/cache'
 
 const props = defineProps<{
@@ -44,7 +44,7 @@ onMounted(loadRecent)
     <div class="flex items-start justify-between gap-3">
       <div class="flex items-center gap-3">
         <div class="h-10 w-10 overflow-hidden rounded-xl border border-border bg-muted">
-          <img v-if="source.icon" :src="source.icon" :alt="source.name" class="h-full w-full object-cover" />
+          <FaviconImg :src="source.icon" :alt="source.name" :link="source.link" />
         </div>
         <div>
           <p class="text-sm font-semibold text-foreground">{{ source.name }}</p>

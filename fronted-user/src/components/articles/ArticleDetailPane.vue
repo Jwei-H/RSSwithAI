@@ -584,7 +584,7 @@ const beginResize = (clientX: number) => {
 
 const copyShareLink = async () => {
   if (!article.value?.id) return
-  const link = `https://rsswithai.top/a/${article.value.id}`
+  const link = `${window.location.host}/a/${article.value.id}`
   try {
     await navigator.clipboard.writeText(link)
     toast.push('已复制分享链接', 'success')

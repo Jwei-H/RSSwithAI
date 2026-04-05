@@ -47,14 +47,14 @@ Entity (TrendsData)
 
 ### 2.2 核心组件
 
-| 组件                  | 职责                                                      |
-| --------------------- | --------------------------------------------------------- |
-| FrontTrendsController | 提供前台查询趋势数据的 REST API                           |
-| TrendsService         | 封装查询逻辑，处理 DTO 转换                               |
+| 组件                  | 职责                                                       |
+| --------------------- | ---------------------------------------------------------- |
+| FrontTrendsController | 提供前台查询趋势数据的 REST API                            |
+| TrendsService         | 封装查询逻辑，处理 DTO 转换                                |
 | SubscriptionService   | 复用 Topic 创建/向量检索能力，提供热点事件相关文章预览能力 |
-| TrendsAnalysisService | 核心分析服务，执行 LLM 调用、数据清洗与聚合（Map-Reduce） |
-| TrendsTaskScheduler   | 定时调度器，触发分析任务                                  |
-| TrendsDataRepository  | 趋势数据存取                                              |
+| TrendsAnalysisService | 核心分析服务，执行 LLM 调用、数据清洗与聚合（Map-Reduce）  |
+| TrendsTaskScheduler   | 定时调度器，触发分析任务                                   |
+| TrendsDataRepository  | 趋势数据存取                                               |
 
 ---
 
@@ -115,22 +115,8 @@ Entity (TrendsData)
 
 ## 5. API接口
 
-| 方法 | 路径                           | 描述                                          |
-| ---- | ------------------------------ | --------------------------------------------- |
-| GET  | /api/front/v1/trends/wordcloud | 获取词云（可指定 sourceId，否则聚合用户订阅） |
-| GET  | /api/front/v1/trends/hotevents | 获取全局热点事件榜单                          |
+| 方法 | 路径                                    | 描述                                             |
+| ---- | --------------------------------------- | ------------------------------------------------ |
+| GET  | /api/front/v1/trends/wordcloud          | 获取词云（可指定 sourceId，否则聚合用户订阅）    |
+| GET  | /api/front/v1/trends/hotevents          | 获取全局热点事件榜单                             |
 | GET  | /api/front/v1/trends/hotevents/articles | 获取指定热点事件的相关文章预览（Topic 语义检索） |
-
----
-
-## 6. 关键设计点
-
-### 6.1 Map-Reduce模式
-针对海量文章的分析，采用分治策略：先在单个 RSS 源维度提取（Map），再在全局维度聚合（Reduce），降低 LLM 上下文窗口压力，提高处理效率。
-
-### 6.2 异步调度
-分析任务耗时较长，采用 `@Scheduled` 定时任务后台异步执行，生成结果缓存于数据库，前端请求直接读取结果，保证毫秒级响应。
-任务首次执行在服务启动后延迟触发（词云 12 小时、热点事件 6 小时）。
-
-### 6.3 动态Prompt配置
-所有涉及 LLM 的 Prompt 均存储于 `AppConfig` 并持久化到数据库，支持管理员在线调整 Prompt 策略以优化分析效果，无需重启服务。

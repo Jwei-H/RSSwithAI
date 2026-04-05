@@ -2,8 +2,7 @@ import router from '../router'
 import { getToken, useSessionStore } from '../stores/session'
 import { useToastStore } from '../stores/toast'
 
-const BASE_URL = import.meta.
-  env.VITE_API_BASE_URL ?? ''
+const BASE_URL = 'http://123.249.32.164:9090'
 
 export class ApiError extends Error {
   status: number

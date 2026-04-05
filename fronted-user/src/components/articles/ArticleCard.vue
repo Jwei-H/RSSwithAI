@@ -24,7 +24,7 @@ defineEmits<{
     @mouseenter="$emit('hover', article.id)" @mouseleave="$emit('leave')" @click="$emit('open', article.id)">
     <!-- 封面图 -->
     <div v-if="article.coverImage"
-      class="w-24 aspect-[4/3] shrink-0 overflow-hidden rounded-xl border border-border md:aspect-auto md:h-16 md:w-24">
+      class="h-16 w-20 shrink-0 overflow-hidden rounded-xl border border-border md:h-16 md:w-24">
       <img :src="rewriteUrl(unescapeUrl(article.coverImage))" :alt="article.title" class="h-full w-full object-cover"
         loading="lazy" referrerpolicy="no-referrer" />
     </div>
