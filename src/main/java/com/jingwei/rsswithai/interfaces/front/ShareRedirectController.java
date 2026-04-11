@@ -33,6 +33,8 @@ public class ShareRedirectController {
 
         if (!overview.isBlank()) {
             overview = overview.replaceAll("<[^>]*>", "");
+            // Remove markdown bold markers (**)
+            overview = overview.replace("**", "");
             if (overview.length() > 200) {
                 overview = overview.substring(0, 197) + "...";
             }

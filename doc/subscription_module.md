@@ -201,7 +201,7 @@ Entity (Subscription / Topic / RssSource / Article / ArticleExtra)
 - `cursor`：可选；格式 `pubDate,articleId`
 - `size`：可选；默认20，最大100
 
-响应（FeedArticleDTO）：
+响应（ArticleFeedDTO）：
 
 ```json
 {
@@ -212,7 +212,14 @@ Entity (Subscription / Topic / RssSource / Article / ArticleExtra)
   "link": "https://example.com/article/100",
   "coverImage": "http://...",
   "pubDate": "2026-01-12T10:00:00",
-  "wordCount": 1200
+  "wordCount": 1200,
+  "aiExtra": {
+    "articleId": 100,
+    "overview": "这是AI概览",
+    "keyInformation": ["关键点1", "关键点2"],
+    "tags": ["AI", "前端"],
+    "status": "SUCCESS"
+  }
 }
 ```
 

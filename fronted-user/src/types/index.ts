@@ -38,6 +38,7 @@ export type ArticleFeed = {
   coverImage?: string | null
   pubDate: string
   wordCount?: number | null
+  aiExtra?: ArticleExtra | null
 }
 
 export type ArticleDetail = ArticleFeed & {

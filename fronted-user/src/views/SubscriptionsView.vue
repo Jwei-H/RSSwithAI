@@ -411,6 +411,11 @@ const loadFeed = async () => {
       cursor: feedCursor.value || undefined,
       size: 20
     })
+    list.forEach(item => {
+      if (item.aiExtra) {
+        cache.setArticleExtra(item.id, item.aiExtra)
+      }
+    })
     feedList.value.push(...list)
     if (list.length < 20) {
       hasMore.value = false
@@ -436,6 +441,11 @@ const refreshFeed = async (silent = false) => {
     const list = await feedApi.feed({
       subscriptionId: activeSubscriptionId.value || undefined,
       size: 20
+    })
+    list.forEach(item => {
+      if (item.aiExtra) {
+        cache.setArticleExtra(item.id, item.aiExtra)
+      }
     })
     const currentFirstPage = feedList.value.slice(0, list.length)
     const same = isSameFeed(list, currentFirstPage) && feedList.value.length >= list.length
@@ -579,14 +589,45 @@ const onHoverArticle = (id: number) => {
   // 移动端不触发 hover 预览
   if (isMobile.value) return
 
-  if (hoverTimer) window.clearTimeout(hoverTimer)
-  previewLoading.value = true
-  previewExtra.value = null
-  previewError.value = null
-  hoverTimer = window.setTimeout(async () => {
-    previewLoading.value = true
+  if (hoverTimer) {
+    window.clearTimeout(hoverTimer)
+    hoverTimer = null
+  }
+
+  // 立即检查缓存
+  const cached = cache.getArticleExtra(id)
+  if (cached) {
+    // 命中缓存，立刻更新，无任何 loading 闪烁
+    previewExtra.value = cached
     previewError.value = null
-    const data = await getOrFetchArticleExtra(id)
+    previewLoading.value = false
+    return
+  }
+
+  // 未命中缓存：立即发起请求，但延迟 150ms 才显示"加载中"
+  // 如果请求在 150ms 内返回 → 直接更新，用户看不到任何 loading（消除闪烁）
+  // 如果超过 150ms 还在等待 → 显示 loading 状态 + 清空旧内容，给用户明确反馈
+  let settled = false
+
+  const request = getOrFetchArticleExtra(id)
+
+  // 150ms 后若还未返回，才切换到 loading 状态
+  hoverTimer = window.setTimeout(() => {
+    hoverTimer = null
+    if (!settled) {
+      previewLoading.value = true
+      previewError.value = null
+      previewExtra.value = null
+    }
+  }, 150)
+
+  request.then((data) => {
+    settled = true
+    // 无论 loading 是否已显示，取消 loading timer 并更新内容
+    if (hoverTimer) {
+      window.clearTimeout(hoverTimer)
+      hoverTimer = null
+    }
     if (data) {
       previewExtra.value = data
       previewError.value = null
@@ -595,11 +636,19 @@ const onHoverArticle = (id: number) => {
       previewError.value = 'AI 增强信息暂不可用'
     }
     previewLoading.value = false
-  }, 200)
+  })
 }
 
 const onLeaveArticle = () => {
-  if (hoverTimer) window.clearTimeout(hoverTimer)
+  if (hoverTimer) {
+    window.clearTimeout(hoverTimer)
+    hoverTimer = null
+  }
+}
+
+const onWordCloudSelect = (word: string) => {
+  searchQuery.value = word
+  onSearchSubmit()
 }
 
 const onTimelineTouchStart = (event: TouchEvent) => {
@@ -1046,7 +1095,7 @@ watch(
 
         <div v-else class="space-y-3">
           <div class="md:hidden" v-if="wordCloud.length && activeSubscriptionId">
-            <WordCloudCard :data="wordCloud" :loading="wordCloudLoading" :minimized="true" />
+            <WordCloudCard :data="wordCloud" :loading="wordCloudLoading" :minimized="true" @select="onWordCloudSelect" />
           </div>
 
           <template v-for="(entry, index) in feedDisplay"
@@ -1078,7 +1127,7 @@ watch(
       <ArticleDetailPane v-if="detailOpen && !isMobile" :articleId="ui.detailArticleId" :onClose="ui.closeDetail"
         :onOpenArticle="(id) => ui.openDetail(id, listContainer)" />
       <template v-else>
-        <WordCloudCard :data="wordCloud" :loading="wordCloudLoading" />
+        <WordCloudCard :data="wordCloud" :loading="wordCloudLoading" @select="onWordCloudSelect" />
         <ArticlePreviewPanel :extra="previewExtra" :loading="previewLoading" :error="previewError" />
       </template>
     </section>

@@ -39,6 +39,12 @@ public interface ArticleExtraRepository extends JpaRepository<ArticleExtra, Long
             "FROM ArticleExtra a WHERE a.articleId = :articleId")
     Optional<ArticleExtraNoVectorView> findByArticleId(@Param("articleId") Long articleId);
 
+    @Query("SELECT a.id as id, a.articleId as articleId, a.overview as overview, " +
+            "a.keyInformation as keyInformation, a.tags as tags, a.toc as toc, a.status as status, " +
+            "a.errorMessage as errorMessage, a.createdAt as createdAt, a.updatedAt as updatedAt " +
+            "FROM ArticleExtra a WHERE a.articleId IN :articleIds")
+    List<ArticleExtraNoVectorView> findByArticleIdIn(@Param("articleIds") List<Long> articleIds);
+
     /**
      * 原生 SQL 删除，绕过 Hibernate 实体映射检查
      * 解决 vector 为 null 时无法读取导致无法删除的问题

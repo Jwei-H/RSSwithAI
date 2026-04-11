@@ -9,10 +9,11 @@ public record ArticleFeedDTO(
         Long sourceId,
         String sourceName,
         String title,
-    String link,
+        String link,
         String coverImage,
         LocalDateTime pubDate,
-        Long wordCount
+        Long wordCount,
+        ArticleExtraDTO aiExtra
 ) {
     public static ArticleFeedDTO of(Long id,
                                     Long sourceId,
@@ -21,8 +22,20 @@ public record ArticleFeedDTO(
                                     String link,
                                     String coverImage,
                                     LocalDateTime pubDate,
+                                    Long wordCount,
+                                    ArticleExtraDTO aiExtra) {
+        return new ArticleFeedDTO(id, sourceId, sourceName, title, link, coverImage, pubDate, wordCount, aiExtra);
+    }
+    
+    public static ArticleFeedDTO of(Long id,
+                                    Long sourceId,
+                                    String sourceName,
+                                    String title,
+                                    String link,
+                                    String coverImage,
+                                    LocalDateTime pubDate,
                                     Long wordCount) {
-        return new ArticleFeedDTO(id, sourceId, sourceName, title, link, coverImage, pubDate, wordCount);
+        return new ArticleFeedDTO(id, sourceId, sourceName, title, link, coverImage, pubDate, wordCount, null);
     }
 
     public static ArticleFeedDTO from(Article article) {
@@ -34,7 +47,8 @@ public record ArticleFeedDTO(
                 article.getLink(),
                 article.getCoverImage(),
                 article.getPubDate(),
-                article.getWordCount()
+                article.getWordCount(),
+                null
         );
     }
 }

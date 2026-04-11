@@ -39,6 +39,7 @@ public class SubscriptionService {
     private final RssSourceRepository rssSourceRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final TopicRepository topicRepository;
+    private final ArticleExtraRepository articleExtraRepository;
     private final LlmProcessService llmProcessService;
     private final AppConfig appConfig;
 
@@ -331,6 +332,18 @@ public class SubscriptionService {
                 result.add(mapRow(columns));
             }
         }
+        
+        List<Long> articleIds = result.stream().map(ArticleFeedDTO::id).toList();
+        if (!articleIds.isEmpty()) {
+            Map<Long, ArticleExtraDTO> extraMap = articleExtraRepository.findByArticleIdIn(articleIds).stream()
+                    .map(ArticleExtraDTO::from)
+                    .collect(Collectors.toMap(ArticleExtraDTO::articleId, e -> e));
+            
+            result = result.stream()
+                    .map(dto -> ArticleFeedDTO.of(dto.id(), dto.sourceId(), dto.sourceName(), dto.title(), dto.link(), dto.coverImage(), dto.pubDate(), dto.wordCount(), extraMap.get(dto.id())))
+                    .toList();
+        }
+        
         return result;
     }
 
