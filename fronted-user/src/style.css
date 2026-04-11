@@ -332,19 +332,36 @@
 }
 
 @media (max-width: 767px) {
+  /* Page zoom scaling (Mobile Only) — does NOT affect html/body font-size.
+     Use transform: scale + origin compensation to avoid double-scrollbar bug.
+     Level 2 is default (100%), each step = ±5%. */
 
-  /* Page zoom scaling (Mobile Only) — does NOT affect html/body font-size */
-  /* Level 2 is default (100%), each step = ±10% */
+  /* Level 1: scale 0.95 — shrink wrapper so scaled content still fills it */
   html.mobile-font-level-1 .page-zoom-wrapper {
-    zoom: 0.95;
+    transform: scale(0.95);
+    transform-origin: top left;
+    width: calc(100% / 0.95);
+    height: calc(100% / 0.95);
+    overflow: hidden;
   }
 
-  /* Level 2: zoom: 1.0, no rule needed */
+  /* Level 2: default — no transform needed */
+
+  /* Level 3: scale 1.05 */
   html.mobile-font-level-3 .page-zoom-wrapper {
-    zoom: 1.05;
+    transform: scale(1.05);
+    transform-origin: top left;
+    width: calc(100% / 1.05);
+    height: calc(100% / 1.05);
+    overflow: hidden;
   }
 
+  /* Level 4: scale 1.1 */
   html.mobile-font-level-4 .page-zoom-wrapper {
-    zoom: 1.1;
+    transform: scale(1.1);
+    transform-origin: top left;
+    width: calc(100% / 1.1);
+    height: calc(100% / 1.1);
+    overflow: hidden;
   }
 }
