@@ -23,6 +23,19 @@ export function useUiStore() {
     state.fromScrollTop = container?.scrollTop ?? 0
   }
 
+  const restoreScrollPosition = (container: HTMLElement, targetScrollTop: number) => {
+    const startTime = performance.now()
+    const lockScroll = (now: number) => {
+      if (container) {
+        container.scrollTop = targetScrollTop
+      }
+      if (now - startTime < 400) {
+        requestAnimationFrame(lockScroll)
+      }
+    }
+    requestAnimationFrame(lockScroll)
+  }
+
   const closeDetail = () => {
     const container = state.fromContainer
     const scrollTop = state.fromScrollTop
@@ -40,9 +53,7 @@ export function useUiStore() {
     }
 
     if (container) {
-      requestAnimationFrame(() => {
-        container.scrollTop = scrollTop
-      })
+      restoreScrollPosition(container, scrollTop)
     }
   }
 
@@ -58,9 +69,15 @@ export function useUiStore() {
     const articleId = route.query.articleId
     if (!articleId && state.articleId !== null) {
       // URL 中没有 articleId 但状态中有，说明用户点击了后退
+      const container = state.fromContainer
+      const scrollTop = state.fromScrollTop
       state.articleId = null
       state.fromContainer = null
       state.fromScrollTop = 0
+
+      if (container) {
+        restoreScrollPosition(container, scrollTop)
+      }
     } else if (articleId && state.articleId === null) {
       // URL 中有 articleId 但状态中没有，说明用户点击了前进
       state.articleId = parseInt(String(articleId), 10)
