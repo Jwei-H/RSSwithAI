@@ -264,7 +264,7 @@ public class TrendsAnalysisService {
     private List<Article> fetchArticlesForHotEvents(Long sourceId) {
         return articleRepository.findBySourceIdAndPubDateSinceOrderByPubDateDesc(
                 sourceId,
-                LocalDateTime.now().minusHours(48));
+                LocalDateTime.now().minusHours(40));
     }
 
     private List<List<Article>> splitArticlesIntoChunks(List<Article> articles, int chunkSize) {
