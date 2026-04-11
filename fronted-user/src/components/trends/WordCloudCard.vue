@@ -10,6 +10,10 @@ const props = defineProps<{
   minimized?: boolean
 }>()
 
+const emit = defineEmits<{
+  (e: 'select', word: string): void
+}>()
+
 const chartEl = ref<HTMLDivElement | null>(null)
 let chart: echarts.ECharts | null = null
 let resizeObserver: ResizeObserver | null = null
@@ -24,6 +28,11 @@ const initChartIfNeeded = () => {
   }
   if (chart) return
   chart = echarts.init(chartEl.value)
+  chart.on('click', (params: any) => {
+    if (params.name) {
+      emit('select', params.name)
+    }
+  })
   resizeObserver = new ResizeObserver(() => chart?.resize())
   resizeObserver.observe(chartEl.value)
 }
@@ -65,9 +74,15 @@ const render = () => {
         rotationStep: 0,
         textStyle: {
           fontStyle: 'normal',
+          cursor: 'pointer',
           color: () => {
             const colors = ['#2563eb', '#7c3aed', '#0891b2', '#f97316', '#16a34a']
             return colors[Math.floor(Math.random() * colors.length)]
+          }
+        },
+        emphasis: {
+          textStyle: {
+            fontWeight: 'bold'
           }
         },
         data: smoothed
