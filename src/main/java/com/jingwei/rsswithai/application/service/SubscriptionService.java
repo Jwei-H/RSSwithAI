@@ -48,11 +48,11 @@ public class SubscriptionService {
 
     public Page<UserRssSourceDTO> listRssSources(Long userId, SourceCategory category, Pageable pageable) {
         Pageable sortedPageable = PageRequest.of(
-            pageable.getPageNumber(),
-            pageable.getPageSize(),
-            Sort.by(
-                Sort.Order.desc("latestArticlePubDate").nullsLast(),
-                Sort.Order.desc("id")));
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(
+                        Sort.Order.desc("latestArticlePubDate").nullsLast(),
+                        Sort.Order.desc("id")));
 
         Map<Long, Long> subscriptionMap;
         if (userId != null) {
@@ -66,8 +66,8 @@ public class SubscriptionService {
         }
 
         Page<RssSource> page = category != null
-        ? rssSourceRepository.findByStatusAndCategory(SourceStatus.ENABLED, category, sortedPageable)
-        : rssSourceRepository.findByStatus(SourceStatus.ENABLED, sortedPageable);
+                ? rssSourceRepository.findByStatusAndCategory(SourceStatus.ENABLED, category, sortedPageable)
+                : rssSourceRepository.findByStatus(SourceStatus.ENABLED, sortedPageable);
 
         return page.map(source -> UserRssSourceDTO.from(source, subscriptionMap.get(source.getId())));
     }
@@ -175,7 +175,7 @@ public class SubscriptionService {
         int pageSize = (size == null || size <= 0) ? DEFAULT_FEED_SIZE : Math.min(size, MAX_FEED_SIZE);
 
         List<Long> sourceIds = new ArrayList<>();
-        List<float[]> topicVectors = new ArrayList<>();
+        List<Topic> topics = new ArrayList<>();
 
         if (subscriptionId != null) {
             Subscription subscription = subscriptionRepository.findByIdAndUserId(subscriptionId, userId)
@@ -186,7 +186,7 @@ public class SubscriptionService {
                 }
             } else if (subscription.getType() == SubscriptionType.TOPIC) {
                 if (subscription.getTopic() != null && subscription.getTopic().getVector() != null) {
-                    topicVectors.add(subscription.getTopic().getVector());
+                    topics.add(subscription.getTopic());
                 }
             }
         } else {
@@ -195,17 +195,17 @@ public class SubscriptionService {
                     sourceIds.add(subscription.getSource().getId());
                 } else if (subscription.getType() == SubscriptionType.TOPIC && subscription.getTopic() != null
                         && subscription.getTopic().getVector() != null) {
-                    topicVectors.add(subscription.getTopic().getVector());
+                    topics.add(subscription.getTopic());
                 }
             }
         }
 
-        if (sourceIds.isEmpty() && topicVectors.isEmpty()) {
+        if (sourceIds.isEmpty() && topics.isEmpty()) {
             return List.of();
         }
 
         Set<Long> dedupSourceIds = new LinkedHashSet<>(sourceIds);
-        return executeHybridFeed(new ArrayList<>(dedupSourceIds), topicVectors, feedCursor.cursorTime(),
+        return executeHybridFeed(new ArrayList<>(dedupSourceIds), topics, feedCursor.cursorTime(),
                 feedCursor.cursorId(), pageSize);
     }
 
@@ -223,7 +223,7 @@ public class SubscriptionService {
 
         FeedCursor feedCursor = parseCursor(cursor);
         int pageSize = (size == null || size <= 0) ? DEFAULT_FEED_SIZE : Math.min(size, MAX_FEED_SIZE);
-        return executeHybridFeed(List.of(), List.of(topic.getVector()), feedCursor.cursorTime(), feedCursor.cursorId(), pageSize);
+        return executeHybridFeed(List.of(), List.of(topic), feedCursor.cursorTime(), feedCursor.cursorId(), pageSize);
     }
 
     private Topic getOrCreateTopic(String content) {
@@ -284,23 +284,28 @@ public class SubscriptionService {
     }
 
     private List<ArticleFeedDTO> executeHybridFeed(List<Long> sourceIds,
-            List<float[]> topicVectors,
+            List<Topic> topics,
             LocalDateTime cursorTime,
             long cursorId,
             int size) {
         List<String> branches = new ArrayList<>();
         if (!sourceIds.isEmpty()) {
-            branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.link, a.cover_image, a.pub_date, a.word_count " +
-                    "FROM articles a WHERE a.source_id IN (:sourceIds) " +
-                    "AND (a.pub_date < :cursorTime OR (a.pub_date = :cursorTime AND a.id < :cursorId))");
+            branches.add(
+                    "SELECT a.id, a.source_id, a.source_name, a.title, a.link, a.cover_image, a.pub_date, a.word_count "
+                            +
+                            "FROM articles a WHERE a.source_id IN (:sourceIds) " +
+                            "AND (a.pub_date < :cursorTime OR (a.pub_date = :cursorTime AND a.id < :cursorId))");
         }
-        if (!topicVectors.isEmpty()) {
-            String vectorConditions = IntStream.range(0, topicVectors.size())
-                    .mapToObj(i -> "(ae.vector <=> CAST(:vector" + i + " AS vector)) < :threshold")
+        if (!topics.isEmpty()) {
+            String vectorConditions = IntStream.range(0, topics.size())
+                    .mapToObj(i -> "(ae.vector <=> CAST(:vector" + i + " AS vector)) < :threshold" + i)
                     .collect(Collectors.joining(" OR "));
-            branches.add("SELECT a.id, a.source_id, a.source_name, a.title, a.link, a.cover_image, a.pub_date, a.word_count " +
-                    "FROM articles a JOIN article_extra ae ON a.id = ae.article_id WHERE (" + vectorConditions + ") " +
-                    "AND (a.pub_date < :cursorTime OR (a.pub_date = :cursorTime AND a.id < :cursorId))");
+            branches.add(
+                    "SELECT a.id, a.source_id, a.source_name, a.title, a.link, a.cover_image, a.pub_date, a.word_count "
+                            +
+                            "FROM articles a JOIN article_extra ae ON a.id = ae.article_id WHERE (" + vectorConditions
+                            + ") " +
+                            "AND (a.pub_date < :cursorTime OR (a.pub_date = :cursorTime AND a.id < :cursorId))");
         }
 
         if (branches.isEmpty()) {
@@ -317,11 +322,16 @@ public class SubscriptionService {
         if (!sourceIds.isEmpty()) {
             query.setParameter("sourceIds", sourceIds);
         }
-        if (!topicVectors.isEmpty()) {
-            double threshold = appConfig.getTopicThreshold();
-            query.setParameter("threshold", threshold);
-            for (int i = 0; i < topicVectors.size(); i++) {
-                query.setParameter("vector" + i, toPgVectorLiteral(topicVectors.get(i)));
+        if (!topics.isEmpty()) {
+            double baseThreshold = appConfig.getTopicThreshold();
+            for (int i = 0; i < topics.size(); i++) {
+                Topic topic = topics.get(i);
+                double threshold = baseThreshold;
+                if (topic.getContent() != null && topic.getContent().length() < 16) {
+                    threshold += 0.5;
+                }
+                query.setParameter("threshold" + i, threshold);
+                query.setParameter("vector" + i, toPgVectorLiteral(topic.getVector()));
             }
         }
 
@@ -332,18 +342,19 @@ public class SubscriptionService {
                 result.add(mapRow(columns));
             }
         }
-        
+
         List<Long> articleIds = result.stream().map(ArticleFeedDTO::id).toList();
         if (!articleIds.isEmpty()) {
             Map<Long, ArticleExtraDTO> extraMap = articleExtraRepository.findByArticleIdIn(articleIds).stream()
                     .map(ArticleExtraDTO::from)
                     .collect(Collectors.toMap(ArticleExtraDTO::articleId, e -> e));
-            
+
             result = result.stream()
-                    .map(dto -> ArticleFeedDTO.of(dto.id(), dto.sourceId(), dto.sourceName(), dto.title(), dto.link(), dto.coverImage(), dto.pubDate(), dto.wordCount(), extraMap.get(dto.id())))
+                    .map(dto -> ArticleFeedDTO.of(dto.id(), dto.sourceId(), dto.sourceName(), dto.title(), dto.link(),
+                            dto.coverImage(), dto.pubDate(), dto.wordCount(), extraMap.get(dto.id())))
                     .toList();
         }
-        
+
         return result;
     }
 
