@@ -3,6 +3,7 @@ package com.jingwei.rsswithai.application.service;
 import com.jingwei.rsswithai.application.dto.*;
 import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.*;
+import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
 import com.jingwei.rsswithai.domain.repository.SubscriptionRepository;
 import com.jingwei.rsswithai.domain.repository.TopicRepository;
@@ -22,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
