@@ -126,7 +126,7 @@ const activeTopicContent = computed(() => {
 const showEventTracking = computed(() =>
   activeSubscription.value?.type === 'TOPIC'
   && !committedQuery.value
-  && activeTopicContent.value.length >= 12
+  && activeTopicContent.value.length >= 6
 )
 
 const orderedSubscriptions = computed(() => {
@@ -480,7 +480,7 @@ const refreshFeed = async (silent = false) => {
       }
     })
     const currentFirstPage = feedList.value.slice(0, list.length)
-    const same = isSameFeed(list, currentFirstPage) && feedList.value.length >= list.length
+    const same = list.length > 0 && isSameFeed(list, currentFirstPage) && feedList.value.length >= list.length
     if (!same) {
       feedList.value = list
       hasMore.value = list.length >= 20

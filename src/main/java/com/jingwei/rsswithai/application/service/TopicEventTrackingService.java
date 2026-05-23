@@ -310,7 +310,7 @@ public class TopicEventTrackingService {
     private double resolveThreshold(Topic topic) {
         double threshold = appConfig.getTopicThreshold() == null ? 0.4 : appConfig.getTopicThreshold();
         if (topic.getContent() != null && topic.getContent().length() < 16) {
-            threshold += 0.5;
+            threshold += 0.05;
         }
         return threshold;
     }

@@ -337,8 +337,8 @@ public class SubscriptionService {
             for (int i = 0; i < topics.size(); i++) {
                 Topic topic = topics.get(i);
                 double threshold = baseThreshold;
-                if (topic.getContent() != null && topic.getContent().length() < 12) {
-                    threshold += 0.5;
+                if (topic.getContent() != null && topic.getContent().length() < 16) {
+                    threshold += 0.05;
                 }
                 query.setParameter("threshold" + i, threshold);
                 query.setParameter("vector" + i, toPgVectorLiteral(topic.getVector()));
