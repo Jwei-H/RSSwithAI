@@ -69,7 +69,35 @@ export type ArticleExtra = {
 export type HotEvent = {
   event: string
   score: number
+  topicId?: number | null
   isSubscribed?: boolean
+}
+
+export type TopicEventTrackingArticle = {
+  id: number
+  title: string
+}
+
+export type TopicEventTrackingNode = {
+  date: string
+  progress: string
+  coverImage?: string | null
+  articles: TopicEventTrackingArticle[]
+}
+
+export type TopicEventTrackingResult = {
+  version: number
+  topicId: number
+  topic: string
+  generatedAt: string
+  sourceArticleIds: number[]
+  nodes: TopicEventTrackingNode[]
+}
+
+export type TopicEventTrackingResponse = {
+  status: 'EMPTY' | 'SUCCESS' | 'INVALID'
+  result: TopicEventTrackingResult | null
+  message?: string | null
 }
 
 export type PagedResponse<T> = {

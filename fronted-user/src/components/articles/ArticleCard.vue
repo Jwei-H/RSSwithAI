@@ -1,7 +1,6 @@
 <script setup lang="ts">
+import CoverImage from '../common/CoverImage.vue'
 import type { ArticleFeed } from '../../types'
-import { unescapeUrl } from '../../utils/text'
-import { rewriteUrl } from '../../utils/url-rewrites'
 import { formatRelativeTime } from '../../utils/time'
 
 defineProps<{
@@ -23,11 +22,11 @@ defineEmits<{
     :class="{ 'opacity-60': isRead }" @mouseenter="$emit('hover', article.id)" @mouseleave="$emit('leave')"
     @click="$emit('open', article.id)">
     <!-- 封面图 -->
-    <div v-if="article.coverImage"
-      class="h-15 w-19 shrink-0 overflow-hidden rounded-xl border border-border md:h-17 md:w-26">
-      <img :src="rewriteUrl(unescapeUrl(article.coverImage))" :alt="article.title" class="h-full w-full object-cover"
-        loading="lazy" referrerpolicy="no-referrer" />
-    </div>
+    <CoverImage
+      :src="article.coverImage"
+      :alt="article.title"
+      container-class="h-15 w-19 shrink-0 overflow-hidden rounded-xl border border-border md:h-17 md:w-26"
+    />
     <div class="flex min-w-0 flex-1 flex-col gap-1 md:gap-2">
       <div class="flex items-start justify-between gap-2 md:gap-4">
         <h3 class="line-clamp-3 text-sm font-semibold text-foreground">

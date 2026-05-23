@@ -1,6 +1,5 @@
 package com.jingwei.rsswithai.application.service;
 
-import com.jingwei.rsswithai.application.Event.ConfigUpdateEvent;
 import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.RssSource;
@@ -9,16 +8,10 @@ import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
 import com.jingwei.rsswithai.domain.repository.RssSourceRepository;
 import com.jingwei.rsswithai.domain.repository.TrendsDataRepository;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.api.OpenAiApi;
-import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -43,42 +36,8 @@ public class TrendsAnalysisService {
     private final RssSourceRepository rssSourceRepository;
     private final AppConfig appConfig;
     private final ObjectMapper objectMapper;
-
-    private OpenAiChatModel chatModel;
-
-    @PostConstruct
-    public void init() {
-        initializeOpenAiClient();
-    }
-
-    private void initializeOpenAiClient() {
-        try {
-            OpenAiApi openAiApi = OpenAiApi.builder()
-                    .apiKey(appConfig.getLlmApiKey())
-                    .baseUrl(appConfig.getLlmBaseUrl())
-                    .build();
-
-            OpenAiChatOptions options = OpenAiChatOptions.builder()
-                    .model(appConfig.getLanguageModel())
-                    .temperature(0.3)
-                    .build();
-
-            this.chatModel = OpenAiChatModel.builder()
-                    .openAiApi(openAiApi)
-                    .defaultOptions(options)
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to initialize OpenAI client for TrendsAnalysisService", e);
-        }
-    }
-
-    /**
-     * Re-initialize capability similar to LlmProcessService
-     */
-    @EventListener
-    public void onConfigUpdateEvent(ConfigUpdateEvent event) {
-        initializeOpenAiClient();
-    }
+    private final AiChatService aiChatService;
+    private final SubscriptionService subscriptionService;
 
     // --- Word Cloud Logic ---
 
@@ -167,8 +126,7 @@ public class TrendsAnalysisService {
             PromptTemplate promptTemplate = new PromptTemplate(appConfig.getTrendsWordCloudPrompt());
             Prompt prompt = promptTemplate.create(Map.of("tags", tagsInput));
 
-            ChatResponse response = chatModel.call(prompt);
-            String content = response.getResult().getOutput().getText();
+            String content = aiChatService.callText(prompt);
             return parseJsonToMap(content);
         } catch (Exception e) {
             log.error("LLM error during synonym fetching", e);
@@ -252,13 +210,31 @@ public class TrendsAnalysisService {
                     new TypeReference<List<Map<String, Object>>>() {
                     });
 
+            List<Map<String, Object>> eventsWithTopics = attachTopicIds(reducedEvents);
+
             // 3. Save
-            saveTrendsData(0L, "HOT_EVENTS", reducedEvents);
+            saveTrendsData(0L, "HOT_EVENTS", eventsWithTopics);
             log.info("Hot Events generated successfully");
 
         } catch (Exception e) {
             log.error("Error generating hot events", e);
         }
+    }
+
+    private List<Map<String, Object>> attachTopicIds(List<Map<String, Object>> events) {
+        return events.stream()
+                .map(event -> {
+                    String eventText = event.get("event") instanceof String text ? text.trim() : "";
+                    if (eventText.isBlank()) {
+                        return event;
+                    }
+                    Long topicId = subscriptionService.getOrCreateTopic(eventText).getId();
+                    Map<String, Object> enriched = new LinkedHashMap<>(event);
+                    enriched.put("event", eventText);
+                    enriched.put("topicId", topicId);
+                    return enriched;
+                })
+                .toList();
     }
 
     private List<Article> fetchArticlesForHotEvents(Long sourceId) {
@@ -285,8 +261,7 @@ public class TrendsAnalysisService {
         try {
             PromptTemplate template = new PromptTemplate(appConfig.getTrendsHotEventsMapPrompt());
             Prompt prompt = template.create(Map.of("articles", articlesDetails, "sourcename", sourceName));
-            ChatResponse response = chatModel.call(prompt);
-            return cleanJsonBlock(response.getResult().getOutput().getText());
+            return cleanJsonBlock(aiChatService.callText(prompt));
         } catch (Exception e) {
             log.error("LLM Map error", e);
             return "[]";
@@ -299,8 +274,7 @@ public class TrendsAnalysisService {
         try {
             PromptTemplate template = new PromptTemplate(appConfig.getTrendsHotEventsReducePrompt());
             Prompt prompt = template.create(Map.of("events", allEvents));
-            ChatResponse response = chatModel.call(prompt);
-            return cleanJsonBlock(response.getResult().getOutput().getText());
+            return cleanJsonBlock(aiChatService.callText(prompt));
         } catch (Exception e) {
             log.error("LLM Reduce error", e);
             return "[]";

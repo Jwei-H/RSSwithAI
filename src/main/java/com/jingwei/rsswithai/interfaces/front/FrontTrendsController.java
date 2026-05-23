@@ -36,9 +36,10 @@ public class FrontTrendsController {
 
     @GetMapping("/hotevents/articles")
     public ResponseEntity<List<ArticleFeedDTO>> getHotEventArticles(@RequestParam("event") String event,
+                                                                    @RequestParam(value = "topicId", required = false) Long topicId,
                                                                     @RequestParam(value = "cursor", required = false) String cursor,
                                                                     @RequestParam(value = "size", required = false) Integer size) {
-        List<ArticleFeedDTO> result = trendsService.getHotEventArticles(event, cursor, size);
+        List<ArticleFeedDTO> result = trendsService.getHotEventArticles(event, topicId, cursor, size);
         return ResponseEntity.ok(result);
     }
 }

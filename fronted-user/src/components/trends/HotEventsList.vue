@@ -29,7 +29,7 @@ const onToggleTop = () => {
 </script>
 
 <template>
-  <div class="rounded-2xl border border-border bg-card p-3">
+  <div class="rounded-2xl border border-border bg-card p-4">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
         <Flame class="h-4 w-4 text-primary" />
@@ -48,7 +48,7 @@ const onToggleTop = () => {
         {{ topLabel }}
       </button>
     </div>
-    <ul class="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1 scrollbar-thin">
+    <ul class="mt-3 space-y-2">
       <li
         v-for="(item, index) in visibleItems"
         :key="`${item.event}-${index}`"
@@ -59,7 +59,7 @@ const onToggleTop = () => {
           <span class="h-6 w-6 rounded-full bg-muted text-center leading-6 text-foreground">
             {{ index + 1 }}
           </span>
-          <span class="line-clamp-3 text-sm text-foreground" :title="item.event">{{ item.event }}</span>
+          <span class="line-clamp-4 text-sm text-foreground" :title="item.event">{{ item.event }}</span>
         </div>
         <ChevronRight class="h-4 w-4 flex-shrink-0 opacity-50 transition group-hover:opacity-100" />
       </li>

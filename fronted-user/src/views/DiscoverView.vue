@@ -109,6 +109,18 @@ const isHotEventSubscribed = (event: string) => {
   return subscriptions.some((sub) => sub.type === 'TOPIC' && (sub.content || '').trim() === event)
 }
 
+const normalizeHotEvents = (items: HotEvent[]) => {
+  return items.map((item) => ({
+    event: item.event,
+    score: item.score,
+    topicId: item.topicId ?? null
+  }))
+}
+
+const isHotEventCacheUsable = (items: HotEvent[]) => {
+  return items.length > 0 && items.every((item) => Number(item.topicId) > 0)
+}
+
 const withHotEventSubscriptionState = (items: HotEvent[]) => {
   return items.map((item) => ({
     ...item,
@@ -164,7 +176,7 @@ const loadHotEvents = async (forceRefresh = false) => {
   // 尝试从缓存获取
   if (!forceRefresh) {
     const cached = cache.getHotEvents()
-    if (cached) {
+    if (cached && isHotEventCacheUsable(cached)) {
       hotEvents.value = withHotEventSubscriptionState(cached)
       return
     }
@@ -173,7 +185,7 @@ const loadHotEvents = async (forceRefresh = false) => {
   hotLoading.value = true
   try {
     const list = await trendApi.hotEvents()
-    const allEvents = list.map((item) => ({ event: item.event, score: item.score }))
+    const allEvents = normalizeHotEvents(list)
     hotEvents.value = withHotEventSubscriptionState(allEvents)
     // 保存到缓存
     cache.setHotEvents(allEvents)
@@ -254,11 +266,11 @@ const onSubscribeHot = async (item: HotEvent) => {
     return
   }
   try {
-    const topic = await subscriptionApi.createTopic({ content: item.event })
-    const created = await subscriptionApi.create({ type: 'TOPIC', targetId: topic.id })
+    const topicId = item.topicId || (await subscriptionApi.createTopic({ content: item.event })).id
+    const created = await subscriptionApi.create({ type: 'TOPIC', targetId: topicId })
     cache.upsertSubscription({
       ...created,
-      content: created.content || topic.content
+      content: created.content || item.event
     })
     item.isSubscribed = true
     toast.push('热点已订阅', 'success')
@@ -504,7 +516,7 @@ watch(
       const eventText = String(route.query.previewEvent).trim()
       if (eventText) {
         const eventItem = hotEvents.value.find(item => item.event === eventText)
-        previewHotEvent.value = eventItem || { event: eventText, score: 0, isSubscribed: isHotEventSubscribed(eventText) }
+        previewHotEvent.value = eventItem || { event: eventText, score: 0, topicId: null, isSubscribed: isHotEventSubscribed(eventText) }
         previewHotEventOpen.value = true
       }
     }
@@ -591,7 +603,9 @@ onBeforeRouteLeave((to, from, next) => {
           {{ topicLoading ? '创建中...' : '创建并订阅' }}
         </button>
       </div>
-      <HotEventsList :items="hotEvents" :onMore="onMoreHot" />
+      <div class="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
+        <HotEventsList :items="hotEvents" :onMore="onMoreHot" />
+      </div>
     </section>
 
     <!-- 主内容区域 -->
@@ -683,7 +697,7 @@ onBeforeRouteLeave((to, from, next) => {
                       <span class="h-6 w-6 flex-shrink-0 rounded-full bg-muted text-center leading-6 text-foreground">
                         {{ index + 1 }}
                       </span>
-                      <span class="line-clamp-3 text-sm text-foreground">{{ item.event }}</span>
+                      <span class="line-clamp-4 text-sm text-foreground">{{ item.event }}</span>
                     </div>
                     <button class="ml-2 flex-shrink-0 rounded-lg border border-border px-2 py-1 text-[11px]"
                       :class="'text-muted-foreground'" @click="onMoreHot(item)">

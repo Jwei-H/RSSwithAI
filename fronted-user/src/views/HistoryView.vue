@@ -3,12 +3,11 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ArticleDetailPane from '../components/articles/ArticleDetailPane.vue'
 import EmptyState from '../components/common/EmptyState.vue'
+import CoverImage from '../components/common/CoverImage.vue'
 import { useDevice } from '../composables/useDevice'
 import { useUiStore } from '../stores/ui'
 import { useHistoryStore } from '../stores/history'
 import { formatRelativeTime } from '../utils/time'
-import { rewriteUrl } from '../utils/url-rewrites'
-import { unescapeUrl } from '../utils/text'
 import { History, Trash2, Lightbulb } from 'lucide-vue-next'
 
 const ui = useUiStore()
@@ -129,11 +128,11 @@ watch(
             <div v-for="item in historyStore.historyList.value" :key="item.articleId"
               class="group flex cursor-pointer gap-3 rounded-2xl border border-border bg-card p-3 transition hover:shadow md:gap-4 md:p-4"
               @click="onOpenArticle(item.articleId)">
-              <div v-if="item.coverImage"
-                class="h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-border md:h-16 md:w-24">
-                <img :src="rewriteUrl(unescapeUrl(item.coverImage))" :alt="item.title"
-                  class="h-full w-full object-cover" loading="lazy" referrerpolicy="no-referrer" />
-              </div>
+              <CoverImage
+                :src="item.coverImage"
+                :alt="item.title"
+                container-class="h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-border md:h-16 md:w-24"
+              />
               <div class="flex min-w-0 flex-1 flex-col gap-1 md:gap-2">
                 <div class="flex items-start justify-between gap-2 md:gap-4">
                   <h3 class="line-clamp-2 text-sm font-semibold text-foreground">{{ item.title }}</h3>

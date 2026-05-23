@@ -51,7 +51,7 @@ public class TrendsService {
         return Collections.emptyList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<HotEventDTO> getHotEvents() {
         return trendsDataRepository.findFirstBySourceIdAndTypeOrderByCreatedAtDescIdDesc(0L, "HOT_EVENTS")
                 .map(this::parseHotEventList)
@@ -59,7 +59,10 @@ public class TrendsService {
     }
 
     @Transactional
-    public List<ArticleFeedDTO> getHotEventArticles(String event, String cursor, Integer size) {
+    public List<ArticleFeedDTO> getHotEventArticles(String event, Long topicId, String cursor, Integer size) {
+        if (topicId != null && topicId > 0) {
+            return subscriptionService.getTopicFeedByTopicId(topicId, cursor, size);
+        }
         return subscriptionService.getTopicFeedByContent(event, cursor, size);
     }
 
@@ -83,13 +86,33 @@ public class TrendsService {
             List<Map<String, Object>> rawList = objectMapper.readValue(trendsData.getData(), new TypeReference<>() {
             });
             return rawList.stream()
-                    .map(m -> new HotEventDTO(
-                            (String) m.get("event"),
-                        m.get("score") instanceof Number n ? n.intValue() : null))
+                    .map(m -> {
+                        String event = m.get("event") instanceof String text ? text.trim() : "";
+                        Long topicId = m.get("topicId") instanceof Number n
+                                ? n.longValue()
+                                : resolveTopicId(event);
+                        return new HotEventDTO(
+                                event,
+                                m.get("score") instanceof Number n ? n.intValue() : null,
+                                topicId);
+                    })
+                    .filter(item -> item.event() != null && !item.event().isBlank())
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("Failed to parse hot events data for id {}", trendsData.getId(), e);
             return Collections.emptyList();
+        }
+    }
+
+    private Long resolveTopicId(String event) {
+        if (event == null || event.isBlank()) {
+            return null;
+        }
+        try {
+            return subscriptionService.getOrCreateTopic(event).getId();
+        } catch (Exception e) {
+            log.warn("Failed to resolve topic for hot event: {}", event, e);
+            return null;
         }
     }
 

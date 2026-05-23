@@ -216,7 +216,17 @@ public class SubscriptionService {
             throw new IllegalArgumentException("Topic content cannot be blank");
         }
 
-        Topic topic = getOrCreateTopic(trimmedContent);
+        return getTopicFeed(getOrCreateTopic(trimmedContent), cursor, size);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ArticleFeedDTO> getTopicFeedByTopicId(Long topicId, String cursor, Integer size) {
+        Topic topic = topicRepository.findById(topicId)
+                .orElseThrow(() -> new EntityNotFoundException("Topic not found: " + topicId));
+        return getTopicFeed(topic, cursor, size);
+    }
+
+    private List<ArticleFeedDTO> getTopicFeed(Topic topic, String cursor, Integer size) {
         if (topic.getVector() == null) {
             throw new IllegalStateException("Topic vector is unavailable");
         }
@@ -226,7 +236,7 @@ public class SubscriptionService {
         return executeHybridFeed(List.of(), List.of(topic), feedCursor.cursorTime(), feedCursor.cursorId(), pageSize);
     }
 
-    private Topic getOrCreateTopic(String content) {
+    public Topic getOrCreateTopic(String content) {
         return topicRepository.findByContent(content)
                 .orElseGet(() -> createNewTopic(content));
     }
@@ -327,7 +337,7 @@ public class SubscriptionService {
             for (int i = 0; i < topics.size(); i++) {
                 Topic topic = topics.get(i);
                 double threshold = baseThreshold;
-                if (topic.getContent() != null && topic.getContent().length() < 16) {
+                if (topic.getContent() != null && topic.getContent().length() < 12) {
                     threshold += 0.5;
                 }
                 query.setParameter("threshold" + i, threshold);

@@ -38,7 +38,7 @@ public class AppConfig {
     private String llmGenPrompt = """
             # Role
             你是一个专业的新闻情报分析员和内容架构师。你的任务是为 RSS 文章生成高价值的元数据增强信息。
-            
+
             # Constraints
             1. 语言：无论原文何种语言，输出必须为简体中文。（除了补充目录部分）
             2. 格式：严格输出 JSON，严禁任何开场白或解释性文字。
@@ -49,13 +49,13 @@ public class AppConfig {
                - 如果文章较短或已有丰富的标题，此字段返回空数组 []。
                - 生成带有 Markdown 前缀的补充标题（如 "## 背景介绍"），与原文风格保持一致，禁止复读已有标题。请你自行判断level(2级到4级)。
                - 【极其重要】：为每个生成的标题提取其正下方第一个段落开头的 10-15 个字符作为“锚点 (anchor)”。锚点必须 100% 照抄原文，包含原文中的所有 Markdown 符号（如 **、*、[] 等），绝不能转换为纯文本。
-            
+
             # Workflow
             1. 深度分析文章标题与内容，识别其核心事件、技术背景或核心观点。
             2. 提取文章中的实体（人名、公司名、技术协议、专有名词）。
             3. 总结全文，生成摘要与关键信息。
             4. 评估文章是否缺乏多级标题（## 或 ###）。
-            
+
             # Output Format (JSON)
             \\{
               "overview": "字符串，含**加粗内容**",
@@ -68,7 +68,7 @@ public class AppConfig {
                 \\}
               ]
             \\}
-            
+
             # Input Data
             ```
             标题：{title}
@@ -104,10 +104,10 @@ public class AppConfig {
             你是一个精通语义分析的助手。以下是一组"标签:频次"的数据，请找出其中含义完全相同或高度互为同义词的组合（例如 "AI":"人工智能", "LLM":"大语言模型"）。
             请返回一个 JSON 对象，Key 为你选定的标准词（通常是出现频率最高或最通用的那个），Value 为该标准词对应的所有变体列表（包含标准词本身）。
             未在 JSON 中出现的词将被视为无同义词，保持原样。**禁止使用"其他"、"杂项"等模糊类别**。
-            
+
             输入数据：
             {tags}
-            
+
             输出格式要求（严禁包含 Markdown 代码块标记，仅返回纯 JSON）：
             \\{
               "人工智能": ["AI", "人工智能", "Artificial Intelligence"],
@@ -121,6 +121,48 @@ public class AppConfig {
     @SettingKey("subscription_topic_threshold")
     private Double topicThreshold = 0.4;
 
+    @SettingKey("topic_event_tracking_prompt")
+    private String topicEventTrackingPrompt = """
+            # Role
+            你是专业新闻情报分析员，负责基于一组与用户订阅主题相关的文章，生成“事件追踪时间线”。
+
+            # Topic
+            {topic}
+
+            # Task
+            请从输入文章中识别严格围绕 Topic 的关键事件进展，生成结构化 JSON。
+            你需要把多篇文章归并为若干时间线节点。并非所有文章都必须使用。
+
+            # Constraints
+            1. 只保留与 Topic 直接相关的事件节点，弱相关、泛泛背景、教程、评论性内容一律忽略，“事件”需要有主体与动作。
+            2. 输出节点必须按日期倒排，即最新日期在前。
+            3. 允许同一天出现多个节点。如果同一天有多个不同进展，可以分别输出多个节点。
+            4. 每个节点必须基于至少 1 篇输入文章，最多关联 3 篇文章。
+            5. 节点 date 必须来自相关文章日期，格式 YYYY-MM-DD。
+            6. progress 必须是简体中文，25 字以内，描述该日期的当前进展。
+            7. articles 只能引用输入中存在的文章 id 和 title，不得编造。
+            8. 同一节点内相关文章按重要性排序，最多 3 篇。
+            9. 不要为了覆盖文章而制造节点。宁可少，也要严格围绕 Topic。
+            10. 如果相同的报道出现在不同的日期，已最早的报道日期为主，此时可忽略更晚的相同报道
+            11. 输出必须是严格 JSON，不要解释文字。
+
+            # Output JSON Schema
+            \\{
+              "nodes": [
+                \\{
+                  "date": "YYYY-MM-DD",
+                  "progress": "25字内当前进展",
+                  "articles": [
+                    \\{ "id": 123, "title": "输入文章原始标题" \\}
+                  ]
+                \\}
+              ]
+            \\}
+
+            # Input Articles
+            {articlesJson}
+            """;
+
     @SettingKey("trends_hot_events_map_prompt")
     private String trendsHotEventsMapPrompt = """
              你是一个专业的新闻分析师。请基于以下RSS源最近文章的“标题+概览”，提炼 0-10 个具有**明确时效性**的客观事件。
@@ -128,18 +170,18 @@ public class AppConfig {
              如果多篇文章指向同一事件，请合并为一个事件。
              输出结果必须按重要程度降序排列（你可参考事件影响范围、涉及主体和出现频次），最多取前10个。
              宁缺毋滥，事件要求少而精，如果没有值得关注的事件，请返回空数组 []。
-            
+
              RSS源名称：
              {sourcename}
-            
+
              文章列表（每条包含标题与概览）：
              {articles}
-            
+
              输出要求：
              1) 仅输出 JSON 数组（严禁 Markdown 代码块）
              2) 数组元素是字符串，每个字符串就是一个事件的简短描述
              3) 每个事件不超过50字
-            
+
              输出示例：
              \\[
              "OpenAI推出gpt codex模型，在多项benchmark取得领先成绩...",
@@ -158,13 +200,13 @@ public class AppConfig {
             1) 对跨源同义事件进行语义归并与去重
             2) 结合事件的出现频率、事件价值与事件的影响力，给出评分（1-10）
             3) 每个event控制在45字内，保持客观、完整、无来源标记
-            
+
             输入（按源分组）：
             {events}
-            
+
             请输出 JSON 数组，按评分降序排列，输出最多40个事件。
             格式：\\{"event": "一句话完整描述事件（不带来源标识）", "score": 10\\}
-            
+
             输出示例（严禁包含 Markdown 代码块标记）：
             [
             \\{"event": "OpenAI发布文生视频模型Sora，引发广泛关注...", "score": 10\\},

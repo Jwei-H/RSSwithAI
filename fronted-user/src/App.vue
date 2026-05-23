@@ -24,9 +24,10 @@ watch(
   () => route.path,
   () => {
     if (ui.detailOpen) {
-      ui.closeDetail()
+      ui.clearDetailState(false)
     }
-  }
+  },
+  { flush: 'sync' }
 )
 
 watch(

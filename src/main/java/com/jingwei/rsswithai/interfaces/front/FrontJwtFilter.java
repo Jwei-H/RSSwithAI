@@ -29,7 +29,8 @@ public class FrontJwtFilter extends OncePerRequestFilter {
             new PublicEndpoint("GET", "/api/front/v1/articles/source/**"),
             new PublicEndpoint("GET", "/api/front/v1/articles/*"),
             new PublicEndpoint("GET", "/api/front/v1/articles/*/extra"),
-            new PublicEndpoint("GET", "/api/front/v1/articles/*/recommendations")
+            new PublicEndpoint("GET", "/api/front/v1/articles/*/recommendations"),
+            new PublicEndpoint("GET", "/api/front/v1/topics/*/event-tracking")
     );
 
     public FrontJwtFilter(JwtUtils jwtUtils) {

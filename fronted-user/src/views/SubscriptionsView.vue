@@ -5,12 +5,13 @@ import ArticleCard from '../components/articles/ArticleCard.vue'
 import ArticlePreviewPanel from '../components/articles/ArticlePreviewPanel.vue'
 import ArticleDetailPane from '../components/articles/ArticleDetailPane.vue'
 import WordCloudCard from '../components/trends/WordCloudCard.vue'
+import TopicEventTrackerCard from '../components/subscriptions/TopicEventTrackerCard.vue'
 import LoadingState from '../components/common/LoadingState.vue'
 import EmptyState from '../components/common/EmptyState.vue'
 import ErrorState from '../components/common/ErrorState.vue'
 import FaviconImg from '../components/common/FaviconImg.vue'
-import { subscriptionApi, feedApi, trendApi } from '../services/frontApi'
-import type { ArticleDetail, ArticleExtra, ArticleFeed, Subscription } from '../types'
+import { subscriptionApi, feedApi, trendApi, topicEventTrackingApi } from '../services/frontApi'
+import type { ArticleDetail, ArticleExtra, ArticleFeed, Subscription, TopicEventTrackingNode, TopicEventTrackingResult } from '../types'
 import { useInfiniteScroll } from '../composables/useInfiniteScroll'
 import { useDevice } from '../composables/useDevice'
 import { useUiStore } from '../stores/ui'
@@ -63,12 +64,21 @@ let dayRolloverTimer: ReturnType<typeof setTimeout> | null = null
 const wordCloud = ref<{ text: string; value: number }[]>([])
 const wordCloudLoading = ref(false)
 
+const eventTrackingResult = ref<TopicEventTrackingResult | null>(null)
+const eventTrackingLoading = ref(false)
+const eventTrackingStreaming = ref(false)
+const eventTrackingError = ref<string | null>(null)
+const eventTrackingRaw = ref('')
+const eventTrackingStreamingNodes = ref<TopicEventTrackingNode[]>([])
+let eventTrackingAbortController: AbortController | null = null
+
 const previewLoading = ref(false)
 const previewExtra = ref<ArticleExtra | null>(null)
 const previewError = ref<string | null>(null)
 const savedScrollTop = ref(0)
 let hoverTimer: number | null = null
 let visibleFeedObserver: IntersectionObserver | null = null
+let feedRequestSeq = 0
 const observedFeedCards = new Map<number, HTMLElement>()
 const inFlightExtraRequests = new Map<number, Promise<ArticleExtra | null>>()
 const inFlightDetailRequests = new Map<number, Promise<ArticleDetail | null>>()
@@ -107,6 +117,17 @@ const activeSubscriptionName = computed(() => {
     ? activeSubscription.value.name
     : activeSubscription.value.content
 })
+
+const activeTopicContent = computed(() => {
+  if (activeSubscription.value?.type !== 'TOPIC') return ''
+  return activeSubscription.value.content?.trim() || ''
+})
+
+const showEventTracking = computed(() =>
+  activeSubscription.value?.type === 'TOPIC'
+  && !committedQuery.value
+  && activeTopicContent.value.length >= 12
+)
 
 const orderedSubscriptions = computed(() => {
   const rssSubscriptions = subscriptions.value.filter((item) => item.type === 'RSS')
@@ -403,14 +424,18 @@ const resetFeed = () => {
 
 const loadFeed = async () => {
   if (feedLoading.value || !hasMore.value || committedQuery.value) return
+  const requestSeq = ++feedRequestSeq
+  const requestSubscriptionId = activeSubscriptionId.value
+  const requestCursor = feedCursor.value
   feedLoading.value = true
   feedError.value = ''
   try {
     const list = await feedApi.feed({
-      subscriptionId: activeSubscriptionId.value || undefined,
-      cursor: feedCursor.value || undefined,
+      subscriptionId: requestSubscriptionId || undefined,
+      cursor: requestCursor || undefined,
       size: 20
     })
+    if (requestSeq !== feedRequestSeq || activeSubscriptionId.value !== requestSubscriptionId) return
     list.forEach(item => {
       if (item.aiExtra) {
         cache.setArticleExtra(item.id, item.aiExtra)
@@ -426,22 +451,29 @@ const loadFeed = async () => {
     }
     persistFeedCache()
   } catch (error: any) {
-    feedError.value = error?.message || '时间线加载失败'
+    if (requestSeq === feedRequestSeq && activeSubscriptionId.value === requestSubscriptionId) {
+      feedError.value = error?.message || '时间线加载失败'
+    }
   } finally {
-    feedLoading.value = false
+    if (requestSeq === feedRequestSeq && activeSubscriptionId.value === requestSubscriptionId) {
+      feedLoading.value = false
+    }
   }
 }
 
 const refreshFeed = async (silent = false) => {
   if (committedQuery.value) return
+  const requestSeq = ++feedRequestSeq
+  const requestSubscriptionId = activeSubscriptionId.value
   const showLoading = !silent && feedList.value.length === 0
   if (showLoading) feedLoading.value = true
   feedError.value = ''
   try {
     const list = await feedApi.feed({
-      subscriptionId: activeSubscriptionId.value || undefined,
+      subscriptionId: requestSubscriptionId || undefined,
       size: 20
     })
+    if (requestSeq !== feedRequestSeq || activeSubscriptionId.value !== requestSubscriptionId) return
     list.forEach(item => {
       if (item.aiExtra) {
         cache.setArticleExtra(item.id, item.aiExtra)
@@ -457,11 +489,13 @@ const refreshFeed = async (silent = false) => {
     }
     persistFeedCache()
   } catch (error: any) {
-    if (feedList.value.length === 0) {
+    if (requestSeq === feedRequestSeq && activeSubscriptionId.value === requestSubscriptionId && feedList.value.length === 0) {
       feedError.value = error?.message || '时间线加载失败'
     }
   } finally {
-    if (showLoading) feedLoading.value = false
+    if (requestSeq === feedRequestSeq && activeSubscriptionId.value === requestSubscriptionId && showLoading) {
+      feedLoading.value = false
+    }
   }
 }
 
@@ -472,6 +506,7 @@ const refreshAll = async () => {
     await loadSubscriptions(true)
     await refreshFeed(true)
     await loadWordCloud(true)
+    await loadEventTrackingLatest(true)
   } catch {
     toast.push('刷新失败，请稍后重试', 'error')
   } finally {
@@ -506,6 +541,205 @@ const loadWordCloud = async (forceRefresh = false) => {
   } finally {
     wordCloudLoading.value = false
   }
+}
+
+const abortEventTrackingStream = () => {
+  if (eventTrackingAbortController) {
+    eventTrackingAbortController.abort()
+    eventTrackingAbortController = null
+  }
+}
+
+const resetEventTrackingTransientState = () => {
+  eventTrackingError.value = null
+  eventTrackingRaw.value = ''
+  eventTrackingStreamingNodes.value = []
+}
+
+const resetEventTrackingState = () => {
+  abortEventTrackingStream()
+  eventTrackingResult.value = null
+  eventTrackingLoading.value = false
+  eventTrackingStreaming.value = false
+  resetEventTrackingTransientState()
+}
+
+const normalizeEventTrackingRaw = (raw: string) => {
+  const cleaned = raw.replace(/```json|```/g, '').trim()
+  const start = cleaned.indexOf('{')
+  const end = cleaned.lastIndexOf('}')
+  if (start < 0 || end <= start) return cleaned
+  return cleaned.slice(start, end + 1)
+}
+
+const normalizeStreamingNode = (node: any): TopicEventTrackingNode | null => {
+  const normalized = {
+    date: typeof node?.date === 'string' ? node.date : '',
+    progress: typeof node?.progress === 'string' ? node.progress : '',
+    coverImage: typeof node?.coverImage === 'string' ? node.coverImage : null,
+    articles: Array.isArray(node?.articles)
+      ? node.articles
+          .filter((article: any) => Number(article?.id) > 0 && typeof article?.title === 'string')
+          .slice(0, 3)
+          .map((article: any) => ({ id: Number(article.id), title: article.title }))
+      : []
+  }
+  return normalized.date && normalized.progress && normalized.articles.length ? normalized : null
+}
+
+const parsePartialStreamingNodes = (raw: string): TopicEventTrackingNode[] => {
+  const cleaned = raw.replace(/```json|```/g, '')
+  const nodesIndex = cleaned.indexOf('"nodes"')
+  const arrayStart = nodesIndex >= 0 ? cleaned.indexOf('[', nodesIndex) : -1
+  if (arrayStart < 0) return []
+
+  const nodes: TopicEventTrackingNode[] = []
+  let depth = 0
+  let start = -1
+  let inString = false
+  let escaped = false
+
+  for (let i = arrayStart + 1; i < cleaned.length; i += 1) {
+    const char = cleaned[i]
+    if (inString) {
+      if (escaped) {
+        escaped = false
+      } else if (char === '\\') {
+        escaped = true
+      } else if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+    } else if (char === '{') {
+      if (depth === 0) start = i
+      depth += 1
+    } else if (char === '}') {
+      depth -= 1
+      if (depth === 0 && start >= 0) {
+        try {
+          const node = normalizeStreamingNode(JSON.parse(cleaned.slice(start, i + 1)))
+          if (node) nodes.push(node)
+        } catch {
+          // ignore incomplete node
+        }
+        start = -1
+      }
+    } else if (char === ']' && depth === 0) {
+      break
+    }
+  }
+  return nodes
+}
+
+const parseStreamingNodes = (raw: string): TopicEventTrackingNode[] => {
+  try {
+    const parsed = JSON.parse(normalizeEventTrackingRaw(raw)) as { nodes?: unknown }
+    if (!Array.isArray(parsed.nodes)) return []
+    return parsed.nodes
+      .map(normalizeStreamingNode)
+      .filter((node): node is TopicEventTrackingNode => node !== null)
+  } catch {
+    return parsePartialStreamingNodes(raw)
+  }
+}
+
+const loadEventTrackingLatest = async (silent = false) => {
+  if (!showEventTracking.value || activeSubscriptionId.value === null) {
+    if (!showEventTracking.value) resetEventTrackingState()
+    return
+  }
+
+  const requestSubscriptionId = activeSubscriptionId.value
+  if (!silent) eventTrackingLoading.value = true
+  eventTrackingError.value = null
+  try {
+    const response = await topicEventTrackingApi.latest(requestSubscriptionId)
+    if (activeSubscriptionId.value !== requestSubscriptionId) return
+    if (response.status === 'SUCCESS') {
+      eventTrackingResult.value = response.result
+    } else {
+      eventTrackingResult.value = null
+      if (response.status === 'INVALID') {
+        eventTrackingError.value = response.message || '事件追踪结果解析失败'
+      }
+    }
+  } catch (error: any) {
+    if (activeSubscriptionId.value === requestSubscriptionId) {
+      eventTrackingError.value = error?.message || '事件追踪加载失败'
+    }
+  } finally {
+    if (activeSubscriptionId.value === requestSubscriptionId) {
+      eventTrackingLoading.value = false
+    }
+  }
+}
+
+const syncEventTrackingForActive = () => {
+  abortEventTrackingStream()
+  eventTrackingStreaming.value = false
+  resetEventTrackingTransientState()
+  if (showEventTracking.value) {
+    loadEventTrackingLatest(true)
+  } else {
+    eventTrackingResult.value = null
+    eventTrackingLoading.value = false
+  }
+}
+
+const generateEventTracking = () => {
+  if (!showEventTracking.value || activeSubscriptionId.value === null || eventTrackingStreaming.value) return
+
+  const requestSubscriptionId = activeSubscriptionId.value
+  abortEventTrackingStream()
+  resetEventTrackingTransientState()
+  eventTrackingStreaming.value = true
+  eventTrackingAbortController = new AbortController()
+
+  topicEventTrackingApi.generateStream(
+    requestSubscriptionId,
+    {
+      onChunk: ({ text }) => {
+        if (activeSubscriptionId.value !== requestSubscriptionId || !text) return
+        eventTrackingRaw.value += text
+        eventTrackingStreamingNodes.value = parseStreamingNodes(eventTrackingRaw.value)
+      },
+      onDone: ({ saved, message }) => {
+        if (activeSubscriptionId.value !== requestSubscriptionId) return
+        eventTrackingStreaming.value = false
+        if (saved) {
+          void loadEventTrackingLatest(true).then(() => {
+            if (activeSubscriptionId.value === requestSubscriptionId) {
+              eventTrackingRaw.value = ''
+              eventTrackingStreamingNodes.value = []
+            }
+          })
+        } else {
+          eventTrackingError.value = message || '生成失败，请稍后重试'
+        }
+      },
+      onError: ({ message }) => {
+        if (activeSubscriptionId.value !== requestSubscriptionId) return
+        eventTrackingError.value = message || '生成失败，请稍后重试'
+      }
+    },
+    eventTrackingAbortController.signal
+  )
+    .catch((error: any) => {
+      if (error?.name === 'AbortError') return
+      if (activeSubscriptionId.value === requestSubscriptionId) {
+        eventTrackingError.value = error?.message || '网络中断，请稍后重试'
+      }
+    })
+    .finally(() => {
+      if (activeSubscriptionId.value === requestSubscriptionId) {
+        eventTrackingStreaming.value = false
+        eventTrackingAbortController = null
+      }
+    })
 }
 
 const resolveSearchScope = () => {
@@ -570,6 +804,12 @@ const { sentinel } = useInfiniteScroll(loadMore, listContainer)
 
 const onSelectSubscription = (id: number | null) => {
   ui.closeDetail()
+  if (activeSubscriptionId.value !== id) {
+    feedRequestSeq++
+    resetFeed()
+    feedError.value = ''
+    feedLoading.value = false
+  }
   activeSubscriptionId.value = id
   showMobileSheet.value = false
 
@@ -779,6 +1019,7 @@ watch(activeSubscriptionId, () => {
   if (!usedCache) resetFeed()
   refreshFeed(usedCache)
   loadWordCloud()
+  syncEventTrackingForActive()
 
   if (committedQuery.value) {
     search(committedQuery.value)
@@ -797,6 +1038,7 @@ watch(
     searchQuery.value = nextQuery
     committedQuery.value = nextQuery
     await search(nextQuery)
+    syncEventTrackingForActive()
     rebuildVisibleFeedObserver()
   }
 )
@@ -836,6 +1078,7 @@ onMounted(async () => {
   rebuildVisibleFeedObserver()
 
   loadWordCloud()
+  syncEventTrackingForActive()
 
   hasInitialized.value = true
 
@@ -852,7 +1095,9 @@ onActivated(() => {
   scheduleDayRollover()
 
   applySubscriptionsCache()
-  loadSubscriptions(true)
+  loadSubscriptions(true).finally(() => {
+    syncEventTrackingForActive()
+  })
 
   if (listContainer.value && savedScrollTop.value > 0) {
     requestAnimationFrame(() => {
@@ -873,6 +1118,7 @@ onDeactivated(() => {
 
 onBeforeUnmount(() => {
   clearDayRolloverTimer()
+  abortEventTrackingStream()
   if (hoverTimer) {
     window.clearTimeout(hoverTimer)
   }
@@ -1049,7 +1295,6 @@ watch(
               class="hidden items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground transition hover:bg-muted md:inline-flex"
               :disabled="refreshing" @click="refreshAll">
               <RefreshCw class="h-3.5 w-3.5" :class="refreshing ? 'animate-spin' : ''" />
-              刷新
             </button>
           </div>
         </div>
@@ -1072,7 +1317,7 @@ watch(
         </div>
       </div>
 
-      <div ref="listContainer" class="flex-1 space-y-3 overflow-y-auto scrollbar-thin"
+      <div ref="listContainer" class="mt-3 flex-1 space-y-3 overflow-y-auto scrollbar-thin"
         @touchstart="onTimelineTouchStart" @touchmove="onTimelineTouchMove" @touchend="onTimelineTouchEnd"
         @touchcancel="onTimelineTouchEnd">
         <div class="md:hidden overflow-hidden transition-all duration-200"
@@ -1082,6 +1327,19 @@ watch(
             {{ pullIndicatorText }}
           </div>
         </div>
+
+        <TopicEventTrackerCard
+          v-if="showEventTracking"
+          :topicName="activeTopicContent"
+          :result="eventTrackingResult"
+          :streamingNodes="eventTrackingStreamingNodes"
+          :rawPreview="eventTrackingRaw"
+          :loading="eventTrackingLoading"
+          :streaming="eventTrackingStreaming"
+          :error="eventTrackingError"
+          @generate="generateEventTracking"
+          @openArticle="onOpenArticle"
+        />
         <LoadingState v-if="feedLoading && !feedList.length && !committedQuery" />
         <EmptyState v-else-if="!feedList.length && !feedLoading && !committedQuery" title="暂无内容"
           description="订阅 RSS 或创建主题以生成时间线" />

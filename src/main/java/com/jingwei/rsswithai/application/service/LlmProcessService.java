@@ -54,10 +54,10 @@ public class LlmProcessService {
     private final ArticleExtraRepository articleExtraRepository;
     private final AppConfig appConfig;
     private final ObjectMapper objectMapper;
+    private final AiChatService aiChatService;
     private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
     private final AtomicInteger currentLimit = new AtomicInteger();
     private ResizableSemaphore semaphore;
-    private OpenAiChatModel chatModel;
     private OpenAiEmbeddingModel embeddingModel;
 
     /**
@@ -76,17 +76,6 @@ public class LlmProcessService {
      */
     private void initializeOpenAiClient() {
         try {
-            OpenAiApi chatOpenAiApi = OpenAiApi.builder()
-                    .apiKey(appConfig.getLlmApiKey())
-                    .baseUrl(appConfig.getLlmBaseUrl())
-                    .build();
-
-            OpenAiChatOptions options = buildChatOptions();
-            this.chatModel = OpenAiChatModel.builder()
-                    .openAiApi(chatOpenAiApi)
-                    .defaultOptions(options)
-                    .build();
-
             OpenAiApi embeddingOpenAiApi = OpenAiApi.builder()
                     .apiKey(resolveEmbeddingApiKey())
                     .baseUrl(resolveEmbeddingBaseUrl())
@@ -119,36 +108,6 @@ public class LlmProcessService {
         return (embeddingApiKey == null || embeddingApiKey.isBlank())
                 ? appConfig.getLlmApiKey()
                 : embeddingApiKey;
-    }
-
-    /**
-     * 构建聊天选项
-     */
-    private OpenAiChatOptions buildChatOptions() {
-        OpenAiChatOptions.Builder builder = OpenAiChatOptions.builder()
-                .model(appConfig.getLanguageModel());
-
-        // 从配置中读取模型参数
-        JsonNode config = appConfig.getLlmGenModelConfig();
-        if (config != null) {
-            if (config.has("temperature")) {
-                builder.temperature(config.get("temperature").asDouble());
-            }
-            if (config.has("top_p")) {
-                builder.topP(config.get("top_p").asDouble());
-            }
-            if (config.has("max_tokens")) {
-                builder.maxTokens(config.get("max_tokens").asInt());
-            }
-            if (config.has("seed")) {
-                builder.seed(config.get("seed").asInt());
-            }
-            if (config.has("top_k")) {
-                Map<String, Object> extraBody = Map.of("topK", config.get("top_k").asInt());
-                builder.extraBody(extraBody);
-            }
-        }
-        return builder.build();
     }
 
     /**
@@ -245,9 +204,7 @@ public class LlmProcessService {
 
         try {
             Prompt prompt = buildPrompt(article);
-            ChatResponse response = chatModel.call(prompt);
-
-            String content = response.getResult().getOutput().getText();
+            String content = aiChatService.callText(prompt);
             // 解析JSON响应
             JsonNode jsonResponse = objectMapper
                     .readTree(Objects.requireNonNull(content).replace("```json", "").replace("```", ""));

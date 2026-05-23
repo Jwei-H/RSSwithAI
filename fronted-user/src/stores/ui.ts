@@ -36,12 +36,20 @@ export function useUiStore() {
     requestAnimationFrame(lockScroll)
   }
 
-  const closeDetail = () => {
+  const clearDetailState = (restoreScroll = true) => {
     const container = state.fromContainer
     const scrollTop = state.fromScrollTop
     state.articleId = null
     state.fromContainer = null
     state.fromScrollTop = 0
+
+    if (restoreScroll && container) {
+      restoreScrollPosition(container, scrollTop)
+    }
+  }
+
+  const closeDetail = () => {
+    clearDetailState(true)
 
     // 只有当 URL 中还有 articleId 时才清除（避免与浏览器后退冲突）
     if (route.query.articleId) {
@@ -50,10 +58,6 @@ export function useUiStore() {
       router.push({ path: route.path, query }).catch(() => {
         // 忽略导航被中止的错误
       })
-    }
-
-    if (container) {
-      restoreScrollPosition(container, scrollTop)
     }
   }
 
@@ -94,6 +98,7 @@ export function useUiStore() {
     },
     openDetail,
     closeDetail,
+    clearDetailState,
     restoreDetailFromUrl,
     syncWithRoute
   }

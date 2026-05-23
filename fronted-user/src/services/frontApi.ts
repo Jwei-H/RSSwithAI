@@ -1,4 +1,5 @@
 import { del, get, post, put } from './api'
+import { streamTopicEventTracking, type TopicEventTrackingStreamHandlers } from './streamApi'
 import type {
   ArticleDetail,
   ArticleExtra,
@@ -9,6 +10,7 @@ import type {
   RssSource,
   Subscription,
   Topic,
+  TopicEventTrackingResponse,
   UserProfile
 } from '../types'
 import { getIconUrl } from '../lib/utils'
@@ -38,6 +40,23 @@ export const subscriptionApi = {
     post<Subscription>('/api/front/v1/subscriptions', payload),
   remove: (id: number) => del<void>(`/api/front/v1/subscriptions/${id}`),
   createTopic: (payload: { content: string }) => post<Topic>('/api/front/v1/topics', payload)
+}
+
+export const topicEventTrackingApi = {
+  latest: (subscriptionId: number) =>
+    get<TopicEventTrackingResponse>(`/api/front/v1/subscriptions/${subscriptionId}/event-tracking`),
+  latestByTopic: (topicId: number) =>
+    get<TopicEventTrackingResponse>(`/api/front/v1/topics/${topicId}/event-tracking`),
+  generateStream: (
+    subscriptionId: number,
+    handlers: TopicEventTrackingStreamHandlers,
+    signal?: AbortSignal
+  ) => streamTopicEventTracking('subscription', subscriptionId, handlers, signal),
+  generateTopicStream: (
+    topicId: number,
+    handlers: TopicEventTrackingStreamHandlers,
+    signal?: AbortSignal
+  ) => streamTopicEventTracking('topic', topicId, handlers, signal)
 }
 
 export const feedApi = {
@@ -103,8 +122,9 @@ export const trendApi = {
     return get<{ text: string; value: number }[]>(`/api/front/v1/trends/wordcloud${query}`)
   },
   hotEvents: () => get<HotEvent[]>('/api/front/v1/trends/hotevents'),
-  hotEventArticles: (event: string, cursor?: string, size?: number) => {
+  hotEventArticles: (event: string, topicId?: number | null, cursor?: string, size?: number) => {
     const query = new URLSearchParams({ event })
+    if (topicId) query.set('topicId', String(topicId))
     if (cursor) query.set('cursor', cursor)
     if (size) query.set('size', String(size))
     return get<ArticleFeed[]>(`/api/front/v1/trends/hotevents/articles?${query.toString()}`)
