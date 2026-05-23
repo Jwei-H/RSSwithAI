@@ -44,9 +44,9 @@ import java.util.regex.Pattern;
 @Slf4j
 public class TopicEventTrackingService {
 
-    private static final int MIN_TOPIC_LENGTH = 12;
+    private static final int MIN_TOPIC_LENGTH = 6;
     private static final int MIN_CANDIDATE_COUNT = 5;
-    private static final int MAX_CANDIDATE_COUNT = 20;
+    private static final int MAX_CANDIDATE_COUNT = 30;
     private static final int MAX_NODE_COUNT = 12;
     private static final int MAX_NODE_ARTICLE_COUNT = 3;
     private static final long GENERATION_INTERVAL_HOURS = 1;

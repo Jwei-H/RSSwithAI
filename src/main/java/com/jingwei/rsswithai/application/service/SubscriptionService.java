@@ -337,7 +337,7 @@ public class SubscriptionService {
             for (int i = 0; i < topics.size(); i++) {
                 Topic topic = topics.get(i);
                 double threshold = baseThreshold;
-                if (topic.getContent() != null && topic.getContent().length() < 16) {
+                if (topic.getContent() != null && topic.getContent().length() < 6) {
                     threshold += 0.05;
                 }
                 query.setParameter("threshold" + i, threshold);
