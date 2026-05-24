@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import reactor.core.Disposable;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -44,9 +43,11 @@ import java.util.regex.Pattern;
 @Slf4j
 public class TopicEventTrackingService {
 
-    private static final int MIN_TOPIC_LENGTH = 6;
+    private static final int MIN_TOPIC_LENGTH = 12;
     private static final int MIN_CANDIDATE_COUNT = 5;
     private static final int MAX_CANDIDATE_COUNT = 30;
+    private static final int MAX_ARTICLES_PER_DAY = 5;
+    private static final int CANDIDATE_PREFETCH_COUNT = 60;
     private static final int MAX_NODE_COUNT = 12;
     private static final int MAX_NODE_ARTICLE_COUNT = 3;
     private static final long GENERATION_INTERVAL_HOURS = 1;
@@ -111,18 +112,14 @@ public class TopicEventTrackingService {
     }
 
     private void doGenerate(Long topicId, SseEmitter emitter) {
-        AtomicBoolean cleaned = new AtomicBoolean(false);
-        AtomicReference<Disposable> disposableRef = new AtomicReference<>();
+        AtomicBoolean jobFinished = new AtomicBoolean(false);
+        AtomicBoolean clientOpen = new AtomicBoolean(true);
         AtomicReference<Long> generatingTopicIdRef = new AtomicReference<>();
         StringBuilder rawOutput = new StringBuilder();
 
-        Runnable cleanup = () -> {
-            if (!cleaned.compareAndSet(false, true)) {
+        Runnable finishJob = () -> {
+            if (!jobFinished.compareAndSet(false, true)) {
                 return;
-            }
-            Disposable disposable = disposableRef.get();
-            if (disposable != null && !disposable.isDisposed()) {
-                disposable.dispose();
             }
             Long generatingTopicId = generatingTopicIdRef.get();
             if (generatingTopicId != null) {
@@ -130,12 +127,12 @@ public class TopicEventTrackingService {
             }
         };
 
-        emitter.onCompletion(cleanup);
+        emitter.onCompletion(() -> clientOpen.set(false));
         emitter.onTimeout(() -> {
-            cleanup.run();
+            clientOpen.set(false);
             emitter.complete();
         });
-        emitter.onError(error -> cleanup.run());
+        emitter.onError(error -> clientOpen.set(false));
 
         try {
             Topic topic = transactionTemplate.execute(status -> {
@@ -148,17 +145,17 @@ public class TopicEventTrackingService {
                 return freshTopic;
             });
             if (topic == null) {
-                completeWithDone(emitter, cleanup, false, "Topic 不存在");
+                completeWithDone(emitter, clientOpen, finishJob, false, "Topic 不存在");
                 return;
             }
             String topicContent = topic.getContent() == null ? "" : topic.getContent().trim();
             if (topicContent.length() < MIN_TOPIC_LENGTH) {
-                completeWithDone(emitter, cleanup, false, "Topic 内容较短，暂不支持事件追踪");
+                completeWithDone(emitter, clientOpen, finishJob, false, "Topic 内容较短，暂不支持事件追踪");
                 return;
             }
 
             if (!generatingTopicIds.add(topicId)) {
-                completeWithDone(emitter, cleanup, false, "该 Topic 正在生成事件追踪，请稍后再试");
+                completeWithDone(emitter, clientOpen, finishJob, false, "该 Topic 正在生成事件追踪，请稍后再试");
                 return;
             }
             generatingTopicIdRef.set(topicId);
@@ -176,82 +173,98 @@ public class TopicEventTrackingService {
             if (lockedTopic.getEventTrackingResult() != null
                     && lockedTopic.getUpdatedAt() != null
                     && lockedTopic.getUpdatedAt().isAfter(LocalDateTime.now().minusHours(GENERATION_INTERVAL_HOURS))) {
-                completeWithDone(emitter, cleanup, false, "距离上次生成不足 1 小时，请稍后再试");
+                completeWithDone(emitter, clientOpen, finishJob, false, "距离上次生成不足 1 小时，请稍后再试");
                 return;
             }
 
             List<TopicEventArticleInput> candidates = transactionTemplate.execute(status -> fetchCandidateArticles(lockedTopic));
             if (candidates == null || candidates.size() < MIN_CANDIDATE_COUNT) {
-                completeWithDone(emitter, cleanup, false, "相关文章不足 5 篇，暂不生成事件追踪");
+                completeWithDone(emitter, clientOpen, finishJob, false, "相关文章不足 5 篇，暂不生成事件追踪");
                 return;
             }
 
-            if (!sendEvent(emitter, "meta", Map.of("topic", topicContent, "articleCount", candidates.size()))) {
-                cleanup.run();
-                emitter.complete();
-                return;
-            }
+            sendEventIfOpen(emitter, clientOpen, "meta", Map.of("topic", topicContent, "articleCount", candidates.size()));
 
             Prompt prompt = buildPrompt(topicContent, candidates);
-            Disposable disposable = aiChatService.streamText(
+            aiChatService.streamText(
                     prompt,
                     chunk -> {
-                        if (cleaned.get()) {
+                        if (jobFinished.get()) {
                             return;
                         }
                         rawOutput.append(chunk);
-                        if (!sendEvent(emitter, "chunk", Map.of("text", chunk))) {
-                            cleanup.run();
-                            emitter.complete();
-                        }
+                        sendEventIfOpen(emitter, clientOpen, "chunk", Map.of("text", chunk));
                     },
                     () -> {
-                        if (cleaned.get()) {
+                        if (jobFinished.get()) {
                             return;
                         }
                         try {
                             TopicEventTrackingDTO.Result result = validateAndEnrich(lockedTopic, candidates, rawOutput.toString());
                             transactionTemplate.executeWithoutResult(status -> saveResult(lockedTopic.getId(), result));
-                            sendDone(emitter, true, null);
+                            sendDone(emitter, clientOpen, true, null);
                         } catch (Exception e) {
                             log.warn("Failed to validate event tracking result for topic {}", lockedTopic.getId(), e);
-                            sendDone(emitter, false, "模型输出格式无效，请重试");
+                            sendDone(emitter, clientOpen, false, "模型输出格式无效，请重试");
                         } finally {
-                            cleanup.run();
-                            emitter.complete();
+                            finishJob.run();
+                            completeEmitter(emitter, clientOpen);
                         }
                     },
                     error -> {
-                        if (cleaned.get()) {
+                        if (jobFinished.get()) {
                             return;
                         }
                         log.error("Event tracking generation failed for topic {}", lockedTopic.getId(), error);
-                        sendEvent(emitter, "error", Map.of("message", "生成失败，请稍后重试"));
-                        cleanup.run();
-                        emitter.complete();
+                        sendEventIfOpen(emitter, clientOpen, "error", Map.of("message", "生成失败，请稍后重试"));
+                        finishJob.run();
+                        completeEmitter(emitter, clientOpen);
                     }
             );
-            disposableRef.set(disposable);
         } catch (Exception e) {
             log.error("Failed to start event tracking generation", e);
-            sendEvent(emitter, "error", Map.of("message", "生成失败，请稍后重试"));
-            cleanup.run();
-            emitter.complete();
+            sendEventIfOpen(emitter, clientOpen, "error", Map.of("message", "生成失败，请稍后重试"));
+            finishJob.run();
+            completeEmitter(emitter, clientOpen);
         }
     }
 
-    private void completeWithDone(SseEmitter emitter, Runnable cleanup, boolean saved, String message) {
-        sendDone(emitter, saved, message);
-        cleanup.run();
-        emitter.complete();
+    private void completeWithDone(SseEmitter emitter,
+                                  AtomicBoolean clientOpen,
+                                  Runnable finishJob,
+                                  boolean saved,
+                                  String message) {
+        sendDone(emitter, clientOpen, saved, message);
+        finishJob.run();
+        completeEmitter(emitter, clientOpen);
     }
 
-    private void sendDone(SseEmitter emitter, boolean saved, String message) {
+    private void sendDone(SseEmitter emitter, AtomicBoolean clientOpen, boolean saved, String message) {
         if (saved) {
-            sendEvent(emitter, "done", Map.of("saved", true));
+            sendEventIfOpen(emitter, clientOpen, "done", Map.of("saved", true));
             return;
         }
-        sendEvent(emitter, "done", Map.of("saved", false, "message", Objects.requireNonNullElse(message, "生成失败，请稍后重试")));
+        sendEventIfOpen(emitter, clientOpen, "done", Map.of("saved", false, "message", Objects.requireNonNullElse(message, "生成失败，请稍后重试")));
+    }
+
+    private void sendEventIfOpen(SseEmitter emitter, AtomicBoolean clientOpen, String name, Object data) {
+        if (!clientOpen.get()) {
+            return;
+        }
+        if (!sendEvent(emitter, name, data)) {
+            clientOpen.set(false);
+        }
+    }
+
+    private void completeEmitter(SseEmitter emitter, AtomicBoolean clientOpen) {
+        if (!clientOpen.compareAndSet(true, false)) {
+            return;
+        }
+        try {
+            emitter.complete();
+        } catch (IllegalStateException e) {
+            log.debug("SSE complete failed", e);
+        }
     }
 
     private boolean sendEvent(SseEmitter emitter, String name, Object data) {
@@ -278,21 +291,32 @@ public class TopicEventTrackingService {
             return List.of();
         }
 
-        String sql = "SELECT a.id, a.title, a.description, a.cover_image, a.pub_date, ae.overview, "
-                + "COALESCE(array_to_json(ae.key_information)::text, '[]') AS key_information_json "
+        String sql = "WITH candidates AS ("
+                + "SELECT a.id, a.title, a.link, a.guid, a.description, a.cover_image, a.pub_date, ae.overview, "
+                + "COALESCE(array_to_json(ae.key_information)::text, '[]') AS key_information_json, "
+                + "(ae.vector <=> CAST(:topicVector AS vector)) AS distance, CAST(a.pub_date AS date) AS pub_day "
                 + "FROM articles a "
                 + "JOIN article_extra ae ON ae.article_id = a.id "
                 + "WHERE ae.vector IS NOT NULL "
                 + "AND ae.status = 'SUCCESS' "
                 + "AND a.pub_date IS NOT NULL "
-                + "AND (ae.vector <=> CAST(:topicVector AS vector)) < :threshold "
-                + "ORDER BY a.pub_date DESC, a.id DESC "
+                + "AND (ae.vector <=> CAST(:topicVector AS vector)) < :threshold"
+                + "), daily_ranked AS ("
+                + "SELECT *, ROW_NUMBER() OVER ("
+                + "PARTITION BY pub_day ORDER BY distance ASC, pub_date DESC, id DESC"
+                + ") AS day_rank FROM candidates"
+                + ") "
+                + "SELECT id, title, link, guid, description, cover_image, pub_date, overview, key_information_json "
+                + "FROM daily_ranked "
+                + "WHERE day_rank <= :dailyLimit "
+                + "ORDER BY pub_date DESC, distance ASC, id DESC "
                 + "LIMIT :limit";
 
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("topicVector", toPgVectorLiteral(topic.getVector()));
         query.setParameter("threshold", resolveThreshold(topic));
-        query.setParameter("limit", MAX_CANDIDATE_COUNT);
+        query.setParameter("dailyLimit", MAX_ARTICLES_PER_DAY);
+        query.setParameter("limit", CANDIDATE_PREFETCH_COUNT);
 
         List<?> rows = query.getResultList();
         List<TopicEventArticleInput> result = new ArrayList<>(rows.size());
@@ -304,7 +328,7 @@ public class TopicEventTrackingService {
                 }
             }
         }
-        return result;
+        return deduplicateCandidates(result);
     }
 
     private double resolveThreshold(Topic topic) {
@@ -318,7 +342,7 @@ public class TopicEventTrackingService {
     private TopicEventArticleInput mapCandidate(Object[] columns) {
         Long id = columns[0] != null ? ((Number) columns[0]).longValue() : null;
         String title = columns[1] != null ? columns[1].toString() : null;
-        LocalDateTime pubDate = toLocalDateTime(columns[4]);
+        LocalDateTime pubDate = toLocalDateTime(columns[6]);
         if (id == null || title == null || title.isBlank() || pubDate == null) {
             return null;
         }
@@ -328,10 +352,63 @@ public class TopicEventTrackingService {
                 title,
                 columns[2] != null ? columns[2].toString() : null,
                 columns[3] != null ? columns[3].toString() : null,
-                pubDate,
+                columns[4] != null ? columns[4].toString() : null,
                 columns[5] != null ? columns[5].toString() : null,
-                parseKeyInformation(columns[6])
+                pubDate,
+                columns[7] != null ? columns[7].toString() : null,
+                parseKeyInformation(columns[8])
         );
+    }
+
+    private List<TopicEventArticleInput> deduplicateCandidates(List<TopicEventArticleInput> candidates) {
+        Set<String> links = new java.util.HashSet<>();
+        Set<String> guids = new java.util.HashSet<>();
+        Set<String> titles = new java.util.HashSet<>();
+        List<TopicEventArticleInput> result = new ArrayList<>(Math.min(MAX_CANDIDATE_COUNT, candidates.size()));
+
+        for (TopicEventArticleInput candidate : candidates) {
+            String link = normalizeDedupKey(candidate.link());
+            String guid = normalizeDedupKey(candidate.guid());
+            String title = normalizeDedupKey(candidate.title());
+
+            boolean duplicated = (!link.isEmpty() && links.contains(link))
+                    || (!guid.isEmpty() && guids.contains(guid))
+                    || (!title.isEmpty() && titles.contains(title));
+            registerDedupKeys(links, guids, titles, link, guid, title);
+            if (duplicated) {
+                continue;
+            }
+
+            result.add(candidate);
+            if (result.size() >= MAX_CANDIDATE_COUNT) {
+                break;
+            }
+        }
+        return result;
+    }
+
+    private void registerDedupKeys(Set<String> links,
+                                   Set<String> guids,
+                                   Set<String> titles,
+                                   String link,
+                                   String guid,
+                                   String title) {
+        if (!link.isEmpty()) {
+            links.add(link);
+        }
+        if (!guid.isEmpty()) {
+            guids.add(guid);
+        }
+        if (!title.isEmpty()) {
+            titles.add(title);
+        }
+    }
+
+    private String normalizeDedupKey(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replaceAll("\\s+", " ").toLowerCase(java.util.Locale.ROOT);
     }
 
     private LocalDateTime toLocalDateTime(Object value) {
@@ -551,6 +628,8 @@ public class TopicEventTrackingService {
     private record TopicEventArticleInput(
             Long id,
             String title,
+            String link,
+            String guid,
             String description,
             String coverImage,
             LocalDateTime pubDate,
