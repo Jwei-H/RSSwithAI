@@ -77,16 +77,7 @@ const emptyResult = computed(() => hasResult.value && displayNodes.value.length 
           <span v-if="generatedAtText"> · {{ generatedAtText }}</span>
         </p>
       </div>
-      <div class="flex shrink-0 items-center gap-2">
-        <button
-          v-if="collapsible"
-          class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          @click="collapsed = !collapsed"
-        >
-          <ChevronDown v-if="collapsed" class="h-3.5 w-3.5" />
-          <ChevronUp v-else class="h-3.5 w-3.5" />
-          {{ collapsed ? '展开' : '收起' }}
-        </button>
+      <div class="flex shrink-0 flex-col items-end gap-2">
         <button
           class="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition disabled:cursor-not-allowed disabled:opacity-60"
           :disabled="loading || streaming"
@@ -96,6 +87,15 @@ const emptyResult = computed(() => hasResult.value && displayNodes.value.length 
           <RefreshCw v-else-if="hasResult" class="h-3.5 w-3.5" />
           <Sparkles v-else class="h-3.5 w-3.5" />
           {{ hasResult ? '重新生成' : '追踪事件' }}
+        </button>
+        <button
+          v-if="collapsible"
+          class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-2 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          @click="collapsed = !collapsed"
+        >
+          <ChevronDown v-if="collapsed" class="h-3.5 w-3.5" />
+          <ChevronUp v-else class="h-3.5 w-3.5" />
+          {{ collapsed ? '展开' : '收起' }}
         </button>
       </div>
     </div>
