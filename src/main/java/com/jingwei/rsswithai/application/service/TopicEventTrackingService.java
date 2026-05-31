@@ -34,8 +34,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 @Service
@@ -107,32 +105,12 @@ public class TopicEventTrackingService {
 
     public SseEmitter generateByTopicId(Long topicId) {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
-        Thread.ofVirtual().start(() -> doGenerate(topicId, emitter));
+        doGenerate(topicId, emitter);
         return emitter;
     }
 
     private void doGenerate(Long topicId, SseEmitter emitter) {
-        AtomicBoolean jobFinished = new AtomicBoolean(false);
-        AtomicBoolean clientOpen = new AtomicBoolean(true);
-        AtomicReference<Long> generatingTopicIdRef = new AtomicReference<>();
         StringBuilder rawOutput = new StringBuilder();
-
-        Runnable finishJob = () -> {
-            if (!jobFinished.compareAndSet(false, true)) {
-                return;
-            }
-            Long generatingTopicId = generatingTopicIdRef.get();
-            if (generatingTopicId != null) {
-                generatingTopicIds.remove(generatingTopicId);
-            }
-        };
-
-        emitter.onCompletion(() -> clientOpen.set(false));
-        emitter.onTimeout(() -> {
-            clientOpen.set(false);
-            emitter.complete();
-        });
-        emitter.onError(error -> clientOpen.set(false));
 
         try {
             Topic topic = transactionTemplate.execute(status -> {
@@ -145,135 +123,101 @@ public class TopicEventTrackingService {
                 return freshTopic;
             });
             if (topic == null) {
-                completeWithDone(emitter, clientOpen, finishJob, false, "Topic 不存在");
+                completeWithDone(emitter, false, "Topic 不存在");
                 return;
             }
             String topicContent = topic.getContent() == null ? "" : topic.getContent().trim();
             if (topicContent.length() < MIN_TOPIC_LENGTH) {
-                completeWithDone(emitter, clientOpen, finishJob, false, "Topic 内容较短，暂不支持事件追踪");
+                completeWithDone(emitter, false, "Topic 内容较短，暂不支持事件追踪");
                 return;
             }
 
             if (!generatingTopicIds.add(topicId)) {
-                completeWithDone(emitter, clientOpen, finishJob, false, "该 Topic 正在生成事件追踪，请稍后再试");
-                return;
-            }
-            generatingTopicIdRef.set(topicId);
-
-            Topic lockedTopic = transactionTemplate.execute(status -> {
-                Topic freshTopic = topicRepository.findById(topicId)
-                        .orElseThrow(() -> new EntityNotFoundException("Topic not found: " + topicId));
-                freshTopic.getContent();
-                freshTopic.getVector();
-                freshTopic.getEventTrackingResult();
-                freshTopic.getUpdatedAt();
-                return freshTopic;
-            });
-
-            if (lockedTopic.getEventTrackingResult() != null
-                    && lockedTopic.getUpdatedAt() != null
-                    && lockedTopic.getUpdatedAt().isAfter(LocalDateTime.now().minusHours(GENERATION_INTERVAL_HOURS))) {
-                completeWithDone(emitter, clientOpen, finishJob, false, "距离上次生成不足 1 小时，请稍后再试");
+                completeWithDone(emitter, false, "该 Topic 正在生成事件追踪，请稍后再试");
                 return;
             }
 
-            List<TopicEventArticleInput> candidates = transactionTemplate.execute(status -> fetchCandidateArticles(lockedTopic));
-            if (candidates == null || candidates.size() < MIN_CANDIDATE_COUNT) {
-                completeWithDone(emitter, clientOpen, finishJob, false, "相关文章不足 5 篇，暂不生成事件追踪");
-                return;
+            try {
+                Topic lockedTopic = transactionTemplate.execute(status -> {
+                    Topic freshTopic = topicRepository.findById(topicId)
+                            .orElseThrow(() -> new EntityNotFoundException("Topic not found: " + topicId));
+                    freshTopic.getContent();
+                    freshTopic.getVector();
+                    freshTopic.getEventTrackingResult();
+                    freshTopic.getUpdatedAt();
+                    return freshTopic;
+                });
+
+                if (lockedTopic.getEventTrackingResult() != null
+                        && lockedTopic.getUpdatedAt() != null
+                        && lockedTopic.getUpdatedAt().isAfter(LocalDateTime.now().minusHours(GENERATION_INTERVAL_HOURS))) {
+                    completeWithDone(emitter, false, "距离上次生成不足 1 小时，请稍后再试");
+                    return;
+                }
+
+                List<TopicEventArticleInput> candidates = transactionTemplate.execute(status -> fetchCandidateArticles(lockedTopic));
+                if (candidates == null || candidates.size() < MIN_CANDIDATE_COUNT) {
+                    completeWithDone(emitter, false, "相关文章不足 5 篇，暂不生成事件追踪");
+                    return;
+                }
+
+                trySendEvent(emitter, "meta", Map.of("topic", topicContent, "articleCount", candidates.size()));
+
+                Prompt prompt = buildPrompt(topicContent, candidates);
+                aiChatService.streamTextSync(
+                        prompt,
+                        chunk -> {
+                            rawOutput.append(chunk);
+                            trySendEvent(emitter, "chunk", Map.of("text", chunk));
+                        },
+                        () -> {
+                            try {
+                                TopicEventTrackingDTO.Result result = validateAndEnrich(lockedTopic, candidates, rawOutput.toString());
+                                transactionTemplate.executeWithoutResult(status -> saveResult(lockedTopic.getId(), result));
+                                trySendEvent(emitter, "done", Map.of("saved", true));
+                            } catch (Exception e) {
+                                log.warn("Failed to validate event tracking result for topic {}", lockedTopic.getId(), e);
+                                trySendEvent(emitter, "done", Map.of("saved", false, "message", "模型输出格式无效，请重试"));
+                            }
+                        },
+                        error -> {
+                            log.error("Event tracking generation failed for topic {}", lockedTopic.getId(), error);
+                            trySendEvent(emitter, "error", Map.of("message", "生成失败，请稍后重试"));
+                        }
+                );
+            } finally {
+                generatingTopicIds.remove(topicId);
             }
-
-            sendEventIfOpen(emitter, clientOpen, "meta", Map.of("topic", topicContent, "articleCount", candidates.size()));
-
-            Prompt prompt = buildPrompt(topicContent, candidates);
-            aiChatService.streamText(
-                    prompt,
-                    chunk -> {
-                        if (jobFinished.get()) {
-                            return;
-                        }
-                        rawOutput.append(chunk);
-                        sendEventIfOpen(emitter, clientOpen, "chunk", Map.of("text", chunk));
-                    },
-                    () -> {
-                        if (jobFinished.get()) {
-                            return;
-                        }
-                        try {
-                            TopicEventTrackingDTO.Result result = validateAndEnrich(lockedTopic, candidates, rawOutput.toString());
-                            transactionTemplate.executeWithoutResult(status -> saveResult(lockedTopic.getId(), result));
-                            sendDone(emitter, clientOpen, true, null);
-                        } catch (Exception e) {
-                            log.warn("Failed to validate event tracking result for topic {}", lockedTopic.getId(), e);
-                            sendDone(emitter, clientOpen, false, "模型输出格式无效，请重试");
-                        } finally {
-                            finishJob.run();
-                            completeEmitter(emitter, clientOpen);
-                        }
-                    },
-                    error -> {
-                        if (jobFinished.get()) {
-                            return;
-                        }
-                        log.error("Event tracking generation failed for topic {}", lockedTopic.getId(), error);
-                        sendEventIfOpen(emitter, clientOpen, "error", Map.of("message", "生成失败，请稍后重试"));
-                        finishJob.run();
-                        completeEmitter(emitter, clientOpen);
-                    }
-            );
         } catch (Exception e) {
             log.error("Failed to start event tracking generation", e);
-            sendEventIfOpen(emitter, clientOpen, "error", Map.of("message", "生成失败，请稍后重试"));
-            finishJob.run();
-            completeEmitter(emitter, clientOpen);
+            trySendEvent(emitter, "error", Map.of("message", "生成失败，请稍后重试"));
+        } finally {
+            completeEmitter(emitter);
         }
     }
 
-    private void completeWithDone(SseEmitter emitter,
-                                  AtomicBoolean clientOpen,
-                                  Runnable finishJob,
-                                  boolean saved,
-                                  String message) {
-        sendDone(emitter, clientOpen, saved, message);
-        finishJob.run();
-        completeEmitter(emitter, clientOpen);
-    }
-
-    private void sendDone(SseEmitter emitter, AtomicBoolean clientOpen, boolean saved, String message) {
+    private void completeWithDone(SseEmitter emitter, boolean saved, String message) {
         if (saved) {
-            sendEventIfOpen(emitter, clientOpen, "done", Map.of("saved", true));
-            return;
+            trySendEvent(emitter, "done", Map.of("saved", true));
+        } else {
+            trySendEvent(emitter, "done", Map.of("saved", false, "message", Objects.requireNonNullElse(message, "生成失败，请稍后重试")));
         }
-        sendEventIfOpen(emitter, clientOpen, "done", Map.of("saved", false, "message", Objects.requireNonNullElse(message, "生成失败，请稍后重试")));
+        completeEmitter(emitter);
     }
 
-    private void sendEventIfOpen(SseEmitter emitter, AtomicBoolean clientOpen, String name, Object data) {
-        if (!clientOpen.get()) {
-            return;
-        }
-        if (!sendEvent(emitter, name, data)) {
-            clientOpen.set(false);
+    private void trySendEvent(SseEmitter emitter, String name, Object data) {
+        try {
+            emitter.send(SseEmitter.event().name(name).data(data));
+        } catch (IOException | IllegalStateException e) {
+            log.debug("SSE send failed: event={}", name, e);
         }
     }
 
-    private void completeEmitter(SseEmitter emitter, AtomicBoolean clientOpen) {
-        if (!clientOpen.compareAndSet(true, false)) {
-            return;
-        }
+    private void completeEmitter(SseEmitter emitter) {
         try {
             emitter.complete();
         } catch (IllegalStateException e) {
             log.debug("SSE complete failed", e);
-        }
-    }
-
-    private boolean sendEvent(SseEmitter emitter, String name, Object data) {
-        try {
-            emitter.send(SseEmitter.event().name(name).data(data));
-            return true;
-        } catch (IOException | IllegalStateException e) {
-            log.debug("SSE send failed: event={}", name, e);
-            return false;
         }
     }
 

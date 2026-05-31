@@ -68,6 +68,32 @@ public class AiChatService {
                 );
     }
 
+    /**
+     * Synchronous streaming: blocks the current thread and invokes onChunk for each token,
+     * then onComplete when done, or onError on failure.
+     */
+    public void streamTextSync(
+            Prompt prompt,
+            Consumer<String> onChunk,
+            Runnable onComplete,
+            Consumer<Throwable> onError
+    ) {
+        OpenAiChatModel model = requireChatModel();
+        try {
+            model.stream(prompt)
+                    .toStream()
+                    .forEach(response -> {
+                        String text = extractText(response);
+                        if (text != null && !text.isEmpty()) {
+                            onChunk.accept(text);
+                        }
+                    });
+            onComplete.run();
+        } catch (Exception e) {
+            onError.accept(e);
+        }
+    }
+
     private OpenAiChatModel requireChatModel() {
         OpenAiChatModel model = chatModel;
         if (model == null) {
