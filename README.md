@@ -1,150 +1,189 @@
-# RSSwithAI - 智能情报收集与分析系统
+# RSSwithAI
 
-RSSwithAI 是一个基于 RSS 信息源的智能情报收集、分析与展示系统。它将传统的信息聚合技术与前沿的 AI 分析能力（LLM + 向量检索）深度结合，构建了一个从"信息采集"到"智能分析"再到"精准展示"的全流程自动化情报平台。
+RSSwithAI 是一个 RSS 信息收集、分析和阅读系统。项目包含一个 Spring Boot 后端、一个面向普通用户的前台页面，以及一个用于配置和管理的后台页面。
 
-欢迎在线使用: [rssflow.top](https://rssflow.top)
+在线地址：[rssflow.top](https://rssflow.top)
 
-## 🌟 核心特性
+## 功能概览
 
-### 1. 智能采集与管理
-- **多源支持**：支持标准 RSS 及 RSSHub 源。
-- **自动化调度**：内置定时任务，自动抓取最新内容，支持失败重试与手动触发。
-- **内容清洗**：HTML转Markdown，提取纯净正文。
+### 前台用户端
 
-### 2. AI 深度增强 (LLM)
-- **自动摘要**：为每篇文章生成 80 字以内的精炼概览。
-- **关键信息提取**：自动提炼 1-3 条核心情报。
-- **智能标签**：自动生成 5 个左右的语义标签。
-- **向量化处理**：生成文章的 1024 维向量表示，赋能语义搜索与推荐。
+- 账号注册、登录、Token 刷新和个人资料管理。
+- 浏览可用 RSS 源，订阅或取消订阅 RSS 源。
+- 创建 Topic 主题订阅，基于文章向量召回相关内容。
+- 查看混合时间线：合并 RSS 订阅文章和 Topic 语义匹配文章。
+- 查看文章详情、AI 生成的概览、关键信息、标签和补充目录。
+- 搜索文章，支持全局、订阅范围和收藏范围。
+- 收藏文章，查看收藏列表。
+- 查看关键词云、热点事件，以及热点事件关联文章。
+- 对 Topic 订阅生成事件追踪时间线。
 
-### 3. 下一代订阅体验
-- **混合订阅模式**：支持传统的 **RSS 源订阅** 和创新的 **语义主题 (Topic) 订阅**。
-- **混合时间线 (Hybrid Feed)**：在一个时间流中同时展示订阅源的更新和符合用户关注主题（语义匹配）的全网文章。
-- **智能去重与排序**：基于发布时间和语义相关性进行智能排序。
+### 后台管理端
 
-### 4. 热点趋势分析
-- **智能词云**：基于订阅源或全局数据生成关键词云，利用 LLM 清洗同义词。
-- **全网热点事件**：采用 Map-Reduce 架构，利用 AI 从海量碎片信息中聚合、打分并生成全球热点事件榜单。
+- 管理 RSS 源，支持标准 RSS 和 RSSHub 类型。
+- 定时抓取 RSS 内容，支持失败重试和手动抓取。
+- 查询文章、查看统计信息、重新生成文章增强信息。
+- 配置 LLM、Embedding 模型、RSSHub 地址、抓取间隔、并发数等系统参数。
+- 管理模型参数和 Prompt 模板版本。
+- 创建分析实验，记录模型响应、Token 消耗和执行耗时。
 
-### 5. 实验与优化
-- **Prompt 实验室**：支持创建对比实验，测试不同模型和 Prompt 对分析结果的影响。
-- **动态配置**：支持 LLM 参数（Temperature, Top-P 等）和系统配置的热更新，无需重启。
+### AI 处理能力
 
----
+- 为文章生成概览、关键信息、标签和补充目录。
+- 为文章和 Topic 生成向量，用于语义检索、推荐和订阅匹配。
+- 对标签进行聚合清洗，用于关键词云。
+- 从文章集合中提取热点事件。
 
-## 🏗 系统架构
+AI 相关能力依赖管理端中的 LLM 与 Embedding 配置。未配置时，RSS 源管理、普通文章浏览等基础功能仍可使用，但内容增强、语义检索、趋势分析和事件追踪会受影响。
 
-系统采用 **"采集 (Collector) — 分析 (Analyzer) — 展示 (Presenter)"** 三层架构模型，并基于 **事件驱动 (Event-Driven)** 机制解耦各模块。
+## 技术栈
 
-### 技术栈
+- 后端：Java 25、Spring Boot 4、Spring Data JPA、Spring AI
+- 数据库：PostgreSQL 17、pgvector
+- 前端：Vue 3、Vite、TypeScript、Tailwind CSS
+- 部署：Docker Compose、Nginx
 
-#### 后端 (Backend)
-- **核心框架**: Spring Boot 4
-- **开发语言**: Java 25
-- **数据库**: PostgreSQL 17 + pgvector
+## 项目结构
 
-#### 前端 
-- **框架**: Vue 3 + Vite
-- **UI 库**: TailwindCSS v4
-
----
-
-## 📂 项目结构
-
-```
+```text
 RSSwithAI/
-├── src/                # 后端 Java 源码 (Spring Boot)
-├── fronted-user/       # 前台用户端源码 (Vue 3)
-├── fronted-admin/      # 后台管理端源码 (Vue 3)
-├── doc/                # 项目文档
-├── pom.xml             # Maven 依赖配置
-└── README.md           # 项目说明
+├── src/                 # 后端源码
+├── fronted-user/        # 前台用户端
+├── fronted-admin/       # 后台管理端
+├── deploy/              # Docker 镜像和 Nginx 配置
+├── doc/                 # 模块说明文档
+├── docker-compose.yml   # 容器编排配置
+└── pom.xml              # Maven 配置
 ```
 
----
+更详细的模块设计见 `doc/`。若文档与代码不一致，以当前代码为准。
 
-## 🚀 快速开始
+## Docker 部署
 
-### Docker部署(推荐)
+### 1. 准备环境
+
+需要安装：
+
+- Docker
+- Docker Compose
+
+### 2. 克隆项目
 
 ```bash
-# 克隆仓库
 git clone https://github.com/Jwei-H/RSSwithAI.git
 cd RSSwithAI
+```
 
-# 配置环境变量
-cp .env.example .env && vim .env
+### 3. 配置环境变量
 
-# 启动项目
+```bash
+cp .env.example .env
+```
+
+使用内置 PostgreSQL 时，建议将 `.env` 配置为：
+
+```env
+COMPOSE_PROFILES=postgres
+SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/rsswithai
+DB_USERNAME=rsswithai
+DB_PASSWORD=change_this_password
+POSTGRES_DB=rsswithai
+```
+
+使用外部 PostgreSQL 时：
+
+```env
+COMPOSE_PROFILES=
+SPRING_DATASOURCE_URL=jdbc:postgresql://your_db_host:5432/rsswithai
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+POSTGRES_DB=rsswithai
+```
+
+外部 PostgreSQL 需要提前安装并启用 `pgvector`：
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+### 4. 启动服务
+
+内置 PostgreSQL：
+
+```bash
+docker compose --profile postgres up -d --build
+```
+
+外部 PostgreSQL：
+
+```bash
 docker compose up -d --build
 ```
 
-`.env` 支持两种数据库模式（二选一）：
+### 5. 访问地址
 
-1. **内置 PostgreSQL（默认）**
-   - `COMPOSE_PROFILES=postgres`
-   - 可使用 `docker-compose.yml` 中的默认值，或在 `.env` 自定义 `DB_USERNAME` / `DB_PASSWORD` / `POSTGRES_DB`
+- 用户端：`http://localhost:5777`
+- 管理端：`http://localhost:5173`
+- 后端 API：`http://localhost:9090`
 
-2. **外部 PostgreSQL**
-   - `COMPOSE_PROFILES=`（留空）
-   - 设置 `SPRING_DATASOURCE_URL` 为你自己的数据库地址
-   - 设置 `DB_USERNAME` / `DB_PASSWORD`
+默认管理账号来自系统配置，未修改时为：
 
-用户端默认运行在 `http://localhost:5777`。
-管理端默认运行在 `http://localhost:5173`。
-- **用户名**: `admin`
-- **密码**: `admin`
-*(请在首次登录管理端后通过“个人中心”修改密码)*
+- 用户名：`admin`
+- 密码：`admin`
 
-### 本地开发
+首次部署后建议先登录管理端，修改管理员用户名和密码，并配置 LLM 与 Embedding 参数。
 
-#### 1. 环境准备
+## 本地开发
 
-- **JDK**: Java 25
-- **Database**: PostgreSQL 17 (必须安装 `vector` 扩展，[参考](https://github.com/pgvector/pgvector))
-- **Node.js**: v18+ (用于前端构建)
-- **Maven**: 3.x
+### 1. 环境要求
 
-#### 2. 数据库配置
+- JDK 25
+- Maven 3.9+
+- Node.js 22+
+- PostgreSQL 17，并启用 `pgvector`
 
-1. 创建数据库：
-   ```sql
-   CREATE DATABASE rsswithai;
-   ```
-
-2. 启用 pgvector 扩展：
-   ```sql
-   CREATE EXTENSION vector;
-   ```
-
-3. 修改后端配置 (`src/main/resources/application.properties`)：
-   ```properties
-   spring.datasource.url=jdbc:postgresql://localhost:5432/rsswithai
-   spring.datasource.username=your_username
-   spring.datasource.password=your_password
-   ```
-
-#### 3. 启动后端服务
+### 2. 启动后端
 
 ```bash
+export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/rsswithai
+export DB_USERNAME=your_username
+export DB_PASSWORD=your_password
+export JWT_SECRET=replace_with_a_random_secret
 mvn spring-boot:run
 ```
-服务默认运行在 `http://localhost:8080`。
 
-#### 4. 启动前端服务
+后端默认监听 `http://localhost:8080`。
 
-**启动用户端 (User App):**
+### 3. 启动前台用户端
+
 ```bash
 cd fronted-user
 npm install
-npm run dev
+VITE_API_BASE_URL=http://localhost:8080 npm run dev
 ```
-用户端默认运行在 `http://localhost:5777`。
 
-**启动管理端 (Admin Panel):**
+用户端默认监听 `http://localhost:5777`。
+
+### 4. 启动后台管理端
+
 ```bash
 cd fronted-admin
 npm install
-npm run dev
+VITE_API_BASE_URL=http://localhost:8080 npm run dev
 ```
-管理端默认运行在 `http://localhost:5173`。
+
+管理端默认监听 `http://localhost:5173`。
+
+## 常用配置
+
+管理端支持维护运行时配置，主要包括：
+
+- `llm_base_url`、`llm_api_key`、`language_model_id`
+- `embedding_base_url`、`embedding_api_key`、`embedding_model_id`
+- `rsshub_host`
+- `collector_fetch_interval`、`collector_fetch_timeout`、`collector_fetch_max_retries`
+- `concurrent_limit`
+- `subscription_topic_threshold`
+- `trends_word_cloud_frequency_hours`
+
+配置保存在数据库中，部分配置更新后会触发服务内的客户端或调度逻辑刷新。
