@@ -1,32 +1,19 @@
 package com.jingwei.rsswithai.application.service;
 
 import com.jingwei.rsswithai.application.Event.ArticleProcessEvent;
-import com.jingwei.rsswithai.application.Event.ConfigUpdateEvent;
 import com.jingwei.rsswithai.config.AppConfig;
 import com.jingwei.rsswithai.domain.model.AnalysisStatus;
 import com.jingwei.rsswithai.domain.model.Article;
 import com.jingwei.rsswithai.domain.model.ArticleExtra;
 import com.jingwei.rsswithai.domain.repository.ArticleExtraRepository;
 import com.jingwei.rsswithai.domain.repository.ArticleRepository;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.ai.document.MetadataMode;
-import org.springframework.ai.embedding.EmbeddingResponse;
-import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.OpenAiEmbeddingModel;
-import org.springframework.ai.openai.OpenAiEmbeddingOptions;
-import org.springframework.ai.openai.api.OpenAiApi;
-import org.springframework.ai.retry.RetryUtils;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -37,8 +24,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * LLM处理服务
@@ -56,59 +41,6 @@ public class LlmProcessService {
     private final ObjectMapper objectMapper;
     private final AiChatService aiChatService;
     private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
-    private final AtomicInteger currentLimit = new AtomicInteger();
-    private ResizableSemaphore semaphore;
-    private OpenAiEmbeddingModel embeddingModel;
-
-    /**
-     * 初始化时创建AI客户端和信号量
-     */
-    @PostConstruct
-    public void init() {
-        int limit = appConfig.getConcurrentLimit();
-        currentLimit.set(limit);
-        semaphore = new ResizableSemaphore(limit);
-        initializeOpenAiClient();
-    }
-
-    /**
-     * 初始化OpenAI客户端
-     */
-    private void initializeOpenAiClient() {
-        try {
-            OpenAiApi embeddingOpenAiApi = OpenAiApi.builder()
-                    .apiKey(resolveEmbeddingApiKey())
-                    .baseUrl(resolveEmbeddingBaseUrl())
-                    .build();
-
-            this.embeddingModel = new OpenAiEmbeddingModel(
-                    embeddingOpenAiApi,
-                    MetadataMode.EMBED,
-                    OpenAiEmbeddingOptions.builder()
-                            .model(appConfig.getEmbeddingModel())
-                            .dimensions(1024)
-                            .build(),
-                    RetryUtils.DEFAULT_RETRY_TEMPLATE);
-
-            log.info("OpenAI client initialized successfully");
-        } catch (Exception e) {
-            log.error("Failed to initialize OpenAI client", e);
-        }
-    }
-
-    private String resolveEmbeddingBaseUrl() {
-        String embeddingBaseUrl = appConfig.getEmbeddingBaseUrl();
-        return (embeddingBaseUrl == null || embeddingBaseUrl.isBlank())
-                ? appConfig.getLlmBaseUrl()
-                : embeddingBaseUrl;
-    }
-
-    private String resolveEmbeddingApiKey() {
-        String embeddingApiKey = appConfig.getEmbeddingApiKey();
-        return (embeddingApiKey == null || embeddingApiKey.isBlank())
-                ? appConfig.getLlmApiKey()
-                : embeddingApiKey;
-    }
 
     /**
      * 监听文章处理事件
@@ -121,49 +53,19 @@ public class LlmProcessService {
     }
 
     /**
-     * 监听配置更新事件
-     */
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void onConfigUpdateEvent(ConfigUpdateEvent event) {
-        log.info("Received config update event, reinitializing OpenAI client");
-
-        // 重建API客户端
-        initializeOpenAiClient();
-
-        // 调整信号量大小
-        int newLimit = appConfig.getConcurrentLimit();
-        int oldLimit = currentLimit.getAndSet(newLimit);
-        int delta = newLimit - oldLimit;
-
-        if (delta > 0) {
-            semaphore.release(delta);
-        } else if (delta < 0) {
-            semaphore.reduce(-delta);
-        }
-
-        log.info("Concurrent limit updated to: {}", newLimit);
-    }
-
-    /**
      * 异步处理文章增强任务
      */
     private void processArticleAsync(Long articleId) {
         try {
-            // 获取许可，控制并发
-            semaphore.acquire();
-            // log.debug("Acquired semaphore permit for article: {}", articleId);
-
             // 检查是否已处理过
             if (articleExtraRepository.existsByArticleId(articleId)) {
                 log.info("Article {} already processed, skipping", articleId);
-                semaphore.release();
                 return;
             }
 
             Article article = articleRepository.findById(articleId).orElse(null);
             if (article == null) {
                 log.warn("Article not found: {}", articleId);
-                semaphore.release();
                 return;
             }
 
@@ -176,9 +78,9 @@ public class LlmProcessService {
             if (articleExtra.getOverview() != null && !articleExtra.getOverview().isBlank()) {
                 String vectorText = articleExtra.getOverview() + "\n" +
                         String.join("\n", articleExtra.getKeyInformation());
-                articleExtra.setVector(generateVector(vectorText));
+                articleExtra.setVector(aiChatService.generateVector(vectorText));
             } else {
-                articleExtra.setVector(generateVector(article.getTitle()));
+                articleExtra.setVector(aiChatService.generateVector(article.getTitle()));
             }
 
             // 保存结果
@@ -188,9 +90,6 @@ public class LlmProcessService {
         } catch (Exception e) {
             log.error("Error processing article {}", articleId, e);
             saveFailedResult(articleId, e.getMessage());
-        } finally {
-            semaphore.release();
-            // log.debug("Released semaphore permit for article: {}", articleId);
         }
     }
 
@@ -278,19 +177,6 @@ public class LlmProcessService {
     }
 
     /**
-     * 生成向量表示
-     */
-    public float[] generateVector(String text) {
-        try {
-            EmbeddingResponse embeddingResponse = embeddingModel.embedForResponse(List.of(text));
-            return embeddingResponse.getResult().getOutput();
-        } catch (Exception e) {
-            log.error("Error generating vector for text", e);
-        }
-        return null;
-    }
-
-    /**
      * 保存失败结果
      */
     private void saveFailedResult(Long articleId, String errorMessage) {
@@ -312,7 +198,6 @@ public class LlmProcessService {
 
     public void regenerateArticleExtra(Long articleId) {
         try {
-            semaphore.acquire();
             articleExtraRepository.deleteByArticleId(articleId);
             log.info("Cleaned up existing article extra for article: {}", articleId);
 
@@ -327,9 +212,9 @@ public class LlmProcessService {
             if (articleExtra.getOverview() != null && !articleExtra.getOverview().isBlank()) {
                 String vectorText = articleExtra.getOverview() + "\n" +
                         String.join("\n", articleExtra.getKeyInformation());
-                articleExtra.setVector(generateVector(vectorText));
+                articleExtra.setVector(aiChatService.generateVector(vectorText));
             } else {
-                articleExtra.setVector(generateVector(article.getTitle()));
+                articleExtra.setVector(aiChatService.generateVector(article.getTitle()));
             }
 
 
@@ -339,18 +224,6 @@ public class LlmProcessService {
         } catch (Exception e) {
             log.error("Error regenerating article {}", articleId, e);
             saveFailedResult(articleId, e.getMessage());
-        } finally {
-            semaphore.release();
-        }
-    }
-
-    static final class ResizableSemaphore extends Semaphore {
-        ResizableSemaphore(int permits) {
-            super(permits);
-        }
-
-        void reduce(int reduction) {
-            super.reducePermits(reduction);
         }
     }
 }

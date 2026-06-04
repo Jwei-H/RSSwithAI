@@ -40,7 +40,7 @@ public class SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final TopicRepository topicRepository;
     private final ArticleExtraRepository articleExtraRepository;
-    private final LlmProcessService llmProcessService;
+    private final AiChatService aiChatService;
     private final AppConfig appConfig;
 
     @PersistenceContext
@@ -242,7 +242,7 @@ public class SubscriptionService {
     }
 
     private Topic createNewTopic(String content) {
-        float[] vector = llmProcessService.generateVector(content);
+        float[] vector = aiChatService.generateVector(content);
         if (vector == null) {
             throw new IllegalStateException("Failed to generate topic vector");
         }

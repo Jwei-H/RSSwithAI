@@ -42,7 +42,7 @@ public class ArticleService {
     private final ArticleRepository articleRepository;
     private final ArticleExtraRepository articleExtraRepository;
     private final ArticleFavoriteRepository articleFavoriteRepository;
-    private final LlmProcessService llmProcessService;
+    private final AiChatService aiChatService;
     private final SubscriptionRepository subscriptionRepository;
 
     private static final double VECTOR_SIMILARITY_THRESHOLD = 0.4D;
@@ -378,7 +378,7 @@ public class ArticleService {
     }
 
     private List<ArticleExtraRepository.IdWithDistance> searchIdsByVectorAll(String query) {
-        float[] vector = llmProcessService.generateVector(query);
+        float[] vector = aiChatService.generateVector(query);
         if (vector == null || vector.length == 0) {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
@@ -388,7 +388,7 @@ public class ArticleService {
     }
 
     private List<ArticleExtraRepository.IdWithDistance> searchIdsByVectorInSources(String query, List<Long> sourceIds) {
-        float[] vector = llmProcessService.generateVector(query);
+        float[] vector = aiChatService.generateVector(query);
         if (vector == null || vector.length == 0) {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
@@ -398,7 +398,7 @@ public class ArticleService {
     }
 
     private List<ArticleExtraRepository.IdWithDistance> searchIdsByVectorInFavorites(String query, Long userId) {
-        float[] vector = llmProcessService.generateVector(query);
+        float[] vector = aiChatService.generateVector(query);
         if (vector == null || vector.length == 0) {
             log.warn("Vector generation failed, fallback to keyword search only");
             return Collections.emptyList();
