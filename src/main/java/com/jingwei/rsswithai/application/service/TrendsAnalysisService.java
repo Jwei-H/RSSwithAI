@@ -202,19 +202,21 @@ public class TrendsAnalysisService {
                     .map(e -> Map.of("source", (Object) e.getKey(), "events", e.getValue()))
                     .toList());
 
-            String globalEvents = fetchGlobalEventsFromLlm(combinedEvents);
-
-            log.info("Global reduced events JSON: {}", globalEvents);
-
-            List<Map<String, Object>> reducedEvents = objectMapper.readValue(globalEvents,
-                    new TypeReference<List<Map<String, Object>>>() {
-                    });
+            List<Map<String, Object>> reducedEvents = reduceGlobalEventsWithRetry(combinedEvents);
+            if (reducedEvents.isEmpty()) {
+                log.warn("Reduce phase produced no events after retries, skipping save.");
+                return;
+            }
 
             List<Map<String, Object>> eventsWithTopics = attachTopicIds(reducedEvents);
 
             // 3. Save
-            saveTrendsData(0L, "HOT_EVENTS", eventsWithTopics);
-            log.info("Hot Events generated successfully");
+            if (!eventsWithTopics.isEmpty()) {
+                saveTrendsData(0L, "HOT_EVENTS", eventsWithTopics);
+                log.info("Hot Events generated successfully");
+            } else {
+                log.warn("All events filtered out after attaching topic IDs, skipping save.");
+            }
 
         } catch (Exception e) {
             log.error("Error generating hot events", e);
@@ -228,10 +230,15 @@ public class TrendsAnalysisService {
                     if (eventText.isBlank()) {
                         return event;
                     }
-                    Long topicId = subscriptionService.getOrCreateTopic(eventText).getId();
                     Map<String, Object> enriched = new LinkedHashMap<>(event);
                     enriched.put("event", eventText);
-                    enriched.put("topicId", topicId);
+                    try {
+                        Long topicId = subscriptionService.getOrCreateTopic(eventText).getId();
+                        enriched.put("topicId", topicId);
+                    } catch (Exception e) {
+                        log.warn("Failed to create topic for hot event '{}', will resolve on read: {}",
+                                eventText, e.getMessage());
+                    }
                     return enriched;
                 })
                 .toList();
@@ -281,6 +288,61 @@ public class TrendsAnalysisService {
         }
     }
 
+    private List<Map<String, Object>> reduceGlobalEventsWithRetry(String combinedEvents) {
+        int[] retryDelaysSec = {10, 20, 40};
+        int maxRetries = retryDelaysSec.length;
+
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            String globalEvents = fetchGlobalEventsFromLlm(combinedEvents);
+            log.info("Reduce attempt {}: raw response: {}", attempt + 1, globalEvents);
+
+            if ("[]".equals(globalEvents)) {
+                if (attempt < maxRetries) {
+                    log.warn("Reduce returned empty, retrying ({}/{}) after {}s...",
+                            attempt + 1, maxRetries + 1, retryDelaysSec[attempt]);
+                    sleepSeconds(retryDelaysSec[attempt]);
+                    continue;
+                }
+                log.warn("Reduce returned empty after all retries");
+                return Collections.emptyList();
+            }
+
+            try {
+                List<Map<String, Object>> events = objectMapper.readValue(globalEvents,
+                        new TypeReference<List<Map<String, Object>>>() {});
+                if (!events.isEmpty()) {
+                    log.info("Reduce succeeded with {} events", events.size());
+                    return events;
+                }
+                if (attempt < maxRetries) {
+                    log.warn("Reduce returned valid but empty list, retrying ({}/{}) after {}s...",
+                            attempt + 1, maxRetries + 1, retryDelaysSec[attempt]);
+                    sleepSeconds(retryDelaysSec[attempt]);
+                    continue;
+                }
+            } catch (Exception e) {
+                log.error("Failed to parse reduce JSON (attempt {}/{}): {}",
+                        attempt + 1, maxRetries + 1, e.getMessage());
+                if (attempt < maxRetries) {
+                    log.warn("Retrying after {}s...", retryDelaysSec[attempt]);
+                    sleepSeconds(retryDelaysSec[attempt]);
+                    continue;
+                }
+            }
+        }
+
+        return Collections.emptyList();
+    }
+
+    private void sleepSeconds(int seconds) {
+        try {
+            Thread.sleep(seconds * 1000L);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Interrupted during retry sleep");
+        }
+    }
+
     private String resolveSourceName(RssSource source) {
         if (source.getName() != null && !source.getName().isBlank()) {
             return source.getName();
@@ -295,11 +357,28 @@ public class TrendsAnalysisService {
                     .map(ArticleExtraRepository.ArticleExtraNoVectorView::getOverview)
                     .orElse(null);
 
-            builder.append("- 标题：")
-                    .append(Optional.ofNullable(article.getTitle()).orElse(""))
-                    .append("\n  概览：")
-                    .append((overview == null || overview.isBlank()) ? "无" : overview)
-                    .append("\n");
+            if (overview != null && !overview.isBlank()) {
+                builder.append("- 标题：")
+                        .append(Optional.ofNullable(article.getTitle()).orElse(""))
+                        .append("\n  概览：")
+                        .append(overview)
+                        .append("\n");
+                continue;
+            }
+
+            // No overview: skip long articles, use content for short ones
+            long wordCount = article.getWordCount() != null ? article.getWordCount() : 0;
+            if (wordCount > 100) {
+                continue;
+            }
+            String content = article.getContent();
+            if (content != null && !content.isBlank()) {
+                builder.append("- 标题：")
+                        .append(Optional.ofNullable(article.getTitle()).orElse(""))
+                        .append("\n  概览：")
+                        .append(content)
+                        .append("\n");
+            }
         }
         return builder.toString().trim();
     }
@@ -364,6 +443,8 @@ public class TrendsAnalysisService {
         if (text == null)
             return "{}";
         String cleaned = text.trim();
+
+        // Remove markdown code block markers
         if (cleaned.startsWith("```json")) {
             cleaned = cleaned.substring(7);
         } else if (cleaned.startsWith("```")) {
@@ -372,6 +453,41 @@ public class TrendsAnalysisService {
         if (cleaned.endsWith("```")) {
             cleaned = cleaned.substring(0, cleaned.length() - 3);
         }
-        return cleaned.trim();
+        cleaned = cleaned.trim();
+
+        // Try to extract the outermost JSON array/object to strip surrounding text
+        int jsonStart = -1;
+        for (int i = 0; i < cleaned.length(); i++) {
+            char c = cleaned.charAt(i);
+            if (c == '[' || c == '{') {
+                jsonStart = i;
+                break;
+            }
+        }
+        if (jsonStart < 0) {
+            return cleaned;
+        }
+
+        char openChar = cleaned.charAt(jsonStart);
+        char closeChar = (openChar == '[') ? ']' : '}';
+        int depth = 0;
+        int jsonEnd = -1;
+        for (int i = jsonStart; i < cleaned.length(); i++) {
+            char c = cleaned.charAt(i);
+            if (c == openChar) {
+                depth++;
+            } else if (c == closeChar) {
+                depth--;
+                if (depth == 0) {
+                    jsonEnd = i + 1;
+                    break;
+                }
+            }
+        }
+
+        if (jsonEnd > jsonStart) {
+            return cleaned.substring(jsonStart, jsonEnd).trim();
+        }
+        return cleaned;
     }
 }
