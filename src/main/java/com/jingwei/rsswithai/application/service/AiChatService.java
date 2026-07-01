@@ -17,12 +17,15 @@ import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.retry.RetryUtils;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.event.EventListener;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.web.client.RestClient;
 import reactor.core.Disposable;
 import tools.jackson.databind.JsonNode;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
@@ -192,9 +195,17 @@ public class AiChatService {
 
     private void initializeChatClient() {
         try {
+            SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+            requestFactory.setConnectTimeout(Duration.ofSeconds(10));
+            requestFactory.setReadTimeout(Duration.ofSeconds(180));
+
+            RestClient.Builder restClientBuilder = RestClient.builder()
+                    .requestFactory(requestFactory);
+
             OpenAiApi openAiApi = OpenAiApi.builder()
                     .apiKey(appConfig.getLlmApiKey())
                     .baseUrl(appConfig.getLlmBaseUrl())
+                    .restClientBuilder(restClientBuilder)
                     .build();
 
             this.chatModel = OpenAiChatModel.builder()
@@ -210,9 +221,17 @@ public class AiChatService {
 
     private void initializeEmbeddingClient() {
         try {
+            SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+            requestFactory.setConnectTimeout(Duration.ofSeconds(10));
+            requestFactory.setReadTimeout(Duration.ofSeconds(60));
+
+            RestClient.Builder restClientBuilder = RestClient.builder()
+                    .requestFactory(requestFactory);
+
             OpenAiApi embeddingOpenAiApi = OpenAiApi.builder()
                     .apiKey(resolveEmbeddingApiKey())
                     .baseUrl(resolveEmbeddingBaseUrl())
+                    .restClientBuilder(restClientBuilder)
                     .build();
 
             this.embeddingModel = new OpenAiEmbeddingModel(
